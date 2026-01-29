@@ -59,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const result = registerSchema.safeParse(req.body);
       if (!result.success) {
-        return res.status(400).json({ error: result.error.errors[0].message });
+        return res.status(400).json({ error: result.error.issues[0].message });
       }
 
       const { email, username, password, fullName } = result.data;
@@ -99,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const result = loginSchema.safeParse(req.body);
       if (!result.success) {
-        return res.status(400).json({ error: result.error.errors[0].message });
+        return res.status(400).json({ error: result.error.issues[0].message });
       }
 
       const { emailOrUsername, password } = result.data;
