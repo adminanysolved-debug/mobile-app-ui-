@@ -2,10 +2,10 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import { loginSchema, registerSchema } from "./shared/schema.js";
-import { verifyIdToken, initializeFirebaseAdmin } from "./firebase-admin";
-import { generateTaskDates, validateDreamFields } from "./task-generator";
+import { verifyIdToken, initializeFirebaseAdmin } from "./firebase-admin.js";
+import { generateTaskDates, validateDreamFields } from "./task-generator.js";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "real-dream-secret-key";
 
