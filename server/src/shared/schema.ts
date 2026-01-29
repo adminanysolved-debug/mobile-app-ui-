@@ -356,12 +356,13 @@ export const dreamTasksRelations = relations(dreamTasks, ({ one }) => ({
   }),
 }));
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  email: true,
-  username: true,
-  password: true,
-  fullName: true,
+export const insertUserSchema = z.object({
+  email: z.string().email(),
+  username: z.string().min(3),
+  password: z.string().min(6),
+  fullName: z.string().optional(),
 });
+
 
 export const loginSchema = z.object({
   emailOrUsername: z.string().min(1, "Email or username is required"),
@@ -375,17 +376,20 @@ export const registerSchema = z.object({
   fullName: z.string().optional(),
 });
 
-export const insertDreamSchema = createInsertSchema(dreams).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertDreamSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  userId: z.number(),
+  type: z.enum(["personal", "challenge", "group"]),
 });
 
-export const insertMessageSchema = createInsertSchema(messages).omit({
-  id: true,
-  createdAt: true,
-  isRead: true,
+
+export const insertMessageSchema = z.object({
+  conversationId: z.number(),
+  senderId: z.number(),
+  content: z.string().min(1),
 });
+
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
