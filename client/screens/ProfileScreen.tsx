@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Alert, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -129,7 +129,6 @@ function MenuRow({
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme, currentTheme } = useTheme();
@@ -138,7 +137,9 @@ export default function ProfileScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editFullName, setEditFullName] = useState(user?.fullName || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profilePhoto || null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const handleNavigate = (route?: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -158,6 +159,72 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await logout();
+  };
+
+  const handlePickImage = async () => {
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        alert("Permission to access camera roll is required!");
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadProfilePhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+    }
+  };
+
+  const uploadProfilePhoto = async (uri: string) => {
+    if (!token) return;
+    
+    setIsUploadingPhoto(true);
+    try {
+      // Create form data
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'photo.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('profilePhoto', {
+        uri,
+        name: filename,
+        type,
+      } as any);
+
+      // Upload to server
+      const response = await fetch(new URL('/api/profile/photo', getApiUrl()).toString(), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProfilePhoto(data.profilePhotoUrl);
+        updateUser({ ...user, profilePhoto: data.profilePhotoUrl });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Failed to upload photo. Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -211,23 +278,56 @@ export default function ProfileScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.xl,
+            paddingTop: insets.top + Spacing.lg, // Added padding to prevent overlap
             paddingBottom: tabBarHeight + Spacing.xl,
           },
         ]}
-        scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header - Non-sticky to prevent overlap */}
+        <View style={styles.headerContainer}>
+          <ThemedText
+            type="xs"
+            style={[styles.sectionLabel, { color: theme.textSecondary }]}
+          >
+            PERSONAL PROFILE
+          </ThemedText>
+        </View>
+
         <Animated.View entering={FadeInDown.springify()}>
           <Card style={styles.profileCard}>
-            <LinearGradient
-              colors={theme.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatar}
-            >
-              <Feather name="user" size={40} color="#FFFFFF" />
-            </LinearGradient>
+            {/* Profile Photo with Upload Button */}
+            <Pressable onPress={handlePickImage} style={styles.avatarContainer}>
+              {profilePhoto ? (
+                <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
+              ) : (
+                <LinearGradient
+                  colors={theme.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.avatar}
+                >
+                  <Feather name="user" size={40} color="#FFFFFF" />
+                </LinearGradient>
+              )}
+              
+              {/* Camera Icon Overlay */}
+              <View style={styles.cameraIconContainer}>
+                <LinearGradient
+                  colors={theme.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.cameraIcon}
+                >
+                  {isUploadingPhoto ? (
+                    <ThemedText type="small" style={{ color: "#FFF" }}>...</ThemedText>
+                  ) : (
+                    <Feather name="camera" size={16} color="#FFFFFF" />
+                  )}
+                </LinearGradient>
+              </View>
+            </Pressable>
+
             <View style={styles.profileInfo}>
               <ThemedText
                 type="xs"
@@ -439,10 +539,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
   },
+  headerContainer: {
+    marginBottom: Spacing.sm,
+  },
   profileCard: {
     padding: Spacing.xl,
     alignItems: "center",
     backgroundColor: "rgba(45, 39, 82, 0.6)",
+  },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: Spacing.lg,
   },
   avatar: {
     width: 88,
@@ -450,7 +557,25 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.lg,
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: BorderRadius.full,
+  },
+  cameraIconContainer: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+  },
+  cameraIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "rgba(45, 39, 82, 0.8)",
   },
   profileInfo: {
     alignItems: "center",

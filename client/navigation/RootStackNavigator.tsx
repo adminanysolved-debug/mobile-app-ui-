@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
+import GoogleAuthScreen from '../screens/GoogleAuthScreen';
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import SignInScreen from "@/screens/SignInScreen";
 import SignUpScreen from "@/screens/SignUpScreen";
@@ -20,6 +20,7 @@ export type RootStackParamList = {
   SignUp: undefined;
   ForgotPassword: undefined;
   PhoneSignIn: undefined;
+  GoogleAuth: undefined;
   MainTabs: undefined;
   WallOfFame: undefined;
   Wallet: undefined;
@@ -89,6 +90,11 @@ export default function RootStackNavigator() {
             component={SignInScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+  name="GoogleAuth"
+  component={GoogleAuthScreen}
+  options={{ headerShown: false }}
+/>
           <Stack.Screen
             name="SignUp"
             component={SignUpScreen}

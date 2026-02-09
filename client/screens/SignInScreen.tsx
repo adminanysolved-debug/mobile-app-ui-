@@ -65,7 +65,9 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
     setIsGoogleLoading(true);
     setError("");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
+    navigation.navigate("GoogleAuth");
+};
+/*
     try {
       const result = await loginWithGoogle();
       setIsGoogleLoading(false);
@@ -80,7 +82,7 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
       setError("Google login failed");
     }
   };
-
+*/
   const handleFacebookSignIn = async () => {
     setIsFacebookLoading(true);
     setError("");

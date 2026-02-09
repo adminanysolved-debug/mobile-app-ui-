@@ -16,13 +16,14 @@ import {
   verifyPhoneOTP,
   clearRecaptcha,
 } from '../lib/firebase';
-
+import { Platform } from 'react-native';
 export interface User {
   id: string;
   email: string;
   username: string;
   fullName: string;
   avatar?: string;
+  profilePhoto?: string;
   coins: number;
   trophies: number;
   awards: number;
@@ -201,28 +202,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const userCredential = await signInWithGooglePopup();
-      if (!userCredential) {
-        return { success: false, error: 'Google sign-in was cancelled' };
-      }
-      
-      const firebaseToken = await userCredential.user.getIdToken();
-      return await syncUserWithBackend(firebaseToken, userCredential.user);
-    } catch (error: any) {
-      console.error('Google login error:', error);
-      
-      if (error.code === 'auth/popup-closed-by-user') {
-        return { success: false, error: 'Sign-in was cancelled' };
-      }
-      if (error.code === 'auth/popup-blocked') {
-        return { success: false, error: 'Pop-up was blocked. Please allow pop-ups.' };
-      }
-      
-      return { success: false, error: 'Google login failed. Please try again.' };
+  const loginWithGoogle = async () => {
+  if (Platform.OS === 'web') {
+    // WEB stays same
+    const userCredential = await signInWithGooglePopup();
+    if (!userCredential) {
+      return { success: false, error: 'Cancelled' };
     }
-  };
+
+    const token = await userCredential.user.getIdToken();
+    return await syncUserWithBackend(token, userCredential.user);
+  }
+
+  // ANDROID → navigate to GoogleAuth screen
+  return { success: false, error: 'ANDROID_GOOGLE_AUTH' };
+};
+
+
 
   const loginWithFacebook = async (): Promise<{ success: boolean; error?: string }> => {
     try {

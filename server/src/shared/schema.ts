@@ -77,6 +77,7 @@ export const users = pgTable("users", {
   city: text("city"),
   country: text("country"),
   profileImage: text("profile_image"),
+  profilePhoto: text("profile_photo"),
   bio: text("bio"),
   isVendor: boolean("is_vendor").default(false),
   vendorBusinessName: text("vendor_business_name"),

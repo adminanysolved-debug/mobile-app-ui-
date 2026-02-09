@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { getStorage } from "firebase-admin/storage";
 
 let initialized = false;
 
@@ -20,6 +21,7 @@ export function initializeFirebaseAdmin() {
     
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      storageBucket: "your-project-id.appspot.com",
     });
     
     initialized = true;

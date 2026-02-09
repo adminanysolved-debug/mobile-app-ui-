@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 /**
@@ -5,27 +6,29 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
-  // Check for full API URL first (for production builds)
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  // 1️⃣ Web (.env)
+  const apiUrlFromEnv = process.env.EXPO_PUBLIC_API_URL;
+
+  // 2️⃣ Android / iOS (app.json -> extra)
+  const apiUrlFromExtra =
+    Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL;
+
+  const apiUrl = apiUrlFromEnv || apiUrlFromExtra;
+
   if (apiUrl) {
-    return apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    return apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
   }
 
-  // Fall back to domain-based URL
-  let host = process.env.EXPO_PUBLIC_DOMAIN;
-
-  if (!host) {
-    if (__DEV__) {
-      host = 'localhost:5000';
-      return `http://${host}`;
-    }
-    throw new Error("API server configuration is missing. Please check your app settings.");
+  // DEV fallback (web / emulator only)
+  if (__DEV__) {
+    return "http://localhost:5000";
   }
 
-  let url = new URL(`https://${host}`);
-
-  return url.href;
+  throw new Error(
+    "API server configuration is missing. Please check your app settings."
+  );
 }
+
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {

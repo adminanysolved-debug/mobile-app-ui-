@@ -6,7 +6,8 @@ import { storage } from "./storage.js";
 import { loginSchema, registerSchema } from "./shared/schema.js";
 import { verifyIdToken, initializeFirebaseAdmin } from "./firebase-admin.js";
 import { generateTaskDates, validateDreamFields } from "./task-generator.js";
-
+import multer from "multer";
+import { uploadToFirebaseStorage, deleteFromFirebaseStorage } from "./firebase-storage.js";
 const JWT_SECRET = process.env.SESSION_SECRET || "real-dream-secret-key";
 
 let firebaseInitialized = false;
@@ -49,7 +50,19 @@ async function authMiddleware(req: AuthRequest, res: Response, next: NextFunctio
     return res.status(401).json({ error: "Invalid token" });
   }
 }
-
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
+  },
+});
 export async function registerRoutes(app: Express): Promise<Server> {
   // ✅ HEALTH CHECK (ADD THIS)
   app.get("/api/health", (_req, res) => {
@@ -445,7 +458,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
+  // Profile photo upload
+app.post(
+  "/api/profile/photo",
+  authMiddleware,
+  upload.single("profilePhoto"),
+  async (req: AuthRequest, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
 
+      const userId = req.user!.id;
+      const currentUser = await storage.getUser(userId);
+      
+      if (currentUser?.profilePhoto) {
+        await deleteFromFirebaseStorage(currentUser.profilePhoto);
+      }
+
+      const photoUrl = await uploadToFirebaseStorage(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      const updatedUser = await storage.updateUser(userId, {
+        profilePhoto: photoUrl,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({
+        profilePhotoUrl: photoUrl,
+        message: "Profile photo uploaded successfully",
+      });
+    } catch (error) {
+      console.error("Error uploading profile photo:", error);
+      res.status(500).json({ error: "Failed to upload profile photo" });
+    }
+  }
+);
+
+// Delete profile photo
+app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const user = await storage.getUser(userId);
+
+    if (!user?.profilePhoto) {
+      return res.status(404).json({ error: "No profile photo to delete" });
+    }
+
+    await deleteFromFirebaseStorage(user.profilePhoto);
+
+    await storage.updateUser(userId, {
+      profilePhoto: null,
+    });
+
+    res.json({ message: "Profile photo deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting profile photo:", error);
+    res.status(500).json({ error: "Failed to delete profile photo" });
+  }
+});
   app.post("/api/subscription", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const { tier } = req.body;

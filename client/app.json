@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "client",
+    "name": "Real Dream",
     "slug": "client",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "client",
+    "scheme": "com.rahul1310.client",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.rahul1310.client"
     },
     "web": {
       "output": "single",
@@ -38,11 +39,18 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "EXPO_PUBLIC_API_URL": "https://mobile-app-ui.onrender.com",
+      "eas": {
+        "projectId": "acedde1e-39e7-40ee-bf1e-5733a17797b3"
+      }
     }
   }
 }
