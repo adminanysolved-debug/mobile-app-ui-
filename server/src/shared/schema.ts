@@ -79,6 +79,8 @@ export const users = pgTable("users", {
   profileImage: text("profile_image"),
   profilePhoto: text("profile_photo"),
   bio: text("bio"),
+  age: integer("age"),
+  gender: text("gender"),
   isVendor: boolean("is_vendor").default(false),
   vendorBusinessName: text("vendor_business_name"),
   vendorDescription: text("vendor_description"),

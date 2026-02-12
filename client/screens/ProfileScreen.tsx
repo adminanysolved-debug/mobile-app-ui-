@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image, Alert, ActionSheetIOS, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -18,6 +18,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+import { auth } from "@/lib/firebase";
 
 type MenuItem = {
   icon: keyof typeof Feather.glyphMap;
@@ -135,8 +136,11 @@ export default function ProfileScreen() {
   const { user, logout, token, updateUser } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPhotoOptionsModal, setShowPhotoOptionsModal] = useState(false);
   const [editFullName, setEditFullName] = useState(user?.fullName || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
+  const [editAge, setEditAge] = useState(user?.age?.toString() || "");
+  const [editGender, setEditGender] = useState(user?.gender || "");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profilePhoto || null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -148,6 +152,8 @@ export default function ProfileScreen() {
     } else if (route === "EditProfile") {
       setEditFullName(user?.fullName || "");
       setEditBio(user?.bio || "");
+      setEditAge(user?.age?.toString() || "");
+      setEditGender(user?.gender || "");
       setShowEditModal(true);
     } else if (route === "DeleteAccount") {
       setShowDeleteModal(true);
@@ -161,11 +167,34 @@ export default function ProfileScreen() {
     await logout();
   };
 
+  const showPhotoOptions = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Upload New Photo', 'Remove Profile Photo'],
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: 2,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handlePickImage();
+          } else if (buttonIndex === 2) {
+            handleRemovePhoto();
+          }
+        }
+      );
+    } else {
+      setShowPhotoOptionsModal(true);
+    }
+  };
+
   const handlePickImage = async () => {
     try {
       // Request permission
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
         alert("Permission to access camera roll is required!");
         return;
@@ -185,13 +214,20 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('Error picking image:', error);
     }
+    setShowPhotoOptionsModal(false);
   };
 
   const uploadProfilePhoto = async (uri: string) => {
-    if (!token) return;
-    
+    if (!auth.currentUser) {
+      alert('Please sign in to upload a photo');
+      return;
+    }
+
     setIsUploadingPhoto(true);
     try {
+      // Fetch fresh token from Firebase
+      const freshToken = await auth.currentUser.getIdToken(true);
+
       // Create form data
       const formData = new FormData();
       const filename = uri.split('/').pop() || 'photo.jpg';
@@ -204,11 +240,11 @@ export default function ProfileScreen() {
         type,
       } as any);
 
-      // Upload to server
+      // Upload to server with fresh token
       const response = await fetch(new URL('/api/profile/photo', getApiUrl()).toString(), {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${freshToken}`,
         },
         body: formData,
       });
@@ -218,6 +254,9 @@ export default function ProfileScreen() {
         setProfilePhoto(data.profilePhotoUrl);
         updateUser({ ...user, profilePhoto: data.profilePhotoUrl });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to upload photo: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error uploading photo:', error);
@@ -225,6 +264,64 @@ export default function ProfileScreen() {
     } finally {
       setIsUploadingPhoto(false);
     }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!auth.currentUser) {
+      alert('Please sign in to remove photo');
+      return;
+    }
+
+    Alert.alert(
+      'Remove Photo',
+      'Are you sure you want to remove your profile photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setIsUploadingPhoto(true);
+            try {
+              const firebaseUser = auth.currentUser;
+
+              if (!firebaseUser) {
+                alert('Session expired. Please login again.');
+                setIsUploadingPhoto(false);
+                return;
+              }
+
+              // 🔥 THIS is the FIX
+              const freshToken = await firebaseUser.getIdToken(true);
+
+              const response = await fetch(
+                new URL('/api/profile/photo', getApiUrl()).toString(),
+                {
+                  method: 'DELETE',
+                  headers: {
+                    Authorization: `Bearer ${freshToken}`,
+                  },
+                }
+              );
+
+              if (response.ok) {
+                updateUser({profilePhoto:undefined});      
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } else {
+                const errorData = await response.json();
+                alert(`Failed to remove photo: ${errorData.error || 'Unknown error'}`);
+              }
+            } catch (error) {
+              console.error('Error removing photo:', error);
+              alert('Failed to remove photo. Please try again.');
+            } finally {
+              setIsUploadingPhoto(false);
+              setShowPhotoOptionsModal(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSaveProfile = async () => {
@@ -237,7 +334,12 @@ export default function ProfileScreen() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ fullName: editFullName, bio: editBio }),
+        body: JSON.stringify({ 
+          fullName: editFullName, 
+          bio: editBio,
+          age: editAge ? parseInt(editAge) : null,
+          gender: editGender || null,
+        }),
       });
       if (response.ok) {
         const updatedUser = await response.json();
@@ -297,7 +399,7 @@ export default function ProfileScreen() {
         <Animated.View entering={FadeInDown.springify()}>
           <Card style={styles.profileCard}>
             {/* Profile Photo with Upload Button */}
-            <Pressable onPress={handlePickImage} style={styles.avatarContainer}>
+            <Pressable onPress={showPhotoOptions} style={styles.avatarContainer}>
               {profilePhoto ? (
                 <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
               ) : (
@@ -310,7 +412,7 @@ export default function ProfileScreen() {
                   <Feather name="user" size={40} color="#FFFFFF" />
                 </LinearGradient>
               )}
-              
+
               {/* Camera Icon Overlay */}
               <View style={styles.cameraIconContainer}>
                 <LinearGradient
@@ -347,6 +449,26 @@ export default function ProfileScreen() {
               <ThemedText type="body" style={styles.fullName}>
                 {user?.fullName || "User"}
               </ThemedText>
+              {user?.age ? (
+                <>
+                  <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+                    Age
+                  </ThemedText>
+                  <ThemedText type="body">
+                    {user.age}
+                  </ThemedText>
+                </>
+              ) : null}
+              {user?.gender ? (
+                <>
+                  <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+                    Gender
+                  </ThemedText>
+                  <ThemedText type="body">
+                    {user.gender}
+                  </ThemedText>
+                </>
+              ) : null}
               {user?.bio ? (
                 <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}>
                   {user.bio}
@@ -483,6 +605,23 @@ export default function ProfileScreen() {
               placeholder="Enter your full name"
               placeholderTextColor={theme.textMuted}
             />
+            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Age</ThemedText>
+            <TextInput
+              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              value={editAge}
+              onChangeText={setEditAge}
+              placeholder="Enter your age"
+              placeholderTextColor={theme.textMuted}
+              keyboardType="numeric"
+            />
+            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Gender</ThemedText>
+            <TextInput
+              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              value={editGender}
+              onChangeText={setEditGender}
+              placeholder="Enter your gender"
+              placeholderTextColor={theme.textMuted}
+            />
             <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Bio</ThemedText>
             <TextInput
               style={[styles.textInput, styles.bioInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
@@ -523,6 +662,35 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Photo Options Modal for Android */}
+      <Modal visible={showPhotoOptionsModal} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPhotoOptionsModal(false)}>
+          <View style={[styles.photoOptionsContent, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h3" style={styles.modalTitle}>Profile Photo</ThemedText>
+            <Pressable
+              onPress={handlePickImage}
+              style={[styles.photoOptionButton, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
+            >
+              <Feather name="upload" size={20} color={theme.text} />
+              <ThemedText type="body" style={styles.photoOptionText}>Upload New Photo</ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={handleRemovePhoto}
+              style={styles.photoOptionButton}
+            >
+              <Feather name="trash-2" size={20} color="#DC2626" />
+              <ThemedText type="body" style={[styles.photoOptionText, { color: "#DC2626" }]}>Remove Profile Photo</ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => setShowPhotoOptionsModal(false)}
+              style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
+            >
+              <ThemedText type="body">Cancel</ThemedText>
+            </Pressable>
+          </View>
+        </Pressable>
       </Modal>
     </GalaxyBackground>
   );
@@ -686,5 +854,25 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xs,
     backgroundColor: "#DC2626",
     alignItems: "center",
+  },
+  photoOptionsContent: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginHorizontal: Spacing.xl,
+  },
+  photoOptionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  photoOptionText: {
+    fontSize: 16,
+  },
+  cancelButton: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    marginTop: Spacing.md,
   },
 });
