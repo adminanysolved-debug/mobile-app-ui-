@@ -12,6 +12,7 @@ import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { Card } from "@/components/Card";
 import { AdBanner } from "@/components/AdBanner";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useSafeBottomPadding } from "@/hooks/useSafeBottomPadding";
 
 type DreamTypeItem = {
   type: "personal" | "challenge" | "group";
@@ -88,6 +89,7 @@ function DreamTypeCard({ item, index }: { item: DreamTypeItem; index: number }) 
 }
 
 export default function MyRealDreamScreen() {
+  const bottomPadding = useSafeBottomPadding();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
 
@@ -98,8 +100,8 @@ export default function MyRealDreamScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.lg,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingTop: insets.top + 10,
+            paddingBottom: bottomPadding,
           },
         ]}
         showsVerticalScrollIndicator={false}

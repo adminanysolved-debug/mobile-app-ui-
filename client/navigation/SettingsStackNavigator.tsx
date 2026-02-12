@@ -28,7 +28,7 @@ export default function SettingsStackNavigator() {
         name="Subscription"
         component={SubscriptionScreen}
         options={{
-          headerTitle: "Subscription",
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

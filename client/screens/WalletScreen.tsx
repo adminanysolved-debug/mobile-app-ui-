@@ -15,6 +15,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+import { useSafeBottomPadding } from "@/hooks/useSafeBottomPadding";
 
 type Transaction = {
   id: string;
@@ -52,6 +53,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function WalletScreen() {
+  const bottomPadding = useSafeBottomPadding();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
@@ -99,7 +101,7 @@ export default function WalletScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingBottom: bottomPadding,
           },
         ]}
         showsVerticalScrollIndicator={false}

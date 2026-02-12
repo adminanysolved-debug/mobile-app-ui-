@@ -7,7 +7,8 @@ import { loginSchema, registerSchema } from "./shared/schema.js";
 import { verifyIdToken, initializeFirebaseAdmin } from "./firebase-admin.js";
 import { generateTaskDates, validateDreamFields } from "./task-generator.js";
 import multer from "multer";
-import { uploadToFirebaseStorage, deleteFromFirebaseStorage } from "./firebase-storage.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "./cloudinary-storage.js";
+
 const JWT_SECRET = process.env.SESSION_SECRET || "real-dream-secret-key";
 
 let firebaseInitialized = false;
@@ -29,7 +30,7 @@ async function authMiddleware(req: AuthRequest, res: Response, next: NextFunctio
   }
 
   const token = authHeader.split(" ")[1];
-  
+
   if (firebaseInitialized) {
     try {
       const decodedToken = await verifyIdToken(token);
@@ -41,7 +42,7 @@ async function authMiddleware(req: AuthRequest, res: Response, next: NextFunctio
     } catch {
     }
   }
-  
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string };
     req.user = decoded;
@@ -117,12 +118,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { emailOrUsername, password } = result.data;
       const input = emailOrUsername.trim().toLowerCase();
-      
+
       let user = await storage.getUserByEmail(input);
       if (!user) {
         user = await storage.getUserByUsername(input);
       }
-      
+
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -154,12 +155,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!username) {
         return res.status(400).json({ error: "Username is required" });
       }
-      
+
       const user = await storage.getUserByUsername(username.trim().toLowerCase());
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      
+
       res.json({ email: user.email });
     } catch (error) {
       console.error("Resolve username error:", error);
@@ -170,13 +171,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/google", async (req, res) => {
     try {
       const { googleId, email, fullName, profileImage } = req.body;
-      
+
       if (!googleId || !email) {
         return res.status(400).json({ error: "Google ID and email are required" });
       }
 
       let user = await storage.getUserByGoogleId(googleId);
-      
+
       if (!user) {
         user = await storage.getUserByEmail(email);
         if (user) {
@@ -214,13 +215,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/facebook", async (req, res) => {
     try {
       const { facebookId, email, fullName, profileImage } = req.body;
-      
+
       if (!facebookId || !email) {
         return res.status(400).json({ error: "Facebook ID and email are required" });
       }
 
       let user = await storage.getUserByFacebookId(facebookId);
-      
+
       if (!user) {
         user = await storage.getUserByEmail(email);
         if (user) {
@@ -258,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
-      
+
       if (!email) {
         return res.status(400).json({ error: "Email is required" });
       }
@@ -276,8 +277,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = crypto.randomBytes(32).toString("hex");
       await storage.createPasswordResetToken(user.id, token);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Password reset instructions sent to your email",
         resetToken: token,
       });
@@ -290,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/reset-password", async (req, res) => {
     try {
       const { token, newPassword } = req.body;
-      
+
       if (!token || !newPassword) {
         return res.status(400).json({ error: "Token and new password are required" });
       }
@@ -331,28 +332,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const token = authHeader.split(" ")[1];
-      
+
       if (!firebaseInitialized) {
         return res.status(500).json({ error: "Firebase not configured" });
       }
 
       const decodedToken = await verifyIdToken(token);
       const { email, fullName, profileImage, firebaseUid, authProvider } = req.body;
-      
+
       if (!email) {
         return res.status(400).json({ error: "Email is required" });
       }
 
       let user = await storage.getUserByFirebaseUid(firebaseUid || decodedToken.uid);
-      
+
       if (!user) {
         user = await storage.getUserByEmail(email);
         if (user) {
-          user = await storage.updateUser(user.id, { 
+          user = await storage.updateUser(user.id, {
             firebaseUid: firebaseUid || decodedToken.uid,
-            authProvider: authProvider === 'google.com' ? 'google' : 
-                          authProvider === 'facebook.com' ? 'facebook' : 
-                          authProvider === 'phone' ? 'phone' : 'email',
+            authProvider: authProvider === 'google.com' ? 'google' :
+              authProvider === 'facebook.com' ? 'facebook' :
+                authProvider === 'phone' ? 'phone' : 'email',
           });
         } else {
           const username = email.split("@")[0] + "_" + Math.random().toString(36).substring(2, 7);
@@ -362,9 +363,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fullName: fullName || email.split("@")[0],
             profileImage,
             firebaseUid: firebaseUid || decodedToken.uid,
-            authProvider: authProvider === 'google.com' ? 'google' : 
-                          authProvider === 'facebook.com' ? 'facebook' : 
-                          authProvider === 'phone' ? 'phone' : 'email',
+            authProvider: authProvider === 'google.com' ? 'google' :
+              authProvider === 'facebook.com' ? 'facebook' :
+                authProvider === 'phone' ? 'phone' : 'email',
             coins: 100,
           });
         }
@@ -390,14 +391,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const token = authHeader.split(" ")[1];
-      
+
       if (!firebaseInitialized) {
         return res.status(500).json({ error: "Firebase not configured" });
       }
 
       const decodedToken = await verifyIdToken(token);
       const { email, username, fullName, firebaseUid, authProvider } = req.body;
-      
+
       if (!email || !username) {
         return res.status(400).json({ error: "Email and username are required" });
       }
@@ -459,75 +460,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   // Profile photo upload
-app.post(
-  "/api/profile/photo",
-  authMiddleware,
-  upload.single("profilePhoto"),
-  async (req: AuthRequest, res) => {
+  app.post(
+    "/api/profile/photo",
+    authMiddleware,
+    upload.single("profilePhoto"),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        const userId = req.user!.id;
+
+        // Get current user to check for existing photo
+        const currentUser = await storage.getUser(userId);
+
+        // Delete old photo from Cloudinary if exists
+        if (currentUser?.profilePhoto) {
+          await deleteFromCloudinary(currentUser.profilePhoto);
+        }
+
+        // Upload new photo to Cloudinary
+        const photoUrl = await uploadToCloudinary(
+          req.file.buffer,
+          req.file.originalname
+        );
+
+        // Update user in database
+        const updatedUser = await storage.updateUser(userId, {
+          profilePhoto: photoUrl,
+        });
+
+        if (!updatedUser) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({
+          profilePhotoUrl: photoUrl,
+          message: "Profile photo uploaded successfully",
+        });
+      } catch (error) {
+        console.error("Error uploading profile photo:", error);
+        res.status(500).json({ error: "Failed to upload profile photo" });
+      }
+    }
+  );
+
+  // Delete profile photo
+  app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
       const userId = req.user!.id;
-      const currentUser = await storage.getUser(userId);
-      
-      if (currentUser?.profilePhoto) {
-        await deleteFromFirebaseStorage(currentUser.profilePhoto);
+      const user = await storage.getUser(userId);
+
+      if (!user?.profilePhoto) {
+        return res.status(404).json({ error: "No profile photo to delete" });
       }
 
-      const photoUrl = await uploadToFirebaseStorage(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype
-      );
+      // Delete from Cloudinary
+      await deleteFromCloudinary(user.profilePhoto);
 
-      const updatedUser = await storage.updateUser(userId, {
-        profilePhoto: photoUrl,
+      // Update database
+      await storage.updateUser(userId, {
+        profilePhoto: null,
       });
 
-      if (!updatedUser) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      res.json({
-        profilePhotoUrl: photoUrl,
-        message: "Profile photo uploaded successfully",
-      });
+      res.json({ message: "Profile photo deleted successfully" });
     } catch (error) {
-      console.error("Error uploading profile photo:", error);
-      res.status(500).json({ error: "Failed to upload profile photo" });
+      console.error("Error deleting profile photo:", error);
+      res.status(500).json({ error: "Failed to delete profile photo" });
     }
-  }
-);
-
-// Delete profile photo
-app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) => {
-  try {
-    const userId = req.user!.id;
-    const user = await storage.getUser(userId);
-
-    if (!user?.profilePhoto) {
-      return res.status(404).json({ error: "No profile photo to delete" });
-    }
-
-    await deleteFromFirebaseStorage(user.profilePhoto);
-
-    await storage.updateUser(userId, {
-      profilePhoto: null,
-    });
-
-    res.json({ message: "Profile photo deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting profile photo:", error);
-    res.status(500).json({ error: "Failed to delete profile photo" });
-  }
-});
+  });
   app.post("/api/subscription", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const { tier } = req.body;
       const validTiers = ["bronze", "silver", "gold", "platinum"];
-      
+
       if (!tier || !validTiers.includes(tier)) {
         return res.status(400).json({ error: "Invalid subscription tier" });
       }
@@ -579,7 +586,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
   app.post("/api/dreams", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const { title, description, type, privacy, startDate, duration, durationUnit, recurrence, tasks: taskTexts } = req.body;
-      
+
       const validation = validateDreamFields({
         title,
         description,
@@ -588,11 +595,11 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
         recurrence,
         startDate,
       });
-      
+
       if (!validation.valid) {
         return res.status(400).json({ error: validation.errors.join(", ") });
       }
-      
+
       let targetDate = req.body.targetDate;
       if (duration && durationUnit && startDate) {
         const start = new Date(startDate);
@@ -613,7 +620,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
             break;
         }
       }
-      
+
       const dream = await storage.createDream({
         title: title.trim(),
         description: description?.trim() || null,
@@ -626,7 +633,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
         recurrence: recurrence || null,
         userId: req.user!.id,
       });
-      
+
       if (duration && durationUnit && recurrence && startDate) {
         const taskDates = generateTaskDates(
           new Date(startDate),
@@ -634,11 +641,11 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
           durationUnit as "days" | "weeks" | "months" | "years",
           recurrence as "daily" | "weekly" | "semi-weekly" | "monthly" | "semi-monthly"
         );
-        
+
         for (let i = 0; i < taskDates.length; i++) {
           const taskDate = taskDates[i];
           const taskText = taskTexts && taskTexts[i] ? taskTexts[i] : "";
-          
+
           await storage.createDreamTask({
             dreamId: dream.id,
             title: taskText || `Task ${i + 1}`,
@@ -647,7 +654,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
           });
         }
       }
-      
+
       res.status(201).json(dream);
     } catch (error) {
       console.error("Create dream error:", error);
@@ -662,12 +669,12 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
       if (!dream) {
         return res.status(404).json({ error: "Dream not found" });
       }
-      
+
       // Security check: Personal dreams only visible to owner
       if (dream.type === "personal" && dream.userId !== req.user!.id) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
       // For group/challenge dreams, check if user is a member
       if (dream.type !== "personal" && dream.userId !== req.user!.id) {
         const isMember = await storage.isDreamMember(id, req.user!.id);
@@ -675,7 +682,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
           return res.status(403).json({ error: "Access denied" });
         }
       }
-      
+
       res.json(dream);
     } catch (error) {
       res.status(500).json({ error: "Failed to get dream" });
@@ -689,12 +696,12 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
       if (!existingDream) {
         return res.status(404).json({ error: "Dream not found" });
       }
-      
+
       // Security check: Only owner can update dream
       if (existingDream.userId !== req.user!.id) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
       const dream = await storage.updateDream(id, req.body);
       res.json(dream);
     } catch (error) {
@@ -709,12 +716,12 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
       if (!existingDream) {
         return res.status(404).json({ error: "Dream not found" });
       }
-      
+
       // Security check: Only owner can delete dream
       if (existingDream.userId !== req.user!.id) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
       await storage.deleteDream(id);
       res.json({ success: true });
     } catch (error) {
@@ -725,24 +732,24 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
   app.get("/api/dreams/:dreamId/tasks", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const dreamId = req.params.dreamId as string;
-      
+
       // Security check: Verify user has access to this dream
       const dream = await storage.getDream(dreamId);
       if (!dream) {
         return res.status(404).json({ error: "Dream not found" });
       }
-      
+
       if (dream.type === "personal" && dream.userId !== req.user!.id) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
       if (dream.type !== "personal" && dream.userId !== req.user!.id) {
         const isMember = await storage.isDreamMember(dreamId, req.user!.id);
         if (!isMember) {
           return res.status(403).json({ error: "Access denied" });
         }
       }
-      
+
       const tasks = await storage.getDreamTasks(dreamId);
       res.json(tasks);
     } catch (error) {
@@ -762,9 +769,9 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
         reminderDate: reminderDate ? new Date(reminderDate) : undefined,
         order: order || 0,
       });
-      
+
       await storage.updateDreamProgress(dreamId);
-      
+
       if (reminderDate) {
         await storage.createNotification({
           userId: req.user!.id,
@@ -773,7 +780,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
           type: "system",
         });
       }
-      
+
       res.status(201).json(task);
     } catch (error) {
       console.error("Create task error:", error);
@@ -816,13 +823,13 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
       const dreamId = req.params.dreamId as string;
       const taskId = req.params.taskId as string;
       const task = await storage.toggleDreamTaskComplete(taskId);
-      
+
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
-      
+
       const dream = await storage.updateDreamProgress(dreamId);
-      
+
       if (task.isCompleted) {
         const user = await storage.getUser(req.user!.id);
         if (user) {
@@ -837,7 +844,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
           });
         }
       }
-      
+
       res.json({ task, dream });
     } catch (error) {
       console.error("Toggle task error:", error);
@@ -1209,7 +1216,7 @@ app.delete("/api/profile/photo", authMiddleware, async (req: AuthRequest, res) =
         });
       }
       const systemUserId = systemUser.id;
-      
+
       const marketItemsData = [
         { title: "Premium Badge Pack", description: "Unlock exclusive badges to showcase your achievements", category: "Badges", price: 299, userId: systemUserId, isActive: true },
         { title: "Gold Achievement Badge", description: "A prestigious gold badge for top performers", category: "Badges", price: 199, userId: systemUserId, isActive: true },

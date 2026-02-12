@@ -1,5 +1,4 @@
 import admin from 'firebase-admin';
-import { getStorage } from "firebase-admin/storage";
 
 let initialized = false;
 
@@ -11,17 +10,15 @@ export function initializeFirebaseAdmin() {
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   
   if (!serviceAccountKey) {
-  console.warn('Firebase Admin disabled (no service account key)');
-  return admin;
-}
-
+    console.warn('Firebase Admin disabled (no service account key)');
+    return admin;
+  }
 
   try {
     const serviceAccount = JSON.parse(serviceAccountKey);
     
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      storageBucket: "your-project-id.appspot.com",
     });
     
     initialized = true;

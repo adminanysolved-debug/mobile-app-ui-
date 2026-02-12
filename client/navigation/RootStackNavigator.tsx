@@ -14,7 +14,8 @@ import SubscriptionScreen from "@/screens/SubscriptionScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
-
+import NotificationsScreen from "@/screens/NotificationsScreen"; // Apna sahi path check kar lena
+import LuckySpinScreen from "@/screens/LuckySpinScreen";       // Apna sahi path check kar lena
 export type RootStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
@@ -33,6 +34,7 @@ export type RootStackParamList = {
   VendorProfile: undefined;
   Subscription: undefined;
   Notifications: undefined;
+  LuckySpin: undefined; // 👈 Ye line add karo
   Chat: { otherUserId: string; otherUserName: string };
 };
 
@@ -61,6 +63,16 @@ export default function RootStackNavigator() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="Notifications"
+            component={NotificationsScreen} 
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="LuckySpin"
+            component={LuckySpinScreen}
+            options={{ headerTitle: "Lucky Spin" }}
+          />
+          <Stack.Screen
             name="WallOfFame"
             component={WallOfFameScreen}
             options={{ headerTitle: "Wall of Fame" }}
@@ -68,7 +80,7 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="Wallet"
             component={WalletScreen}
-            options={{ headerTitle: "Wallet" }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="Chat"
@@ -80,7 +92,7 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="Subscription"
             component={SubscriptionScreen}
-            options={{ headerTitle: "Subscription" }}
+            options={{ headerShown: false }}
           />
         </>
       ) : (

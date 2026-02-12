@@ -23,7 +23,7 @@ export default function RealDreamStackNavigator() {
         name="MyRealDream"
         component={MyRealDreamScreen}
         options={{
-          headerTitle: "MY REALDREAM",
+          headerShown: false,
         }}
       />
       <Stack.Screen

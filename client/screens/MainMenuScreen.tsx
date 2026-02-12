@@ -1,4 +1,4 @@
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -137,6 +137,13 @@ export default function MainMenuScreen() {
     navigation.navigate("Messages");
   };
 
+  // Calculate proper bottom padding for mobile
+  const bottomPadding = Platform.select({
+    ios: tabBarHeight + Spacing.xl,
+    android: tabBarHeight + insets.bottom + Spacing.xl + 20, // Extra padding for Android
+    web: tabBarHeight + Spacing.xl,
+  });
+
   return (
     <GalaxyBackground>
       <ScrollView
@@ -145,7 +152,7 @@ export default function MainMenuScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.lg,
-            paddingBottom: tabBarHeight + Spacing.xl,
+            paddingBottom: bottomPadding,
           },
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}

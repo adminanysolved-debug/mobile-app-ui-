@@ -67,22 +67,24 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("GoogleAuth");
 };
-/*
+  /*
     try {
       const result = await loginWithGoogle();
       setIsGoogleLoading(false);
       
       if (result.success) {
         navigation.replace("MainTabs");
-      } else {
+      }else if (result.error === 'ANDROID_GOOGLE_AUTH') {
+        navigation.navigate('GoogleAuth');}
+      else {
         setError(result.error || "Google login failed");
       }
     } catch (err) {
       setIsGoogleLoading(false);
       setError("Google login failed");
     }
-  };
-*/
+  };**/
+
   const handleFacebookSignIn = async () => {
     setIsFacebookLoading(true);
     setError("");

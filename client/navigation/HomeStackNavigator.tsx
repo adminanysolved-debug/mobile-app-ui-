@@ -26,7 +26,7 @@ export type HomeStackParamList = {
   Market: undefined;
   Gallery: undefined;
   NewsFeed: undefined;
-  Messages: undefined;
+  Chat: undefined;
   Notifications: undefined;
   LuckySpin: undefined;
   MyRealDream: undefined;
@@ -88,7 +88,7 @@ export default function HomeStackNavigator() {
         }}
       />
       <Stack.Screen
-        name="Messages"
+        name="Chat"
         component={MessagesScreen}
         options={{
           headerTitle: "MESSAGES",

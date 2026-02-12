@@ -14,6 +14,8 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { themes, ThemeType } from "@/constants/theme";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useSafeBottomPadding } from "@/hooks/useSafeBottomPadding";
+
 
 function ThemeCard({
   themeData,
@@ -110,6 +112,7 @@ function ThemeCard({
 }
 
 export default function ThemeScreen() {
+  const bottomPadding = useSafeBottomPadding();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme, currentTheme, setThemeById, purchasedThemes, purchaseTheme, userCoins } =
@@ -153,7 +156,7 @@ export default function ThemeScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingBottom: bottomPadding,
           },
         ]}
         showsVerticalScrollIndicator={false}

@@ -39,7 +39,7 @@ export default function ProfileStackNavigator() {
         name="Wallet"
         component={WalletScreen}
         options={{
-          headerTitle: "My Wallet",
+          headerShown: false,
         }}
       />
       <Stack.Screen
