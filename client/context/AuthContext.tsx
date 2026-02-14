@@ -29,6 +29,8 @@ export interface User {
   awards: number;
   subscriptionTier: string;
   bio?: string;
+  age?: number;    // YE ADD KARO
+  gender?: string; // YE ADD KARO
   location?: string;
   isVendor: boolean;
   createdAt: string;

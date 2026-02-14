@@ -162,10 +162,10 @@ function serveLandingPage({
 
 function configureExpoAndLanding(app: express.Application) {
   const templatePath = path.resolve(
-  __dirname,
-  "templates",
-  "landing-page.html",
-);
+    __dirname,
+    "templates",
+    "landing-page.html",
+  );
 
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
@@ -199,13 +199,13 @@ function configureExpoAndLanding(app: express.Application) {
   });
 
   app.use(
-  "/assets",
-  express.static(path.resolve(__dirname, "../../client/assets")),
-);
+    "/assets",
+    express.static(path.resolve(__dirname, "../../client/assets")),
+  );
 
-app.use(
-  express.static(path.resolve(__dirname, "../../client/dist")),
-);
+  app.use(
+    express.static(path.resolve(__dirname, "../../client/dist")),
+  );
 
 
   log("Expo routing: Checking expo-platform header on / and /manifest");
@@ -244,14 +244,9 @@ function setupErrorHandler(app: express.Application) {
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`express server serving on port ${port}`);
-    },
-  );
+
+server.listen(port, () => {
+  log(`express server serving on port ${port}`);
+});
+
 })();

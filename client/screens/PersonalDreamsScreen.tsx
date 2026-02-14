@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -16,6 +16,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
+
+
 type Dream = {
   id: string;
   title: string;
@@ -27,45 +29,117 @@ type Dream = {
   createdAt: string;
 };
 
-function DreamCard({ dream, index }: { dream: Dream; index: number }) {
+function DreamCard({
+  dream,
+  index,
+  onRefresh,
+}: {
+  dream: Dream;
+  index: number;
+  onRefresh: () => void;
+}) {
   const navigation = useNavigation<any>();
-  
+  const { token } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
+
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate("DreamDetail", { dreamId: dream.id });
   };
-  
+
+  const handleEdit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowMenu(false);
+    navigation.navigate("CreateDream", {
+      type: dream.type,
+      editMode: true,
+      dreamData: dream,
+    });
+  };
+
+  const handleDelete = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowMenu(false);
+
+    Alert.alert(
+      "Delete Dream",
+      "Are you sure you want to delete this dream?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await fetch(
+                new URL(`/api/dreams/${dream.id}`, getApiUrl()).toString(),
+                {
+                  method: "DELETE",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
+
+              if (response.ok) {
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Success
+                );
+                onRefresh();
+              }
+            } catch (error) {
+              console.error("Failed to delete dream:", error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
-      <Card style={styles.dreamCard} onPress={handlePress} testID={`dream-card-${dream.id}`}>
+      <Card style={styles.dreamCard} onPress={handlePress}>
         <View style={styles.dreamHeader}>
-          <View style={[styles.dreamIcon, { backgroundColor: "#3B82F6" }]}>
-            <Feather name="user" size={24} color="#FFFFFF" />
-          </View>
           <View style={styles.dreamContent}>
-            <ThemedText type="bodyMedium" style={styles.dreamTitle} numberOfLines={1}>
+            <ThemedText type="bodyMedium" numberOfLines={1}>
               {dream.title}
             </ThemedText>
+
             {dream.description ? (
-              <ThemedText type="small" style={styles.dreamDescription} numberOfLines={2}>
+              <ThemedText type="small" style={styles.description} numberOfLines={2}>
                 {dream.description}
               </ThemedText>
             ) : null}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${dream.progress}%` }]} />
-              </View>
-              <ThemedText type="xs" style={styles.progressText}>
-                {dream.progress}%
-              </ThemedText>
-            </View>
           </View>
-          {dream.isCompleted ? (
-            <View style={styles.completedBadge}>
-              <Feather name="check" size={16} color="#16A34A" />
+
+          {!dream.isCompleted && (
+            <View style={styles.cardActions}>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                style={styles.menuButton}
+              >
+                <Feather name="more-vertical" size={20} color="#8B7FC7" />
+              </Pressable>
+
+              {showMenu && (
+                <View style={styles.menuDropdown}>
+                  <Pressable style={styles.menuItem} onPress={handleEdit}>
+                    <Feather name="edit-2" size={16} color="#60A5FA" />
+                    <ThemedText type="small">Edit</ThemedText>
+                  </Pressable>
+
+                  <Pressable style={styles.menuItem} onPress={handleDelete}>
+                    <Feather name="trash-2" size={16} color="#EF4444" />
+                    <ThemedText type="small" style={{ color: "#EF4444" }}>
+                      Delete
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              )}
             </View>
-          ) : (
-            <Feather name="chevron-right" size={20} color="#8B7FC7" />
           )}
         </View>
       </Card>
@@ -150,7 +224,12 @@ export default function PersonalDreamsScreen() {
           </Animated.View>
         ) : (
           dreams.map((dream, idx) => (
-            <DreamCard key={dream.id} dream={dream} index={idx} />
+            <DreamCard
+              key={dream.id}
+              dream={dream}
+              index={idx}
+              onRefresh={fetchDreams}
+            />
           ))
         )}
 
@@ -185,6 +264,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.sm,
     backgroundColor: "rgba(45, 39, 82, 0.6)",
+    overflow: "visible",
   },
   dreamHeader: {
     flexDirection: "row",
@@ -273,5 +353,37 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 14,
+  },
+  cardActions: {
+    position: "relative",
+    overflow: "visible",
+  },
+  menuButton: {
+    padding: Spacing.xs,
+  },
+  menuDropdown: {
+    position: "absolute",
+    bottom: 32,
+    right: 0,
+    backgroundColor: "rgba(25, 20, 50, 0.98)",
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(139, 127, 199, 0.3)",
+    minWidth: 140,
+    zIndex: 9999,
+    elevation: 20,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(139, 127, 199, 0.1)",
+  },
+  description: {
+    marginTop: Spacing.xs,
+    color: "#B8B5E5",
   },
 });

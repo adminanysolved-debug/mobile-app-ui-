@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
+import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -12,6 +12,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { InviteModal } from "@/components/InviteModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -48,19 +49,20 @@ export default function DreamDetailScreen() {
   const route = useRoute<any>();
   const { theme } = useTheme();
   const { token } = useAuth();
-  
+
   const dreamId = route.params?.dreamId;
-  
+
   const [dream, setDream] = useState<Dream | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const fetchDream = useCallback(async () => {
     if (!token || !dreamId) return;
-    
+
     try {
       const [dreamRes, tasksRes] = await Promise.all([
         fetch(new URL(`/api/dreams/${dreamId}`, getApiUrl()).toString(), {
@@ -70,12 +72,12 @@ export default function DreamDetailScreen() {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
-      
+
       if (dreamRes.ok) {
         const dreamData = await dreamRes.json();
         setDream(dreamData);
       }
-      
+
       if (tasksRes.ok) {
         const tasksData = await tasksRes.json();
         setTasks(tasksData);
@@ -91,6 +93,11 @@ export default function DreamDetailScreen() {
   useEffect(() => {
     fetchDream();
   }, [fetchDream]);
+
+  const handleInvite = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowInviteModal(true);
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -112,10 +119,10 @@ export default function DreamDetailScreen() {
 
   const addTask = async () => {
     if (!newTaskTitle.trim() || !token || !dreamId) return;
-    
+
     setIsAddingTask(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     try {
       const response = await fetch(new URL(`/api/dreams/${dreamId}/tasks`, getApiUrl()).toString(), {
         method: 'POST',
@@ -128,7 +135,7 @@ export default function DreamDetailScreen() {
           order: tasks.length,
         }),
       });
-      
+
       if (response.ok) {
         setNewTaskTitle("");
         fetchDream();
@@ -142,9 +149,9 @@ export default function DreamDetailScreen() {
 
   const toggleTask = async (taskId: string) => {
     if (!token || !dreamId) return;
-    
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     try {
       const response = await fetch(
         new URL(`/api/dreams/${dreamId}/tasks/${taskId}/toggle`, getApiUrl()).toString(),
@@ -153,15 +160,15 @@ export default function DreamDetailScreen() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      
+
       if (response.ok) {
         const { task, dream: updatedDream } = await response.json();
-        
+
         setTasks(prev => prev.map(t => t.id === taskId ? task : t));
         if (updatedDream) {
           setDream(updatedDream);
         }
-        
+
         if (task.isCompleted) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
@@ -173,9 +180,9 @@ export default function DreamDetailScreen() {
 
   const deleteTask = async (taskId: string) => {
     if (!token || !dreamId) return;
-    
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     try {
       const response = await fetch(
         new URL(`/api/dreams/${dreamId}/tasks/${taskId}`, getApiUrl()).toString(),
@@ -184,7 +191,7 @@ export default function DreamDetailScreen() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      
+
       if (response.ok) {
         fetchDream();
       }
@@ -240,10 +247,10 @@ export default function DreamDetailScreen() {
         <Animated.View entering={FadeInDown.springify()}>
           <View style={styles.header}>
             <View style={styles.typeTag}>
-              <Feather 
-                name={dream.type === "personal" ? "user" : dream.type === "group" ? "users" : "zap"} 
-                size={12} 
-                color="#A78BFA" 
+              <Feather
+                name={dream.type === "personal" ? "user" : dream.type === "group" ? "users" : "zap"}
+                size={12}
+                color="#A78BFA"
               />
               <ThemedText type="small" style={styles.typeText}>
                 {dream.type.toUpperCase()}
@@ -256,7 +263,17 @@ export default function DreamDetailScreen() {
               </View>
             ) : null}
           </View>
-          
+          {(dream.type === "group" || dream.type === "challenge") && (
+            <View style={styles.actionButtons}>
+              <Pressable
+                style={[styles.actionButton, styles.inviteButton]}
+                onPress={handleInvite}
+                testID="button-invite-members"
+              >
+                <Feather name="user-plus" size={20} color="#22C55E" />
+              </Pressable>
+            </View>
+          )}
           <ThemedText type="h2" style={styles.title}>{dream.title}</ThemedText>
           {dream.description ? (
             <ThemedText type="body" style={styles.description}>{dream.description}</ThemedText>
@@ -269,7 +286,7 @@ export default function DreamDetailScreen() {
               <ThemedText type="h3" style={styles.progressTitle}>Progress</ThemedText>
               <ThemedText style={styles.progressPercent}>{dream.progress}%</ThemedText>
             </View>
-            
+
             <View style={styles.progressBarContainer}>
               <View style={styles.progressBarBg}>
                 <LinearGradient
@@ -280,7 +297,7 @@ export default function DreamDetailScreen() {
                 />
               </View>
             </View>
-            
+
             <View style={styles.statsRow}>
               <View style={styles.stat}>
                 <Feather name="check-square" size={16} color="#22C55E" />
@@ -290,17 +307,17 @@ export default function DreamDetailScreen() {
               </View>
               {daysRemaining !== null ? (
                 <View style={styles.stat}>
-                  <Feather 
-                    name="clock" 
-                    size={16} 
-                    color={daysRemaining < 0 ? "#EF4444" : daysRemaining < 7 ? "#F59E0B" : "#22C55E"} 
+                  <Feather
+                    name="clock"
+                    size={16}
+                    color={daysRemaining < 0 ? "#EF4444" : daysRemaining < 7 ? "#F59E0B" : "#22C55E"}
                   />
                   <ThemedText style={[
                     styles.statText,
                     daysRemaining < 0 && styles.overdue
                   ]}>
-                    {daysRemaining < 0 
-                      ? `${Math.abs(daysRemaining)} days overdue` 
+                    {daysRemaining < 0
+                      ? `${Math.abs(daysRemaining)} days overdue`
                       : `${daysRemaining} days left`}
                   </ThemedText>
                 </View>
@@ -335,7 +352,7 @@ export default function DreamDetailScreen() {
               {completedTasks} of {totalTasks} complete
             </ThemedText>
           </View>
-          
+
           <View style={styles.addTaskRow}>
             <TextInput
               style={styles.addTaskInput}
@@ -345,7 +362,7 @@ export default function DreamDetailScreen() {
               placeholderTextColor="#8B7FC7"
               testID="input-add-task"
             />
-            <Pressable 
+            <Pressable
               style={[styles.addTaskButton, isAddingTask && styles.addTaskButtonDisabled]}
               onPress={addTask}
               disabled={isAddingTask}
@@ -358,11 +375,11 @@ export default function DreamDetailScreen() {
               )}
             </Pressable>
           </View>
-          
+
           {tasks.length > 0 ? (
             <View style={styles.tasksList}>
               {tasks.map((task, index) => (
-                <Animated.View 
+                <Animated.View
                   key={task.id}
                   entering={FadeIn.delay(index * 50)}
                 >
@@ -382,7 +399,7 @@ export default function DreamDetailScreen() {
                         <Feather name="check" size={14} color="#FFFFFF" />
                       ) : null}
                     </View>
-                    
+
                     <View style={styles.taskContent}>
                       <ThemedText style={[
                         styles.taskTitle,
@@ -396,8 +413,8 @@ export default function DreamDetailScreen() {
                         </ThemedText>
                       ) : null}
                     </View>
-                    
-                    <Pressable 
+
+                    <Pressable
                       style={styles.deleteTaskButton}
                       onPress={() => deleteTask(task.id)}
                     >
@@ -437,6 +454,16 @@ export default function DreamDetailScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+
+      {showInviteModal && (
+        <InviteModal
+          visible={showInviteModal}
+          dreamId={dreamId}
+          dreamTitle={dream?.title || ""}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
+
     </GalaxyBackground>
   );
 }
@@ -448,6 +475,25 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.xl,
     gap: Spacing.lg,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    backgroundColor: "rgba(45, 39, 82, 0.8)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(139, 127, 199, 0.3)",
+  },
+  inviteButton: {
+    borderColor: "rgba(34, 197, 94, 0.3)",
   },
   loadingContainer: {
     flex: 1,

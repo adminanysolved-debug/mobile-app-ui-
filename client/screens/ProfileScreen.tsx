@@ -398,82 +398,97 @@ export default function ProfileScreen() {
 
         <Animated.View entering={FadeInDown.springify()}>
           <Card style={styles.profileCard}>
-            {/* Profile Photo with Upload Button */}
-            <Pressable onPress={showPhotoOptions} style={styles.avatarContainer}>
-              {profilePhoto ? (
-                <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
-              ) : (
-                <LinearGradient
-                  colors={theme.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.avatar}
-                >
-                  <Feather name="user" size={40} color="#FFFFFF" />
-                </LinearGradient>
-              )}
-
-              {/* Camera Icon Overlay */}
-              <View style={styles.cameraIconContainer}>
-                <LinearGradient
-                  colors={theme.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.cameraIcon}
-                >
-                  {isUploadingPhoto ? (
-                    <ThemedText type="small" style={{ color: "#FFF" }}>...</ThemedText>
+            <View style={styles.profileContainer}>
+              {/* Profile Photo with Upload Button - LEFT SIDE */}
+              <View style={styles.avatarSection}>
+                <Pressable onPress={showPhotoOptions} style={styles.avatarContainer}>
+                  {profilePhoto ? (
+                    <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
                   ) : (
-                    <Feather name="camera" size={16} color="#FFFFFF" />
+                    <LinearGradient
+                      colors={theme.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.avatar}
+                    >
+                      <Feather name="user" size={40} color="#FFFFFF" />
+                    </LinearGradient>
                   )}
-                </LinearGradient>
-              </View>
-            </Pressable>
 
-            <View style={styles.profileInfo}>
-              <ThemedText
-                type="xs"
-                style={[styles.profileLabel, { color: theme.textSecondary }]}
-              >
-                USERNAME
-              </ThemedText>
-              <ThemedText type="h3" style={styles.username}>
-                @{user?.username || "user"}
-              </ThemedText>
-              <ThemedText
-                type="small"
-                style={{ color: theme.textSecondary }}
-              >
-                Full Name
-              </ThemedText>
-              <ThemedText type="body" style={styles.fullName}>
-                {user?.fullName || "User"}
-              </ThemedText>
-              {user?.age ? (
-                <>
-                  <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
-                    Age
+                  {/* Camera Icon Overlay */}
+                  <View style={styles.cameraIconContainer}>
+                    <LinearGradient
+                      colors={theme.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.cameraIcon}
+                    >
+                      {isUploadingPhoto ? (
+                        <ThemedText type="small" style={{ color: "#FFF" }}>...</ThemedText>
+                      ) : (
+                        <Feather name="camera" size={16} color="#FFFFFF" />
+                      )}
+                    </LinearGradient>
+                  </View>
+                </Pressable>
+              </View>
+
+              {/* Profile Info - RIGHT SIDE */}
+              <View style={styles.profileInfo}>
+                <View style={styles.infoRow}>
+                  <ThemedText
+                    type="xs"
+                    style={[styles.profileLabel, { color: theme.textSecondary }]}
+                  >
+                    USERNAME
                   </ThemedText>
-                  <ThemedText type="body">
-                    {user.age}
+                  <ThemedText type="h3" style={styles.username}>
+                    @{user?.username || "user"}
                   </ThemedText>
-                </>
-              ) : null}
-              {user?.gender ? (
-                <>
-                  <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
-                    Gender
+                </View>
+
+                <View style={styles.infoRow}>
+                  <ThemedText
+                    type="small"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    Full Name
                   </ThemedText>
-                  <ThemedText type="body">
-                    {user.gender}
+                  <ThemedText type="body" style={styles.fullName}>
+                    {user?.fullName || "User"}
                   </ThemedText>
-                </>
-              ) : null}
-              {user?.bio ? (
-                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}>
-                  {user.bio}
-                </ThemedText>
-              ) : null}
+                </View>
+
+                {user?.age ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      Age
+                    </ThemedText>
+                    <ThemedText type="body">
+                      {user.age}
+                    </ThemedText>
+                  </View>
+                ) : null}
+
+                {user?.gender ? (
+                  <View style={styles.infoRow}>
+                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      Gender
+                    </ThemedText>
+                    <ThemedText type="body" style={{ textTransform: "capitalize" }}>
+                      {user.gender}
+                    </ThemedText>
+                  </View>
+                ) : null}
+
+                {user?.bio ? (
+                  <View style={[styles.infoRow, { marginTop: Spacing.sm }]}>
+                    <ThemedText type="small" style={{ color: theme.textSecondary, fontStyle: "italic" }}>
+                      {user.bio}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </View>
             </View>
           </Card>
         </Animated.View>
@@ -712,12 +727,18 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     padding: Spacing.xl,
-    alignItems: "center",
     backgroundColor: "rgba(45, 39, 82, 0.6)",
+  },
+  profileContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.lg,
+  },
+  avatarSection: {
+    alignItems: "center",
   },
   avatarContainer: {
     position: "relative",
-    marginBottom: Spacing.lg,
   },
   avatar: {
     width: 88,
@@ -746,10 +767,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(45, 39, 82, 0.8)",
   },
   profileInfo: {
-    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  infoRow: {
+    marginBottom: Spacing.xs,
   },
   profileLabel: {
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
     letterSpacing: 0.5,
   },
   username: {

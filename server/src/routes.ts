@@ -3,7 +3,9 @@ import { createServer, type Server } from "node:http";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage.js";
-import { loginSchema, registerSchema } from "./shared/schema.js";
+import { db } from "./db.js";
+import { eq, and, or, desc, sql } from "drizzle-orm";
+import { loginSchema, registerSchema, users } from "./shared/schema.js";
 import { verifyIdToken, initializeFirebaseAdmin } from "./firebase-admin.js";
 import { generateTaskDates, validateDreamFields } from "./task-generator.js";
 import multer from "multer";
@@ -729,6 +731,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Invite users to dream (creates notification)
+  app.post("/api/dreams/:dreamId/invite", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const dreamId = req.params.dreamId as string;
+      const { userIds, dreamTitle } = req.body;
+
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ error: "User IDs required" });
+      }
+
+      // Verify dream exists and user has access
+      const dream = await storage.getDream(dreamId);
+      if (!dream) {
+        return res.status(404).json({ error: "Dream not found" });
+      }
+
+      if (dream.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Only dream owner can invite" });
+      }
+
+      // Create notifications for each invited user
+      const inviter = await storage.getUser(req.user!.id);
+      for (const userId of userIds) {
+        await storage.createNotification({
+          userId: userId,
+          title: "Dream Invite",
+          description: `${inviter?.fullName || inviter?.username} invited you to join "${dreamTitle}"`,
+          type: "social",
+        });
+      }
+
+      res.json({ success: true, invitedCount: userIds.length });
+    } catch (error) {
+      console.error("Invite error:", error);
+      res.status(500).json({ error: "Failed to send invites" });
+    }
+  });
+
+  // Join dream (accept invite)
+  app.post("/api/dreams/:dreamId/join", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const dreamId = req.params.dreamId as string;
+
+      // Verify dream exists
+      const dream = await storage.getDream(dreamId);
+      if (!dream) {
+        return res.status(404).json({ error: "Dream not found" });
+      }
+
+      // Add user as member (simplified - you may want to check if already member)
+      await storage.addDreamMember(dreamId, req.user!.id, "member");
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Join dream error:", error);
+      res.status(500).json({ error: "Failed to join dream" });
+    }
+  });
+
   app.get("/api/dreams/:dreamId/tasks", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const dreamId = req.params.dreamId as string;
@@ -1241,6 +1302,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search users by username or name
+  app.get("/api/users/search", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const query = (req.query.q as string)?.toLowerCase().trim();
+      
+      if (!query || query.length < 2) {
+        return res.json([]);
+      }
+
+      const searchResults = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          profilePhoto: users.profilePhoto,
+        })
+        .from(users)
+        .where(
+          or(
+            sql`LOWER(${users.username}) LIKE ${`%${query}%`}`,
+            sql`LOWER(${users.fullName}) LIKE ${`%${query}%`}`
+          )
+        )
+        .limit(20);
+
+      // Filter out current user and add isFollowing status
+      const filteredResults = searchResults.filter(u => u.id !== req.user!.id);
+      
+      const resultsWithStatus = await Promise.all(
+        filteredResults.map(async (user) => ({
+          ...user,
+          isFollowing: await storage.isFollowing(req.user!.id, user.id),
+        }))
+      );
+
+      res.json(resultsWithStatus);
+    } catch (error) {
+      console.error("Search users error:", error);
+      res.status(500).json({ error: "Failed to search users" });
+    }
+  });
   app.get("/api/users/:id", async (req, res) => {
     try {
       const id = req.params.id as string;

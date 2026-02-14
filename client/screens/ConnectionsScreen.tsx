@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, RefreshControl, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
@@ -15,7 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
-type TabType = "followers" | "following";
+type TabType = "followers" | "following" | "discover";
 
 type Connection = {
   id: string;
@@ -35,6 +35,9 @@ export default function ConnectionsScreen() {
   const [following, setFollowing] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [discoverUsers, setDiscoverUsers] = useState<Connection[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const fetchConnections = useCallback(async () => {
     if (!token) return;
@@ -42,7 +45,7 @@ export default function ConnectionsScreen() {
       const response = await fetch(new URL('/api/connections', getApiUrl()).toString(), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setFollowers(data.followers || []);
@@ -59,6 +62,37 @@ export default function ConnectionsScreen() {
   useEffect(() => {
     fetchConnections();
   }, [fetchConnections]);
+
+  const fetchDiscoverUsers = useCallback(async () => {
+    if (!token || !searchQuery.trim()) {
+      setDiscoverUsers([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        new URL(`/api/users/search?q=${encodeURIComponent(searchQuery)}`, getApiUrl()).toString(),
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setDiscoverUsers(data);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [token, searchQuery]);
+
+  useEffect(() => {
+    if (activeTab === "discover" && searchQuery.trim()) {
+      const debounce = setTimeout(() => {
+        fetchDiscoverUsers();
+      }, 500);
+      return () => clearTimeout(debounce);
+    }
+  }, [searchQuery, activeTab, fetchDiscoverUsers]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -93,7 +127,7 @@ export default function ConnectionsScreen() {
     }
   };
 
-  const connections = activeTab === "followers" ? followers : following;
+  const connections = activeTab === "followers" ? followers : activeTab === "following" ? following : discoverUsers;
 
   const renderConnection = ({ item, index }: { item: Connection; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
@@ -114,7 +148,7 @@ export default function ConnectionsScreen() {
             @{item.username}
           </ThemedText>
         </View>
-        {activeTab === "followers" ? (
+        {activeTab === "followers" && (
           item.isFollowing ? (
             <Pressable
               onPress={() => handleUnfollow(item.id)}
@@ -134,7 +168,9 @@ export default function ConnectionsScreen() {
               </ThemedText>
             </Pressable>
           )
-        ) : (
+        )}
+
+        {activeTab === "following" && (
           <Pressable
             onPress={() => handleUnfollow(item.id)}
             style={[styles.followButton, styles.followingButton]}
@@ -143,6 +179,27 @@ export default function ConnectionsScreen() {
               Unfollow
             </ThemedText>
           </Pressable>
+        )}
+        {activeTab === "discover" && (
+          item.isFollowing ? (
+            <Pressable
+              onPress={() => handleUnfollow(item.id)}
+              style={[styles.followButton, styles.followingButton]}
+            >
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Following
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => handleFollow(item.id)}
+              style={[styles.followButton, { backgroundColor: theme.link }]}
+            >
+              <ThemedText type="small" style={{ color: "#FFFFFF" }}>
+                Follow
+              </ThemedText>
+            </Pressable>
+          )
         )}
       </Card>
     </Animated.View>
@@ -179,15 +236,60 @@ export default function ConnectionsScreen() {
             Following ({following.length})
           </ThemedText>
         </Pressable>
+        <Pressable
+          onPress={() => setActiveTab("discover")}
+          style={[styles.tab, activeTab === "discover" ? styles.tabActive : null]}
+        >
+          <ThemedText
+            type="small"
+            style={[
+              styles.tabText,
+              activeTab === "discover"
+                ? styles.tabTextActive
+                : { color: theme.textSecondary },
+            ]}
+          >
+            Discover
+          </ThemedText>
+        </Pressable>
       </View>
+      {activeTab === "discover" && (
+        <View
+          style={[
+            styles.searchContainer,
+            { backgroundColor: theme.backgroundSecondary },
+          ]}
+        >
+          <Feather name="search" size={20} color={theme.textMuted} />
 
-      {isLoading ? (
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Search users..."
+            placeholderTextColor={theme.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery("")}>
+              <Feather name="x" size={20} color={theme.textMuted} />
+            </Pressable>
+          )}
+        </View>
+      )}
+      {(isLoading || isSearching) ? (
         <ActivityIndicator size="large" color={theme.link} style={{ marginTop: Spacing["3xl"] }} />
       ) : connections.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Feather name="users" size={48} color={theme.textMuted} />
           <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg }}>
-            {activeTab === "followers" ? "No followers yet" : "Not following anyone"}
+            {activeTab === "followers"
+              ? "No followers yet"
+              : activeTab === "following"
+                ? "Not following anyone"
+                : searchQuery
+                  ? "No users found"
+                  : "Search for users to follow"}
           </ThemedText>
         </View>
       ) : (
@@ -276,4 +378,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 100,
   },
+  searchContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginHorizontal: Spacing.lg,
+  marginTop: Spacing.md,
+  paddingHorizontal: Spacing.md,
+  paddingVertical: Spacing.sm,
+  borderRadius: BorderRadius.sm,
+  gap: Spacing.sm,
+},
+searchInput: {
+  flex: 1,
+  fontSize: 16,
+  paddingVertical: Spacing.xs,
+},
 });

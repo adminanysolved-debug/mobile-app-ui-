@@ -171,7 +171,19 @@ class DatabaseStorage implements IStorage {
         ? await db.select().from(users).where(sql`${users.id} = ANY(${followingIds})`)
         : [];
 
-    return { followers, following };
+    // Add isFollowing flag to followers to show if you follow them back
+    const followersWithStatus = followers.map((follower) => ({
+      ...follower,
+      isFollowing: followingIds.includes(follower.id),
+    }));
+
+    // Add isFollowing flag to following (always true since you're following them)
+    const followingWithStatus = following.map((followed) => ({
+      ...followed,
+      isFollowing: true,
+    }));
+
+    return { followers: followersWithStatus, following: followingWithStatus };
   }
 
   async createConnection(followerId: string, followingId: string): Promise<Connection> {
