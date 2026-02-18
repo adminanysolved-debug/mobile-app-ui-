@@ -15,7 +15,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { AdBanner } from "@/components/AdBanner";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
 type LeaderboardUser = {
@@ -111,7 +111,7 @@ export default function ChampionsScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + 140,
+            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
             flexGrow: 1,
           },
         ]}

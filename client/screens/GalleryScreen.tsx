@@ -12,7 +12,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { AdBanner } from "@/components/AdBanner";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
 type GalleryPost = {
@@ -97,7 +97,7 @@ export default function GalleryScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + 140,
+            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
             flexGrow: 1,
           },
         ]}

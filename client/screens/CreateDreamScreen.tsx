@@ -14,7 +14,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
 let DateTimePicker: any = null;
@@ -395,7 +395,7 @@ export default function CreateDreamScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + 140,
+            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
             flexGrow: 1,
           },
         ]}

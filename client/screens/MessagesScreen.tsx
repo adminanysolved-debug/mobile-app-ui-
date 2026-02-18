@@ -15,7 +15,7 @@ import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { AdBanner } from "@/components/AdBanner";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -139,7 +139,7 @@ export default function MessagesScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + 140,
+            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
             flexGrow: 1,
           },
         ]}

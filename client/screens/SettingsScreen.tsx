@@ -13,7 +13,7 @@ import { Card } from "@/components/Card";
 import { AdBanner } from "@/components/AdBanner";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 
 type MenuItem = {
   icon: keyof typeof Feather.glyphMap;
@@ -53,7 +53,7 @@ export default function SettingsScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + 140,
+            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
             flexGrow: 1,
           },
         ]}

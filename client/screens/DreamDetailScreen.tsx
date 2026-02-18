@@ -15,7 +15,7 @@ import { Card } from "@/components/Card";
 import { InviteModal } from "@/components/InviteModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
 interface Dream {
@@ -65,7 +65,7 @@ export default function DreamDetailScreen() {
   // Note: headerHeight already includes status bar (insets.top) on Android
   const topPadding = headerHeight + Spacing.lg + Spacing.xl;
 
-  const bottomPadding = tabBarHeight + insets.bottom + 140;
+  const bottomPadding = tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA;
 
   const fetchDream = useCallback(async () => {
     if (!token || !dreamId) return;

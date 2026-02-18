@@ -337,7 +337,7 @@ export const Colors = {
 };
 
 /** Extra bottom padding for scroll content - ensures buttons/content stay above tab bar for one-handed use */
-export const SCROLL_BOTTOM_EXTRA = 140;
+export const SCROLL_BOTTOM_EXTRA = 160;
 
 export const Spacing = {
   xs: 4,

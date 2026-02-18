@@ -12,7 +12,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
@@ -124,55 +124,6 @@ export default function ConnectionsScreen() {
 
   const connections = activeTab === "followers" ? followers : activeTab === "following" ? following : discoverUsers;
 
-  // --- INSTAGRAM STYLE COMPONENTS ---
-
-  const renderHeader = () => (
-    <View style={{ backgroundColor: theme.background }}>
-      {/* 1. TABS (Sticky Area) */}
-      <View style={[styles.tabContainer, { borderBottomColor: theme.backgroundSecondary }]}>
-        {(["followers", "following", "discover"] as TabType[]).map((tab) => (
-          <Pressable
-            key={tab}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setActiveTab(tab);
-            }}
-            style={[styles.tab, activeTab === tab && { borderBottomWidth: 2, borderBottomColor: theme.link }]}
-          >
-            <ThemedText style={[
-              styles.tabText, 
-              { color: activeTab === tab ? theme.link : theme.textSecondary, fontSize: 13 }
-            ]}>
-              {tab.toUpperCase()} {tab === 'followers' ? `(${followers.length})` : tab === 'following' ? `(${following.length})` : ''}
-            </ThemedText>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* 2. SEARCH BAR (Only for Discover) */}
-      {activeTab === "discover" && (
-        <View style={[styles.searchWrapper, { backgroundColor: theme.background }]}>
-          <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary }]}>
-            <Feather name="search" size={18} color={theme.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search users..."
-              placeholderTextColor={theme.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="none"
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")}>
-                <Feather name="x-circle" size={18} color={theme.textSecondary} />
-              </Pressable>
-            )}
-          </View>
-        </View>
-      )}
-    </View>
-  );
-
   const renderConnection = ({ item, index }: { item: Connection; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 40).springify()} style={{ paddingHorizontal: Spacing.lg }}>
       <Card style={styles.connectionCard}>
@@ -205,17 +156,55 @@ export default function ConnectionsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Content Wrapper for Android Overlap Fix */}
       <View style={{ flex: 1, marginTop: headerHeight }}>
+        {/* Fixed tabs - always visible (avoids FlatList flexGrow hiding header when empty) */}
+        <View style={[styles.tabContainer, { backgroundColor: theme.backgroundRoot, borderBottomColor: theme.backgroundSecondary }]}>
+          {(["followers", "following", "discover"] as TabType[]).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setActiveTab(tab);
+              }}
+              style={[styles.tab, activeTab === tab && { borderBottomWidth: 2, borderBottomColor: theme.link }]}
+            >
+              <ThemedText style={[
+                styles.tabText,
+                { color: activeTab === tab ? theme.link : theme.textSecondary, fontSize: 13 }
+              ]}>
+                {tab.toUpperCase()} {tab === 'followers' ? `(${followers.length})` : tab === 'following' ? `(${following.length})` : ''}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+        {activeTab === "discover" && (
+          <View style={[styles.searchWrapper, { backgroundColor: theme.backgroundRoot }]}>
+            <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="search" size={18} color={theme.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.text }]}
+                placeholder="Search users..."
+                placeholderTextColor={theme.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+              />
+              {searchQuery.length > 0 ? (
+                <Pressable onPress={() => setSearchQuery("")}>
+                  <Feather name="x-circle" size={18} color={theme.textSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        )}
         <FlatList
           data={connections}
+          style={{ flex: 1 }}
           showsVerticalScrollIndicator={true}
           keyExtractor={(item) => item.id}
           renderItem={renderConnection}
-          ListHeaderComponent={renderHeader}
-          stickyHeaderIndices={[0]} // Instagram-like sticky tabs
           contentContainerStyle={{
-            paddingBottom: tabBarHeight + insets.bottom + 140,
+            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
             flexGrow: 1,
           }}
           refreshControl={

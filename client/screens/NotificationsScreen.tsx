@@ -16,7 +16,7 @@ import { AdBanner } from "@/components/AdBanner";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -190,13 +190,36 @@ export default function NotificationsScreen() {
 
   return (
     <GalaxyBackground>
+      {/* Fixed header - always visible so Mark all read is accessible without scrolling up */}
+      <View style={[styles.fixedHeader, { paddingTop: headerHeight + Spacing.lg, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg }]}>
+        <View style={styles.headerRow}>
+          <View>
+            <ThemedText type="h3">Notifications</ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              {unreadCount > 0 ? `${unreadCount} new notifications` : "All caught up!"}
+            </ThemedText>
+          </View>
+          {unreadCount > 0 ? (
+            <Pressable
+              onPress={handleMarkAllRead}
+              style={[styles.markAllButton, { backgroundColor: "rgba(45, 39, 82, 0.6)" }]}
+            >
+              <Feather name="check-circle" size={16} color="#A78BFA" />
+              <ThemedText type="xs" style={{ color: "#A78BFA", marginLeft: 4 }}>
+                Mark all read
+              </ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + 140,
+            paddingTop: Spacing.sm,
+            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
             flexGrow: 1,
           },
         ]}
@@ -205,28 +228,6 @@ export default function NotificationsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Animated.View entering={FadeInDown.springify()}>
-          <View style={styles.headerRow}>
-            <View>
-              <ThemedText type="h3">Notifications</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                {unreadCount > 0 ? `${unreadCount} new notifications` : "All caught up!"}
-              </ThemedText>
-            </View>
-            {unreadCount > 0 ? (
-              <Pressable
-                onPress={handleMarkAllRead}
-                style={[styles.markAllButton, { backgroundColor: "rgba(45, 39, 82, 0.6)" }]}
-              >
-                <Feather name="check-circle" size={16} color="#A78BFA" />
-                <ThemedText type="xs" style={{ color: "#A78BFA", marginLeft: 4 }}>
-                  Mark all read
-                </ThemedText>
-              </Pressable>
-            ) : null}
-          </View>
-        </Animated.View>
-
         <AdBanner variant="compact" />
 
         {isLoading ? (
@@ -371,6 +372,9 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  fixedHeader: {
+    backgroundColor: "transparent",
   },
   scrollView: {
     flex: 1,
