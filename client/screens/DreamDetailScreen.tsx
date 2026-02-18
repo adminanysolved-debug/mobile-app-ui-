@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl, Alert } from "react-native";
+import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -11,7 +12,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ThemedText } from "@/components/ThemedText";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { Card } from "@/components/Card";
-import { Button } from "@/components/Button";
 import { InviteModal } from "@/components/InviteModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
@@ -45,6 +45,7 @@ interface Task {
 export default function DreamDetailScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme } = useTheme();
@@ -59,6 +60,12 @@ export default function DreamDetailScreen() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+
+  // ✅ Universal padding that works on ALL Android devices
+  // Note: headerHeight already includes status bar (insets.top) on Android
+  const topPadding = headerHeight + Spacing.lg + Spacing.xl;
+
+  const bottomPadding = tabBarHeight + insets.bottom + 140;
 
   const fetchDream = useCallback(async () => {
     if (!token || !dreamId) return;
@@ -207,7 +214,7 @@ export default function DreamDetailScreen() {
   if (isLoading) {
     return (
       <GalaxyBackground>
-        <View style={[styles.loadingContainer, { paddingTop: headerHeight }]}>
+        <View style={[styles.loadingContainer, { paddingTop: topPadding }]}>
           <ActivityIndicator size="large" color="#A78BFA" />
         </View>
       </GalaxyBackground>
@@ -217,7 +224,7 @@ export default function DreamDetailScreen() {
   if (!dream) {
     return (
       <GalaxyBackground>
-        <View style={[styles.loadingContainer, { paddingTop: headerHeight }]}>
+        <View style={[styles.loadingContainer, { paddingTop: topPadding }]}>
           <ThemedText>Dream not found</ThemedText>
         </View>
       </GalaxyBackground>
@@ -231,8 +238,8 @@ export default function DreamDetailScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.lg,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingTop: topPadding,      // ✅ Fixed for all Android
+            paddingBottom: bottomPadding, // ✅ Fixed for all Android
           },
         ]}
         showsVerticalScrollIndicator={false}

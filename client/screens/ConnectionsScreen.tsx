@@ -14,6 +14,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 type TabType = "followers" | "following" | "discover";
 
@@ -28,8 +29,10 @@ type Connection = {
 export default function ConnectionsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { token } = useAuth();
+  
   const [activeTab, setActiveTab] = useState<TabType>("followers");
   const [followers, setFollowers] = useState<Connection[]>([]);
   const [following, setFollowing] = useState<Connection[]>([]);
@@ -39,13 +42,13 @@ export default function ConnectionsScreen() {
   const [discoverUsers, setDiscoverUsers] = useState<Connection[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // --- AAPKA EXISTING LOGIC (Unchanged) ---
   const fetchConnections = useCallback(async () => {
     if (!token) return;
     try {
       const response = await fetch(new URL('/api/connections', getApiUrl()).toString(), {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (response.ok) {
         const data = await response.json();
         setFollowers(data.followers || []);
@@ -59,9 +62,7 @@ export default function ConnectionsScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchConnections();
-  }, [fetchConnections]);
+  useEffect(() => { fetchConnections(); }, [fetchConnections]);
 
   const fetchDiscoverUsers = useCallback(async () => {
     if (!token || !searchQuery.trim()) {
@@ -87,9 +88,7 @@ export default function ConnectionsScreen() {
 
   useEffect(() => {
     if (activeTab === "discover" && searchQuery.trim()) {
-      const debounce = setTimeout(() => {
-        fetchDiscoverUsers();
-      }, 500);
+      const debounce = setTimeout(() => { fetchDiscoverUsers(); }, 500);
       return () => clearTimeout(debounce);
     }
   }, [searchQuery, activeTab, fetchDiscoverUsers]);
@@ -108,9 +107,7 @@ export default function ConnectionsScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchConnections();
-    } catch (error) {
-      console.error('Error following user:', error);
-    }
+    } catch (error) { console.error('Error following user:', error); }
   };
 
   const handleUnfollow = async (userId: string) => {
@@ -122,190 +119,127 @@ export default function ConnectionsScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchConnections();
-    } catch (error) {
-      console.error('Error unfollowing user:', error);
-    }
+    } catch (error) { console.error('Error unfollowing user:', error); }
   };
 
   const connections = activeTab === "followers" ? followers : activeTab === "following" ? following : discoverUsers;
 
+  // --- INSTAGRAM STYLE COMPONENTS ---
+
+  const renderHeader = () => (
+    <View style={{ backgroundColor: theme.background }}>
+      {/* 1. TABS (Sticky Area) */}
+      <View style={[styles.tabContainer, { borderBottomColor: theme.backgroundSecondary }]}>
+        {(["followers", "following", "discover"] as TabType[]).map((tab) => (
+          <Pressable
+            key={tab}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setActiveTab(tab);
+            }}
+            style={[styles.tab, activeTab === tab && { borderBottomWidth: 2, borderBottomColor: theme.link }]}
+          >
+            <ThemedText style={[
+              styles.tabText, 
+              { color: activeTab === tab ? theme.link : theme.textSecondary, fontSize: 13 }
+            ]}>
+              {tab.toUpperCase()} {tab === 'followers' ? `(${followers.length})` : tab === 'following' ? `(${following.length})` : ''}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* 2. SEARCH BAR (Only for Discover) */}
+      {activeTab === "discover" && (
+        <View style={[styles.searchWrapper, { backgroundColor: theme.background }]}>
+          <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="search" size={18} color={theme.textSecondary} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder="Search users..."
+              placeholderTextColor={theme.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <Feather name="x-circle" size={18} color={theme.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+
   const renderConnection = ({ item, index }: { item: Connection; index: number }) => (
-    <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
+    <Animated.View entering={FadeInDown.delay(index * 40).springify()} style={{ paddingHorizontal: Spacing.lg }}>
       <Card style={styles.connectionCard}>
         <LinearGradient
           colors={[theme.blue, theme.purple]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
           style={styles.avatar}
         >
-          <ThemedText style={styles.avatarText}>
-            {item.fullName?.charAt(0).toUpperCase() || "U"}
-          </ThemedText>
+          <ThemedText style={styles.avatarText}>{item.fullName?.charAt(0).toUpperCase()}</ThemedText>
         </LinearGradient>
+        
         <View style={styles.userInfo}>
-          <ThemedText type="bodyMedium">{item.fullName}</ThemedText>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            @{item.username}
-          </ThemedText>
+          <ThemedText type="bodyMedium" style={{ fontWeight: '600' }}>{item.fullName}</ThemedText>
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>@{item.username}</ThemedText>
         </View>
-        {activeTab === "followers" && (
-          item.isFollowing ? (
-            <Pressable
-              onPress={() => handleUnfollow(item.id)}
-              style={[styles.followButton, styles.followingButton]}
-            >
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Following
-              </ThemedText>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => handleFollow(item.id)}
-              style={[styles.followButton, { backgroundColor: theme.link }]}
-            >
-              <ThemedText type="small" style={{ color: "#FFFFFF" }}>
-                Follow
-              </ThemedText>
-            </Pressable>
-          )
-        )}
 
-        {activeTab === "following" && (
-          <Pressable
-            onPress={() => handleUnfollow(item.id)}
-            style={[styles.followButton, styles.followingButton]}
-          >
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              Unfollow
-            </ThemedText>
-          </Pressable>
-        )}
-        {activeTab === "discover" && (
-          item.isFollowing ? (
-            <Pressable
-              onPress={() => handleUnfollow(item.id)}
-              style={[styles.followButton, styles.followingButton]}
-            >
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Following
-              </ThemedText>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => handleFollow(item.id)}
-              style={[styles.followButton, { backgroundColor: theme.link }]}
-            >
-              <ThemedText type="small" style={{ color: "#FFFFFF" }}>
-                Follow
-              </ThemedText>
-            </Pressable>
-          )
-        )}
+        <Pressable
+          onPress={() => item.isFollowing ? handleUnfollow(item.id) : handleFollow(item.id)}
+          style={[
+            styles.followButton,
+            item.isFollowing ? styles.followingButton : { backgroundColor: theme.link }
+          ]}
+        >
+          <ThemedText type="small" style={{ color: item.isFollowing ? theme.textSecondary : "#FFFFFF", fontWeight: 'bold' }}>
+            {item.isFollowing ? "Following" : activeTab === 'followers' ? "Follow Back" : "Follow"}
+          </ThemedText>
+        </Pressable>
       </Card>
     </Animated.View>
   );
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.tabContainer, { backgroundColor: theme.backgroundSecondary, marginTop: headerHeight + Spacing.lg }]}>
-        <Pressable
-          onPress={() => setActiveTab("followers")}
-          style={[styles.tab, activeTab === "followers" ? styles.tabActive : null]}
-        >
-          <ThemedText
-            type="small"
-            style={[
-              styles.tabText,
-              activeTab === "followers" ? styles.tabTextActive : { color: theme.textSecondary },
-            ]}
-          >
-            Followers ({followers.length})
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab("following")}
-          style={[styles.tab, activeTab === "following" ? styles.tabActive : null]}
-        >
-          <ThemedText
-            type="small"
-            style={[
-              styles.tabText,
-              activeTab === "following" ? styles.tabTextActive : { color: theme.textSecondary },
-            ]}
-          >
-            Following ({following.length})
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab("discover")}
-          style={[styles.tab, activeTab === "discover" ? styles.tabActive : null]}
-        >
-          <ThemedText
-            type="small"
-            style={[
-              styles.tabText,
-              activeTab === "discover"
-                ? styles.tabTextActive
-                : { color: theme.textSecondary },
-            ]}
-          >
-            Discover
-          </ThemedText>
-        </Pressable>
-      </View>
-      {activeTab === "discover" && (
-        <View
-          style={[
-            styles.searchContainer,
-            { backgroundColor: theme.backgroundSecondary },
-          ]}
-        >
-          <Feather name="search" size={20} color={theme.textMuted} />
-
-          <TextInput
-            style={[styles.searchInput, { color: theme.text }]}
-            placeholder="Search users..."
-            placeholderTextColor={theme.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery("")}>
-              <Feather name="x" size={20} color={theme.textMuted} />
-            </Pressable>
-          )}
-        </View>
-      )}
-      {(isLoading || isSearching) ? (
-        <ActivityIndicator size="large" color={theme.link} style={{ marginTop: Spacing["3xl"] }} />
-      ) : connections.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Feather name="users" size={48} color={theme.textMuted} />
-          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg }}>
-            {activeTab === "followers"
-              ? "No followers yet"
-              : activeTab === "following"
-                ? "Not following anyone"
-                : searchQuery
-                  ? "No users found"
-                  : "Search for users to follow"}
-          </ThemedText>
-        </View>
-      ) : (
+      {/* Content Wrapper for Android Overlap Fix */}
+      <View style={{ flex: 1, marginTop: headerHeight }}>
         <FlatList
           data={connections}
           keyExtractor={(item) => item.id}
           renderItem={renderConnection}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + Spacing.xl },
-          ]}
+          ListHeaderComponent={renderHeader}
+          stickyHeaderIndices={[0]} // Instagram-like sticky tabs
+          contentContainerStyle={{
+            paddingBottom: tabBarHeight + insets.bottom + 140,
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.link} />
           }
-          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            !isLoading && !isSearching ? (
+              <View style={styles.emptyContainer}>
+                <Feather name="user-plus" size={50} color={theme.textSecondary} style={{ opacity: 0.5 }} />
+                <ThemedText style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
+                  {activeTab === "discover" ? "Try searching for someone" : `No ${activeTab} yet`}
+                </ThemedText>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={(isLoading || isSearching) && connections.length > 0 ? (
+            <ActivityIndicator size="small" color={theme.link} style={{ marginVertical: Spacing.md }} />
+          ) : null}
         />
+      </View>
+
+      {/* Global Loading state for initial fetch */}
+      {isLoading && connections.length === 0 && (
+        <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }]}>
+          <ActivityIndicator size="large" color={theme.link} />
+        </View>
       )}
     </ThemedView>
   );
@@ -317,80 +251,71 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: "row",
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.sm,
-    padding: 4,
+    paddingHorizontal: Spacing.md,
+    borderBottomWidth: 1,
   },
   tab: {
     flex: 1,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.md,
     alignItems: "center",
-    borderRadius: BorderRadius.xs,
-  },
-  tabActive: {
-    backgroundColor: "#3B82F6",
   },
   tabText: {
-    fontWeight: "500",
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
-  tabTextActive: {
-    color: "#FFFFFF",
-  },
-  listContent: {
+  searchWrapper: {
+    paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    gap: Spacing.md,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
   },
   connectionCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.lg,
+    padding: Spacing.md,
+    marginVertical: 4,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
   },
   avatarText: {
     color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   userInfo: {
     flex: 1,
   },
   followButton: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+    minWidth: 100,
+    alignItems: 'center',
   },
   followingButton: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   emptyContainer: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: 100,
+    marginTop: 80,
   },
-  searchContainer: {
-  flexDirection: "row",
-  alignItems: "center",
-  marginHorizontal: Spacing.lg,
-  marginTop: Spacing.md,
-  paddingHorizontal: Spacing.md,
-  paddingVertical: Spacing.sm,
-  borderRadius: BorderRadius.sm,
-  gap: Spacing.sm,
-},
-searchInput: {
-  flex: 1,
-  fontSize: 16,
-  paddingVertical: Spacing.xs,
-},
 });

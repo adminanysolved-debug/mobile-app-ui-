@@ -15,6 +15,8 @@ import { AdBanner } from "@/components/AdBanner";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+
 
 
 
@@ -150,6 +152,7 @@ function DreamCard({
 export default function PersonalDreamsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { token } = useAuth();
   const [dreams, setDreams] = useState<Dream[]>([]);
@@ -193,14 +196,13 @@ export default function PersonalDreamsScreen() {
   return (
     <GalaxyBackground>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: headerHeight + Spacing.lg,
-            paddingBottom: insets.bottom + Spacing.xl,
-          },
-        ]}
+        style={{ flex: 1 }}
+      contentContainerStyle={{
+        paddingTop: headerHeight + Spacing.lg + Spacing.xl,
+        paddingBottom: tabBarHeight + insets.bottom + 140,
+        paddingHorizontal: Spacing.lg,
+        flexGrow: 1,
+      }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A78BFA" />
