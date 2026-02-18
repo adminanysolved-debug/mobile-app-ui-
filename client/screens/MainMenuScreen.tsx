@@ -1,7 +1,7 @@
 import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+//import { useHeaderHeight } from "@react-navigation/elements";
+//import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -19,6 +19,7 @@ import { AdBanner } from "@/components/AdBanner";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
+import { useSafeScrollPadding } from '@/hooks/useSafeArea';
 
 type MenuItemType = {
   icon: keyof typeof Feather.glyphMap;
@@ -120,29 +121,30 @@ function MenuItem({ item, index }: { item: MenuItemType; index: number }) {
 }
 
 export default function MainMenuScreen() {
+  const safePadding = useSafeScrollPadding();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
+  //const headerHeight = useHeaderHeight();
+  //const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { user } = useAuth();
 
-  const handleNotifications = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.navigate("Notifications");
-  };
+  //const handleNotifications = () => {
+   // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  //  navigation.navigate("Notifications");
+  //};
 
-  const handleMessages = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.navigate("Messages");
-  };
+  // const handleMessages = () => {
+  //   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  //   navigation.navigate("Messages");
+  // };
 
   // Calculate proper bottom padding for mobile
-  const bottomPadding = Platform.select({
-    ios: tabBarHeight + Spacing.xl,
-    android: tabBarHeight + insets.bottom + Spacing.xl + 20, // Extra padding for Android
-    web: tabBarHeight + Spacing.xl,
-  });
+  // const bottomPadding = Platform.select({
+  //   ios: tabBarHeight + Spacing.xl,
+  //   android: tabBarHeight + insets.bottom + Spacing.xl + 20, // Extra padding for Android
+  //   web: tabBarHeight + Spacing.xl,
+  // });
 
   return (
     <GalaxyBackground>
@@ -150,10 +152,7 @@ export default function MainMenuScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          {
-            paddingTop: headerHeight + Spacing.lg,
-            paddingBottom: bottomPadding,
-          },
+           safePadding,
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}

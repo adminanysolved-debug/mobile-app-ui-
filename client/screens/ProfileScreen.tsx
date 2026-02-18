@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image, Alert, ActionSheetIOS, Platform } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+//import { useSafeAreaInsets } from "react-native-safe-area-context";
+//import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { auth } from "@/lib/firebase";
+import { useSafeScrollPadding } from '@/hooks/useSafeArea';
 
 type MenuItem = {
   icon: keyof typeof Feather.glyphMap;
@@ -129,8 +130,9 @@ function MenuRow({
 }
 
 export default function ProfileScreen() {
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
+  const safePadding = useSafeScrollPadding(); 
+ // const insets = useSafeAreaInsets();
+  //const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme, currentTheme } = useTheme();
   const { user, logout, token, updateUser } = useAuth();
@@ -379,10 +381,7 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          {
-            paddingTop: insets.top + Spacing.lg, // Added padding to prevent overlap
-            paddingBottom: tabBarHeight + Spacing.xl,
-          },
+          safePadding,
         ]}
         showsVerticalScrollIndicator={false}
       >

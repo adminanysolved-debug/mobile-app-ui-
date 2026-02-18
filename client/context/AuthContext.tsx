@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(new URL('/api/auth/firebase', apiUrl).toString(), {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${firebaseToken}`,
         },
@@ -129,14 +129,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [apiUrl]);
 
   useEffect(() => {
+    let mounted = true;
+
     const unsubscribe = onAuthStateChanged(async (firebaseUser) => {
+      if (!mounted) return;
+
       if (firebaseUser) {
         try {
           const idToken = await firebaseUser.getIdToken();
           const response = await fetch(new URL('/api/auth/me', apiUrl).toString(), {
             headers: { Authorization: `Bearer ${idToken}` },
           });
-          if (response.ok) {
+          if (response.ok && mounted) {
             const userData = await response.json();
             setUser(userData);
             setToken(idToken);
@@ -146,19 +150,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Auth state change error:', error);
         }
       }
-      setIsLoading(false);
+      if (mounted) {
+        setIsLoading(false);
+      }
     });
 
-    loadStoredAuth();
+    // Only load stored auth if no Firebase user
+    setTimeout(() => {
+      if (mounted && !auth.currentUser) {
+        loadStoredAuth();
+      }
+    }, 500);
 
-    return () => unsubscribe();
-  }, [loadStoredAuth, apiUrl]);
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [apiUrl, loadStoredAuth]); // ✅ Remove loadStoredAuth from dependencies
 
   const login = async (emailOrUsername: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const input = emailOrUsername.trim().toLowerCase();
       let email = input;
-      
+
       if (!input.includes('@')) {
         try {
           const response = await fetch(new URL('/api/auth/resolve-username', apiUrl).toString(), {
@@ -166,26 +180,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: input }),
           });
-          
+
           if (!response.ok) {
             return { success: false, error: 'No account found with this username' };
           }
-          
+
           const data = await response.json();
           email = data.email;
         } catch {
           return { success: false, error: 'Failed to resolve username' };
         }
       }
-      
+
       const userCredential = await signInWithEmail(email, password);
       const firebaseToken = await userCredential.user.getIdToken();
-      
+
       return await syncUserWithBackend(firebaseToken, userCredential.user);
     } catch (error: any) {
       console.error('Login error:', error);
       let errorMessage = 'Login failed';
-      
+
       if (error.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email address';
       } else if (error.code === 'auth/user-disabled') {
@@ -199,26 +213,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed attempts. Please try again later.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   };
 
   const loginWithGoogle = async () => {
-  if (Platform.OS === 'web') {
-    // WEB stays same
-    const userCredential = await signInWithGooglePopup();
-    if (!userCredential) {
-      return { success: false, error: 'Cancelled' };
+    if (Platform.OS === 'web') {
+      // WEB stays same
+      const userCredential = await signInWithGooglePopup();
+      if (!userCredential) {
+        return { success: false, error: 'Cancelled' };
+      }
+
+      const token = await userCredential.user.getIdToken();
+      return await syncUserWithBackend(token, userCredential.user);
     }
 
-    const token = await userCredential.user.getIdToken();
-    return await syncUserWithBackend(token, userCredential.user);
-  }
-
-  // ANDROID → navigate to GoogleAuth screen
-  return { success: false, error: 'ANDROID_GOOGLE_AUTH' };
-};
+    // ANDROID → navigate to GoogleAuth screen
+    return { success: false, error: 'ANDROID_GOOGLE_AUTH' };
+  };
 
 
 
@@ -228,12 +242,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!userCredential) {
         return { success: false, error: 'Facebook sign-in was cancelled' };
       }
-      
+
       const firebaseToken = await userCredential.user.getIdToken();
       return await syncUserWithBackend(firebaseToken, userCredential.user);
     } catch (error: any) {
       console.error('Facebook login error:', error);
-      
+
       if (error.code === 'auth/popup-closed-by-user') {
         return { success: false, error: 'Sign-in was cancelled' };
       }
@@ -243,7 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error.code === 'auth/account-exists-with-different-credential') {
         return { success: false, error: 'An account already exists with this email using a different sign-in method.' };
       }
-      
+
       return { success: false, error: 'Facebook login failed. Please try again.' };
     }
   };
@@ -252,10 +266,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userCredential = await signUpWithEmail(registerData.email, registerData.password);
       const firebaseToken = await userCredential.user.getIdToken();
-      
+
       const response = await fetch(new URL('/api/auth/firebase-register', apiUrl).toString(), {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${firebaseToken}`,
         },
@@ -282,7 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('Register error:', error);
       let errorMessage = 'Registration failed';
-      
+
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'This email is already registered';
       } else if (error.code === 'auth/invalid-email') {
@@ -290,7 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'Password is too weak. Use at least 6 characters.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   };
@@ -309,7 +323,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     const currentToken = token || await getIdToken();
     if (!currentToken) return;
-    
+
     try {
       const response = await fetch(new URL('/api/auth/me', apiUrl).toString(), {
         headers: { Authorization: `Bearer ${currentToken}` },
@@ -336,13 +350,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('Forgot password error:', error);
       let errorMessage = 'Failed to send reset email';
-      
+
       if (error.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email address';
       } else if (error.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   };
@@ -356,7 +370,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Send phone code error:', error);
       clearRecaptcha();
       let errorMessage = 'Failed to send verification code';
-      
+
       if (error.code === 'auth/invalid-phone-number') {
         errorMessage = 'Invalid phone number format. Use +1234567890';
       } else if (error.code === 'auth/too-many-requests') {
@@ -364,7 +378,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (error.code === 'auth/quota-exceeded') {
         errorMessage = 'SMS quota exceeded. Please try again later.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   };
@@ -375,13 +389,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!userCredential) {
         return { success: false, error: 'Verification failed' };
       }
-      
+
       const firebaseToken = await userCredential.user.getIdToken();
       const phoneNumber = userCredential.user.phoneNumber;
-      
+
       const response = await fetch(new URL('/api/auth/firebase', apiUrl).toString(), {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${firebaseToken}`,
         },
@@ -409,13 +423,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Verify phone code error:', error);
       clearRecaptcha();
       let errorMessage = 'Verification failed';
-      
+
       if (error.code === 'auth/invalid-verification-code') {
         errorMessage = 'Invalid verification code';
       } else if (error.code === 'auth/code-expired') {
         errorMessage = 'Verification code has expired. Please request a new one.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   };
