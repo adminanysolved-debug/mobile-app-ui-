@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -48,6 +49,7 @@ const itemWidth = (width - Spacing.lg * 3) / 2;
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const [galleryPosts, setGalleryPosts] = useState<GalleryPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,10 +97,11 @@ export default function GalleryScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingBottom: tabBarHeight + insets.bottom + 140,
+            flexGrow: 1,
           },
         ]}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

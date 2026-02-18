@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -48,6 +49,7 @@ const categories = ["All", "Badges", "Customization", "Boosters", "Themes", "Sti
 export default function MarketScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { user, token } = useAuth();
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
@@ -150,7 +152,8 @@ export default function MarketScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingBottom: tabBarHeight + insets.bottom + 140,
+            flexGrow: 1,
           },
         ]}
         showsVerticalScrollIndicator={false}

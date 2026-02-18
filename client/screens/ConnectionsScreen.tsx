@@ -209,12 +209,14 @@ export default function ConnectionsScreen() {
       <View style={{ flex: 1, marginTop: headerHeight }}>
         <FlatList
           data={connections}
+          showsVerticalScrollIndicator={true}
           keyExtractor={(item) => item.id}
           renderItem={renderConnection}
           ListHeaderComponent={renderHeader}
           stickyHeaderIndices={[0]} // Instagram-like sticky tabs
           contentContainerStyle={{
             paddingBottom: tabBarHeight + insets.bottom + 140,
+            flexGrow: 1,
           }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.link} />

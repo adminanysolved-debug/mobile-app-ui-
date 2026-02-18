@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, RefreshControl, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -88,6 +89,7 @@ function transformApiDataToHallOfFamers(users: ApiUser[]): HallOfFamer[] {
 export default function WallOfFameScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>("monthly");
   const [legends, setLegends] = useState<Legend[]>([]);
@@ -147,11 +149,12 @@ export default function WallOfFameScreen() {
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.xl,
-            paddingBottom: insets.bottom + Spacing.xl,
+            paddingBottom: tabBarHeight + insets.bottom + 140,
+            flexGrow: 1,
           },
           isEmpty && styles.emptyScrollContent,
         ]}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl onRefresh={onRefresh} refreshing={refreshing} />
         }

@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { ColorValue, Platform } from "react-native";
 
 export type ThemeType = {
   id: string;
@@ -9,6 +9,7 @@ export type ThemeType = {
 };
 
 export type ThemeColors = {
+  background: ColorValue | undefined;
   text: string;
   textSecondary: string;
   textMuted: string;
@@ -66,6 +67,7 @@ const galaxyTheme: ThemeColors = {
   accentLight: "#4C1D95",
   gradient: ["#7C3AED", "#EC4899"],
   inputBackground: "#2D2752",
+  background: undefined
 };
 
 const lightTheme: ThemeColors = {
@@ -96,6 +98,7 @@ const lightTheme: ThemeColors = {
   accentLight: "#DBEAFE",
   gradient: ["#3B82F6", "#8B5CF6"],
   inputBackground: "#F3F4F6",
+  background: undefined
 };
 
 const darkTheme: ThemeColors = {
@@ -126,6 +129,7 @@ const darkTheme: ThemeColors = {
   accentLight: "#1E3A5F",
   gradient: ["#3B82F6", "#8B5CF6"],
   inputBackground: "#334155",
+  background: undefined
 };
 
 const oceanTheme: ThemeColors = {
@@ -156,6 +160,7 @@ const oceanTheme: ThemeColors = {
   accentLight: "#BAE6FD",
   gradient: ["#0EA5E9", "#06B6D4"],
   inputBackground: "#BAE6FD",
+  background: undefined
 };
 
 const sunsetTheme: ThemeColors = {
@@ -186,6 +191,7 @@ const sunsetTheme: ThemeColors = {
   accentLight: "#FED7AA",
   gradient: ["#F97316", "#EF4444"],
   inputBackground: "#FED7AA",
+  background: undefined
 };
 
 const forestTheme: ThemeColors = {
@@ -216,6 +222,7 @@ const forestTheme: ThemeColors = {
   accentLight: "#BBF7D0",
   gradient: ["#22C55E", "#14B8A6"],
   inputBackground: "#BBF7D0",
+  background: undefined
 };
 
 const lavenderTheme: ThemeColors = {
@@ -246,6 +253,7 @@ const lavenderTheme: ThemeColors = {
   accentLight: "#DDD6FE",
   gradient: ["#8B5CF6", "#EC4899"],
   inputBackground: "#DDD6FE",
+  background: undefined
 };
 
 const roseTheme: ThemeColors = {
@@ -276,6 +284,7 @@ const roseTheme: ThemeColors = {
   accentLight: "#FECDD3",
   gradient: ["#EC4899", "#F43F5E"],
   inputBackground: "#FECDD3",
+  background: undefined
 };
 
 const midnightTheme: ThemeColors = {
@@ -306,6 +315,7 @@ const midnightTheme: ThemeColors = {
   accentLight: "#312E81",
   gradient: ["#6366F1", "#8B5CF6"],
   inputBackground: "#1E293B",
+  background: undefined
 };
 
 export const themes: ThemeType[] = [
@@ -325,6 +335,9 @@ export const Colors = {
   dark: darkTheme,
   galaxy: galaxyTheme,
 };
+
+/** Extra bottom padding for scroll content - ensures buttons/content stay above tab bar for one-handed use */
+export const SCROLL_BOTTOM_EXTRA = 140;
 
 export const Spacing = {
   xs: 4,

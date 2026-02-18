@@ -203,7 +203,7 @@ export default function PersonalDreamsScreen() {
         paddingHorizontal: Spacing.lg,
         flexGrow: 1,
       }}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A78BFA" />
         }
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   },
   menuDropdown: {
     position: "absolute",
-    bottom: 32,
+    top: 36,
     right: 0,
     backgroundColor: "rgba(25, 20, 50, 0.98)",
     borderRadius: BorderRadius.sm,

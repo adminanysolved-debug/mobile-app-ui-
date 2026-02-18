@@ -131,7 +131,7 @@ export default function GroupDreamsScreen() {
           gap: Spacing.md,
           flexGrow: 1,
         }}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A78BFA" />
         }

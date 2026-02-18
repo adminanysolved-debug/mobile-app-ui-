@@ -242,7 +242,7 @@ export default function DreamDetailScreen() {
             paddingBottom: bottomPadding, // ✅ Fixed for all Android
           },
         ]}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
