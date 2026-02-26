@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, RefreshControl, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -42,27 +42,56 @@ export default function ConnectionsScreen() {
   const [discoverUsers, setDiscoverUsers] = useState<Connection[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // ✅ BUG FIX 1: Track latest fetch call to discard stale responses.
+  // Without this, rapid follows trigger multiple fetchConnections() calls.
+  // If the OLDER call resolves AFTER the newer one, it overwrites the correct
+  // following list (e.g. [A, B]) with stale data (e.g. [A]) — making B appear
+  // "unfollowed" when it was never unfollowed.
+  const fetchConnectionsTokenRef = useRef(0);
+
   // --- AAPKA EXISTING LOGIC (Unchanged) ---
   const fetchConnections = useCallback(async () => {
     if (!token) return;
+    // Increment token and capture this call's token
+    const callToken = ++fetchConnectionsTokenRef.current;
     try {
       const response = await fetch(new URL('/api/connections', getApiUrl()).toString(), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         const data = await response.json();
-        setFollowers(data.followers || []);
-        setFollowing(data.following || []);
+        // Only apply if this is still the latest call (discard stale responses)
+        if (callToken === fetchConnectionsTokenRef.current) {
+          setFollowers(data.followers || []);
+          setFollowing(data.following || []);
+        }
       }
     } catch (error) {
       console.error('Error fetching connections:', error);
     } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+      if (callToken === fetchConnectionsTokenRef.current) {
+        setIsLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [token]);
 
   useEffect(() => { fetchConnections(); }, [fetchConnections]);
+
+  // ✅ BUG FIX 2: Sync discoverUsers.isFollowing from the authoritative `following`
+  // list whenever it changes. This ensures the Discover tab always reflects the
+  // true follow state after any follow/unfollow action completes — preventing the
+  // "Follow" button from remaining active on already-followed users.
+  useEffect(() => {
+    if (discoverUsers.length === 0) return;
+    const followingIdSet = new Set(following.map((u) => u.id));
+    setDiscoverUsers((prev) =>
+      prev.map((u) => ({ ...u, isFollowing: followingIdSet.has(u.id) }))
+    );
+    // NOTE: `discoverUsers` intentionally NOT in deps — this effect only syncs
+    // from `following`, not the other way around, to avoid circular updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [following]);
 
   const fetchDiscoverUsers = useCallback(async () => {
     if (!token || !searchQuery.trim()) {
@@ -101,25 +130,73 @@ export default function ConnectionsScreen() {
   const handleFollow = async (userId: string) => {
     if (!token) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // ✅ BUG FIX 3: Optimistic update — immediately mark as following in the
+    // Discover list. Without this, after following User A, A's button still
+    // shows "Follow" (isFollowing: false) because discoverUsers is a stale
+    // snapshot from the search response. The user cannot tell A was followed,
+    // and may tap A again, OR believe that following a second user "undid" the
+    // first — even though both are correctly stored on the backend.
+    setDiscoverUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, isFollowing: true } : u))
+    );
+
     try {
-      await fetch(new URL(`/api/connections/${userId}/follow`, getApiUrl()).toString(), {
+      const response = await fetch(new URL(`/api/connections/${userId}/follow`, getApiUrl()).toString(), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchConnections();
-    } catch (error) { console.error('Error following user:', error); }
+      if (response.ok) {
+        // Sync authoritative state from server
+        fetchConnections();
+      } else {
+        // Revert optimistic update if the server rejected the request
+        // (e.g. 400 "Already following" or 500 error)
+        setDiscoverUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u))
+        );
+        const err = await response.json().catch(() => ({}));
+        console.warn('Follow failed:', response.status, err);
+      }
+    } catch (error) {
+      // Revert optimistic update on network error
+      setDiscoverUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u))
+      );
+      console.error('Error following user:', error);
+    }
   };
 
   const handleUnfollow = async (userId: string) => {
     if (!token) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // ✅ Optimistic update for unfollow — mirrors the same pattern as handleFollow
+    setDiscoverUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u))
+    );
+
     try {
-      await fetch(new URL(`/api/connections/${userId}/unfollow`, getApiUrl()).toString(), {
+      const response = await fetch(new URL(`/api/connections/${userId}/unfollow`, getApiUrl()).toString(), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchConnections();
-    } catch (error) { console.error('Error unfollowing user:', error); }
+      if (response.ok) {
+        fetchConnections();
+      } else {
+        // Revert if server rejected
+        setDiscoverUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, isFollowing: true } : u))
+        );
+        console.warn('Unfollow failed:', response.status);
+      }
+    } catch (error) {
+      // Revert on network error
+      setDiscoverUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: true } : u))
+      );
+      console.error('Error unfollowing user:', error);
+    }
   };
 
   const connections = activeTab === "followers" ? followers : activeTab === "following" ? following : discoverUsers;
@@ -156,7 +233,7 @@ export default function ConnectionsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={{ flex: 1, marginTop: headerHeight }}>
+      <View style={{ flex: 1, paddingTop: insets.top + Spacing.lg }}>
         {/* Fixed tabs - always visible (avoids FlatList flexGrow hiding header when empty) */}
         <View style={[styles.tabContainer, { backgroundColor: theme.backgroundRoot, borderBottomColor: theme.backgroundSecondary }]}>
           {(["followers", "following", "discover"] as TabType[]).map((tab) => (
@@ -205,7 +282,6 @@ export default function ConnectionsScreen() {
           renderItem={renderConnection}
           contentContainerStyle={{
             paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
-            flexGrow: 1,
           }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.link} />

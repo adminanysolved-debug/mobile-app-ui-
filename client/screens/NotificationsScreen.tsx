@@ -191,7 +191,7 @@ export default function NotificationsScreen() {
   return (
     <GalaxyBackground>
       {/* Fixed header - always visible so Mark all read is accessible without scrolling up */}
-      <View style={[styles.fixedHeader, { paddingTop: headerHeight + Spacing.lg, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg }]}>
+      <View style={[styles.fixedHeader, { paddingTop: insets.top + Spacing.lg, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg }]}>
         <View style={styles.headerRow}>
           <View>
             <ThemedText type="h3">Notifications</ThemedText>
@@ -220,7 +220,6 @@ export default function NotificationsScreen() {
           {
             paddingTop: Spacing.sm,
             paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
-            flexGrow: 1,
           },
         ]}
         showsVerticalScrollIndicator={true}

@@ -100,7 +100,7 @@ export default function WalletScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.xl,
+            paddingTop: insets.top + Spacing.xl,
             paddingBottom: bottomPadding,
           },
         ]}

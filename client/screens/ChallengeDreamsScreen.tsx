@@ -124,11 +124,11 @@ export default function ChallengeDreamsScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.lg + Spacing.xl,
+          paddingTop: insets.top + Spacing.lg + Spacing.xl,
           paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
           paddingHorizontal: Spacing.lg,
           gap: Spacing.md,
-          flexGrow: 1,
+
         }}
         showsVerticalScrollIndicator={true}
         refreshControl={

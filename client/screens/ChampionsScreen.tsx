@@ -110,9 +110,8 @@ export default function ChampionsScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.xl,
+            paddingTop: insets.top + Spacing.xl,
             paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
-            flexGrow: 1,
           },
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}

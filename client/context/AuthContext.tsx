@@ -134,12 +134,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(async (firebaseUser) => {
       if (!mounted) return;
 
-      if (firebaseUser) {
+      // ⛔ Prevent duplicate backend sync
+      if (firebaseUser && !token) {
         try {
           const idToken = await firebaseUser.getIdToken();
           const response = await fetch(new URL('/api/auth/me', apiUrl).toString(), {
             headers: { Authorization: `Bearer ${idToken}` },
           });
+
           if (response.ok && mounted) {
             const userData = await response.json();
             setUser(userData);
@@ -150,10 +152,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Auth state change error:', error);
         }
       }
+
       if (mounted) {
         setIsLoading(false);
       }
     });
+
 
     // Only load stored auth if no Firebase user
     setTimeout(() => {

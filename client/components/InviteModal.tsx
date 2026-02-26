@@ -49,12 +49,10 @@ export function InviteModal({ visible, dreamId, dreamTitle, onClose }: InviteMod
       
       if (response.ok) {
         const data = await response.json();
-        // Combine followers and following, remove duplicates
-        const allConnections = [...data.followers, ...data.following];
-        const uniqueConnections = Array.from(
-          new Map(allConnections.map(item => [item.id, item])).values()
-        );
-        setConnections(uniqueConnections);
+        // ✅ GOAL 1: Show ONLY users the current user FOLLOWS (not followers)
+        // Per product requirement: invite list must show followed users only
+        const followedUsers: Connection[] = Array.isArray(data.following) ? data.following : [];
+        setConnections(followedUsers);
       }
     } catch (error) {
       console.error('Error fetching connections:', error);
@@ -152,7 +150,7 @@ export function InviteModal({ visible, dreamId, dreamTitle, onClose }: InviteMod
           </View>
 
           <ThemedText type="small" style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Select connections to invite to "{dreamTitle}"
+            Select people you follow to invite to {dreamTitle}
           </ThemedText>
 
           {isLoading ? (
@@ -162,9 +160,9 @@ export function InviteModal({ visible, dreamId, dreamTitle, onClose }: InviteMod
           ) : connections.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Feather name="users" size={48} color="#8B7FC7" />
-              <ThemedText style={styles.emptyText}>No connections yet</ThemedText>
+              <ThemedText style={styles.emptyText}>No followed users yet</ThemedText>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Follow others to invite them to your dreams
+                Follow others in the Connections tab to invite them to your dreams
               </ThemedText>
             </View>
           ) : (

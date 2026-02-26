@@ -155,7 +155,7 @@ export default function ThemeScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.xl,
+            paddingTop: insets.top + Spacing.xl,
             paddingBottom: bottomPadding,
           },
         ]}

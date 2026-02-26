@@ -148,9 +148,8 @@ export default function WallOfFameScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.xl,
+            paddingTop: insets.top + Spacing.xl,
             paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
-            flexGrow: 1,
           },
           isEmpty && styles.emptyScrollContent,
         ]}
@@ -484,7 +483,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   emptyScrollContent: {
-    flexGrow: 1,
     justifyContent: "center",
   },
   loadingContainer: {

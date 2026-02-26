@@ -160,7 +160,7 @@ export default function ChatScreen({ route }: ChatScreenProps) {
     <GalaxyBackground>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={headerHeight}
       >
         {isLoading ? (
@@ -175,7 +175,10 @@ export default function ChatScreen({ route }: ChatScreenProps) {
             keyExtractor={(item) => item.id}
             contentContainerStyle={[
               styles.messagesList,
-              { paddingBottom: Spacing.lg },
+              {
+                paddingTop: insets.top + Spacing.md,
+                paddingBottom: Spacing.lg,
+              },
               messages.length === 0 && styles.emptyList,
             ]}
             ListEmptyComponent={renderEmptyState}

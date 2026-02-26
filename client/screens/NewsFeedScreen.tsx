@@ -177,9 +177,8 @@ export default function NewsFeedScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: headerHeight + Spacing.xl,
+            paddingTop: insets.top + Spacing.xl,
             paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
-            flexGrow: 1,
           },
         ]}
         showsVerticalScrollIndicator={true}

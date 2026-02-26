@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
+import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl,Platform  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -63,7 +63,10 @@ export default function DreamDetailScreen() {
 
   // ✅ Universal padding that works on ALL Android devices
   // Note: headerHeight already includes status bar (insets.top) on Android
-  const topPadding = headerHeight + Spacing.lg + Spacing.xl;
+  const topPadding =
+  insets.top +
+  Spacing.lg +
+  Spacing.xl;
 
   const bottomPadding = tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA;
 

@@ -128,7 +128,7 @@ export default function LuckySpinScreen() {
         style={[
           styles.content,
           {
-            paddingTop: headerHeight + Spacing.xl,
+            paddingTop: insets.top + Spacing.xl,
             paddingBottom: insets.bottom + Spacing.xl,
           },
         ]}

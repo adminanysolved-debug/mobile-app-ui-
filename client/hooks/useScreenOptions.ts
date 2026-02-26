@@ -8,13 +8,12 @@ interface ScreenOptionsConfig {
 }
 
 export function useScreenOptions(
-  config: ScreenOptionsConfig = { transparent: true }
+  config: ScreenOptionsConfig = { transparent: false }
 ): NativeStackNavigationOptions {
   const { theme, isDark } = useTheme();
 
   const baseOptions: NativeStackNavigationOptions = {
     headerTintColor: theme.text,
-    headerBackTitleVisible: false,
     headerTitleStyle: {
       fontWeight: "600" as const,
       color: theme.text,
@@ -31,11 +30,7 @@ export function useScreenOptions(
       headerTransparent: true,
       headerBlurEffect: isDark ? "dark" : "light",
       headerStyle: {
-        backgroundColor: Platform.select({
-          ios: "transparent",
-          android: theme.backgroundDefault,
-          web: theme.backgroundDefault,
-        }),
+        backgroundColor: "transparent",
       },
     };
   }
