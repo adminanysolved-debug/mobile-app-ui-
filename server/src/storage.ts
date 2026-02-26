@@ -1,4 +1,4 @@
-import { eq, and, desc, or, sql } from "drizzle-orm";
+import { eq, and, desc, or, sql, inArray } from "drizzle-orm";
 import { db } from "./db.js";
 import {
   users,
@@ -161,14 +161,17 @@ class DatabaseStorage implements IStorage {
     const followerIds = followersData.map((c) => c.followerId);
     const followingIds = followingData.map((c) => c.followingId);
 
+    // Use inArray() — the correct Drizzle ORM helper for WHERE id IN (array).
+    // The previous sql`${users.id} = ANY(${array})` pattern did NOT correctly
+    // bind a JS array as a SQL array literal, causing the query to return 0 rows.
     const followers =
       followerIds.length > 0
-        ? await db.select().from(users).where(sql`${users.id} = ANY(${followerIds})`)
+        ? await db.select().from(users).where(inArray(users.id, followerIds))
         : [];
 
     const following =
       followingIds.length > 0
-        ? await db.select().from(users).where(sql`${users.id} = ANY(${followingIds})`)
+        ? await db.select().from(users).where(inArray(users.id, followingIds))
         : [];
 
     // Add isFollowing flag to followers to show if you follow them back
