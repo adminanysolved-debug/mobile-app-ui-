@@ -25,6 +25,28 @@ interface AuthRequest extends Request {
   user?: { id: string; email: string; firebaseUid?: string };
 }
 
+const tokenCache = new Map<string, { user: { id: string; email: string; firebaseUid?: string }; expiresAt: number }>();
+const TOKEN_CACHE_TTL_MS = 5 * 60 * 1000;
+const TOKEN_CACHE_MAX_SIZE = 500;
+
+function getCachedToken(token: string) {
+  const entry = tokenCache.get(token);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    tokenCache.delete(token);
+    return null;
+  }
+  return entry.user;
+}
+
+function setCachedToken(token: string, user: { id: string; email: string; firebaseUid?: string }) {
+  if (tokenCache.size >= TOKEN_CACHE_MAX_SIZE) {
+    const firstKey = tokenCache.keys().next().value;
+    if (firstKey) tokenCache.delete(firstKey);
+  }
+  tokenCache.set(token, { user, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS });
+}
+
 async function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -33,12 +55,20 @@ async function authMiddleware(req: AuthRequest, res: Response, next: NextFunctio
 
   const token = authHeader.split(" ")[1];
 
+  const cached = getCachedToken(token);
+  if (cached) {
+    req.user = cached;
+    return next();
+  }
+
   if (firebaseInitialized) {
     try {
       const decodedToken = await verifyIdToken(token);
       const user = await storage.getUserByFirebaseUid(decodedToken.uid);
       if (user) {
-        req.user = { id: user.id, email: user.email, firebaseUid: decodedToken.uid };
+        const userData = { id: user.id, email: user.email, firebaseUid: decodedToken.uid };
+        setCachedToken(token, userData);
+        req.user = userData;
         return next();
       }
     } catch {
@@ -47,6 +77,7 @@ async function authMiddleware(req: AuthRequest, res: Response, next: NextFunctio
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string };
+    setCachedToken(token, decoded);
     req.user = decoded;
     next();
   } catch {
@@ -1306,7 +1337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/search", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const query = (req.query.q as string)?.toLowerCase().trim();
-      
+
       if (!query || query.length < 2) {
         return res.json([]);
       }
@@ -1329,7 +1360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Filter out current user and add isFollowing status
       const filteredResults = searchResults.filter(u => u.id !== req.user!.id);
-      
+
       const resultsWithStatus = await Promise.all(
         filteredResults.map(async (user) => ({
           ...user,

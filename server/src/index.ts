@@ -245,8 +245,19 @@ function setupErrorHandler(app: express.Application) {
 
   const port = parseInt(process.env.PORT || "5000", 10);
 
-server.listen(port, () => {
-  log(`express server serving on port ${port}`);
-});
+  server.listen(port, () => {
+    log(`express server serving on port ${port}`);
+
+    const KEEP_ALIVE_INTERVAL_MS = 14 * 60 * 1000;
+    setInterval(async () => {
+      try {
+        const host = `http://localhost:${port}`;
+        await fetch(`${host}/api/health`);
+        log("[keep-alive] pinged /api/health — server staying awake");
+      } catch (err) {
+        log("[keep-alive] self-ping failed:", err);
+      }
+    }, KEEP_ALIVE_INTERVAL_MS);
+  });
 
 })();
