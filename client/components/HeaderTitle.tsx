@@ -39,12 +39,12 @@ export function HeaderIcons() {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (!token) return;
-      
+
       try {
         const response = await fetch(new URL('/api/notifications', getApiUrl()).toString(), {
           headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         if (response.ok) {
           const notifications = await response.json();
           // Count unread notifications
@@ -57,10 +57,10 @@ export function HeaderIcons() {
     };
 
     fetchUnreadCount();
-    
+
     // Refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
-    
+    const interval = setInterval(fetchUnreadCount, 90000);
+
     return () => clearInterval(interval);
   }, [token]);
 

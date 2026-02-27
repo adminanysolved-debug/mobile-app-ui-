@@ -42,6 +42,9 @@ export default function ChatScreen({ route }: ChatScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollDelayRef = useRef(8000);
 
   const fetchMessages = async () => {
     try {
@@ -54,6 +57,14 @@ export default function ChatScreen({ route }: ChatScreenProps) {
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
+
+        const latestId = data[data.length - 1]?.id ?? null;
+        if (latestId !== lastMessageIdRef.current) {
+          lastMessageIdRef.current = latestId;
+          pollDelayRef.current = 8000;
+        } else {
+          pollDelayRef.current = Math.min(pollDelayRef.current + 4000, 30000);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
@@ -62,10 +73,20 @@ export default function ChatScreen({ route }: ChatScreenProps) {
     }
   };
 
+  const scheduleNextPoll = () => {
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    pollTimerRef.current = setTimeout(async () => {
+      await fetchMessages();
+      scheduleNextPoll();
+    }, pollDelayRef.current);
+  };
+
   useEffect(() => {
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 5000);
-    return () => clearInterval(interval);
+    pollDelayRef.current = 8000;
+    fetchMessages().then(() => scheduleNextPoll());
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
   }, [otherUserId]);
 
   const handleSend = async () => {
