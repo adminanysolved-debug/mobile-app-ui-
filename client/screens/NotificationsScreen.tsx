@@ -111,7 +111,7 @@ export default function NotificationsScreen() {
     try {
       const response = await fetch(new URL('/api/notifications/read-all', getApiUrl()).toString(), {
         method: 'PUT',
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
@@ -126,14 +126,14 @@ export default function NotificationsScreen() {
 
   const handleNotificationPress = async (notification: Notification) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     if (!notification.read) {
       try {
         await fetch(new URL(`/api/notifications/${notification.id}/read`, getApiUrl()).toString(), {
           method: 'PUT',
           headers: { Authorization: `Bearer ${token}` },
         });
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
         );
       } catch (error) {
@@ -151,7 +151,7 @@ export default function NotificationsScreen() {
         setModalVisible(true);
         break;
       case "reward":
-        navigation.navigate("MainTabs" as any);
+        navigation.goBack();
         break;
       case "system":
       default:
@@ -166,13 +166,9 @@ export default function NotificationsScreen() {
     if (selectedNotification) {
       switch (selectedNotification.type) {
         case "achievement":
-          navigation.navigate("MainTabs" as any);
-          break;
         case "social":
-          navigation.navigate("MainTabs" as any);
-          break;
         case "reward":
-          navigation.navigate("MainTabs" as any);
+          navigation.goBack();
           break;
         default:
           break;

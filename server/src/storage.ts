@@ -59,7 +59,9 @@ export interface IStorage {
   getNotifications(userId: string): Promise<Notification[]>;
   createNotification(notification: Partial<Notification>): Promise<Notification>;
   markNotificationRead(id: string, userId: string): Promise<boolean>;
+  deleteNotification(id: string, userId: string): Promise<boolean>;
   markAllNotificationsRead(userId: string): Promise<void>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
 
   getTransactions(userId: string): Promise<Transaction[]>;
   createTransaction(transaction: Partial<Transaction>): Promise<Transaction>;
@@ -73,10 +75,16 @@ export interface IStorage {
 
   getNewsFeed(userId?: string): Promise<NewsFeedPost[]>;
   createNewsFeedPost(post: Partial<NewsFeedPost>): Promise<NewsFeedPost>;
+  deleteNewsFeedPost(postId: string, userId: string): Promise<boolean>;
   likePost(postId: string, userId: string): Promise<void>;
+  unlikePost(postId: string, userId: string): Promise<void>;
+
+  getPostComments(postId: string): Promise<any[]>;
+  createPostComment(comment: Partial<typeof postComments.$inferInsert>): Promise<any>;
 
   getMarketItems(category?: string): Promise<any[]>;
   getMarketItem(id: string): Promise<any | null>;
+  getPurchaseHistory(userId: string): Promise<any[]>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -269,6 +277,18 @@ class DatabaseStorage implements IStorage {
     await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
   }
 
+  async deleteNotification(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(notifications).where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+    return (result as any).rowCount > 0;
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return result[0]?.count || 0;
+  }
+
   async getTransactions(userId: string): Promise<Transaction[]> {
     return db
       .select()
@@ -297,82 +317,50 @@ class DatabaseStorage implements IStorage {
   }
 
   async getWallOfFame(period: string): Promise<any[]> {
-    const now = new Date();
-    let dateFilter: Date | undefined;
-    
-    if (period === 'monthly') {
-      dateFilter = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (period === 'yearly') {
-      dateFilter = new Date(now.getFullYear(), 0, 1);
-    }
-    
-    const allUsers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        fullName: users.fullName,
-        totalPoints: users.totalPoints,
-        awards: users.awards,
-        profileImage: users.profileImage,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .orderBy(desc(users.totalPoints))
-      .limit(20);
-
-    const usersWithDreams = await Promise.all(
-      allUsers.map(async (user) => {
-        const userDreams = await db
-          .select()
-          .from(dreams)
-          .where(eq(dreams.userId, user.id));
-        const completedDreams = userDreams.filter((d) => d.isCompleted).length;
-        return {
-          ...user,
-          dreamsCompleted: completedDreams,
-          totalDreams: userDreams.length,
-        };
-      })
-    );
-
-    return usersWithDreams;
+    const rawSql = `
+      SELECT 
+        u.id, 
+        u.username, 
+        u.full_name as "fullName", 
+        u.total_points as "totalPoints", 
+        u.awards, 
+        u.profile_image as "profileImage", 
+        COUNT(d.id)::int as "totalDreams",
+        COUNT(CASE WHEN d.is_completed = true THEN 1 END)::int as "dreamsCompleted"
+      FROM users u
+      LEFT JOIN dreams d ON u.id = d.user_id
+      GROUP BY u.id
+      ORDER BY u.total_points DESC NULLS LAST
+      LIMIT 20;
+    `;
+    const result = await db.execute(sql.raw(rawSql));
+    return result as any[];
   }
 
   async getLeaderboard(limit: number): Promise<any[]> {
-    const allUsers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        fullName: users.fullName,
-        totalPoints: users.totalPoints,
-        awards: users.awards,
-        profileImage: users.profileImage,
-      })
-      .from(users)
-      .orderBy(desc(users.totalPoints))
-      .limit(limit);
-
-    const usersWithDreams = await Promise.all(
-      allUsers.map(async (user) => {
-        const userDreams = await db
-          .select()
-          .from(dreams)
-          .where(eq(dreams.userId, user.id));
-        const completedDreams = userDreams.filter((d) => d.isCompleted).length;
-        return {
-          ...user,
-          dreamsCompleted: completedDreams,
-          totalDreams: userDreams.length,
-        };
-      })
-    );
-
-    return usersWithDreams;
+    const rawSql = `
+      SELECT 
+        u.id, 
+        u.username, 
+        u.full_name as "fullName", 
+        u.total_points as "totalPoints", 
+        u.awards, 
+        u.profile_image as "profileImage", 
+        COUNT(d.id)::int as "totalDreams",
+        COUNT(CASE WHEN d.is_completed = true THEN 1 END)::int as "dreamsCompleted"
+      FROM users u
+      LEFT JOIN dreams d ON u.id = d.user_id
+      GROUP BY u.id
+      ORDER BY u.total_points DESC NULLS LAST
+      LIMIT ${Number(limit) || 10};
+    `;
+    const result = await db.execute(sql.raw(rawSql));
+    return result as any[];
   }
 
   async getGalleryPosts(): Promise<any[]> {
     const posts = await db.select().from(galleryPosts).orderBy(desc(galleryPosts.createdAt));
-    
+
     const postsWithUsers = await Promise.all(
       posts.map(async (post) => {
         const user = await this.getUser(post.userId);
@@ -384,7 +372,7 @@ class DatabaseStorage implements IStorage {
         };
       })
     );
-    
+
     return postsWithUsers;
   }
 
@@ -394,26 +382,52 @@ class DatabaseStorage implements IStorage {
   }
 
   async getNewsFeed(userId?: string): Promise<any[]> {
-    const posts = await db.select().from(newsFeedPosts).orderBy(desc(newsFeedPosts.createdAt)).limit(50);
-    
-    const postsWithUsers = await Promise.all(
-      posts.map(async (post) => {
-        const user = await this.getUser(post.userId);
-        const dream = post.dreamId ? await this.getDream(post.dreamId) : null;
-        return {
-          ...post,
-          user: user ? { id: user.id, username: user.username, fullName: user.fullName, profileImage: user.profileImage } : null,
-          dream: dream ? { id: dream.id, title: dream.title, type: dream.type } : null,
-        };
-      })
-    );
-    
-    return postsWithUsers;
+    const rawSql = `
+      SELECT 
+        p.*,
+        u.id as "user_id", u.username as "user_username", u.full_name as "user_fullName", u.profile_image as "user_profileImage",
+        d.id as "dream_id", d.title as "dream_title", d.type as "dream_type"
+      FROM news_feed_posts p
+      LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN dreams d ON p.dream_id = d.id
+      ORDER BY p.created_at DESC
+      LIMIT 50;
+    `;
+    const rows = await db.execute(sql.raw(rawSql));
+
+    // Map the flat SQL result into the nested objects expected by the frontend
+    return (rows as any[]).map(row => ({
+      id: row.id,
+      content: row.content,
+      likes: row.likes,
+      comments: row.comments,
+      createdAt: row.created_at,
+      user: {
+        id: row.user_id,
+        username: row.user_username,
+        fullName: row.user_fullName,
+        profileImage: row.user_profileImage
+      },
+      dream: row.dream_id ? {
+        id: row.dream_id,
+        title: row.dream_title,
+        type: row.dream_type
+      } : null
+    }));
   }
 
   async createNewsFeedPost(postData: Partial<NewsFeedPost>): Promise<NewsFeedPost> {
     const [post] = await db.insert(newsFeedPosts).values(postData as any).returning();
     return post;
+  }
+
+  async deleteNewsFeedPost(postId: string, userId: string): Promise<boolean> {
+    // Only author can delete
+    const [existing] = await db.select().from(newsFeedPosts).where(and(eq(newsFeedPosts.id, postId), eq(newsFeedPosts.userId, userId)));
+    if (!existing) return false;
+
+    await db.delete(newsFeedPosts).where(eq(newsFeedPosts.id, postId));
+    return true;
   }
 
   async likePost(postId: string, userId: string): Promise<void> {
@@ -429,6 +443,58 @@ class DatabaseStorage implements IStorage {
         .set({ likes: sql`${newsFeedPosts.likes} + 1` })
         .where(eq(newsFeedPosts.id, postId));
     }
+  }
+
+  async unlikePost(postId: string, userId: string): Promise<void> {
+    const [existing] = await db
+      .select()
+      .from(postLikes)
+      .where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)));
+
+    if (existing) {
+      await db.delete(postLikes).where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)));
+      await db
+        .update(newsFeedPosts)
+        .set({ likes: sql`GREATEST(${newsFeedPosts.likes} - 1, 0)` })
+        .where(eq(newsFeedPosts.id, postId));
+    }
+  }
+
+  async getPostComments(postId: string): Promise<any[]> {
+    const rawSql = `
+      SELECT 
+        c.*,
+        u.id as "user_id", u.username as "user_username", u.full_name as "user_fullName", u.profile_image as "user_profileImage"
+      FROM post_comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.post_id = '${postId}'
+      ORDER BY c.created_at ASC;
+    `;
+    const rows = await db.execute(sql.raw(rawSql));
+
+    return (rows as any[]).map(row => ({
+      id: row.id,
+      content: row.content,
+      createdAt: row.created_at,
+      user: {
+        id: row.user_id,
+        username: row.user_username,
+        fullName: row.user_fullName,
+        profileImage: row.user_profileImage
+      }
+    }));
+  }
+
+  async createPostComment(commentData: Partial<typeof postComments.$inferInsert>): Promise<any> {
+    const [comment] = await db.insert(postComments).values(commentData as any).returning();
+
+    // Update comment counter
+    await db
+      .update(newsFeedPosts)
+      .set({ comments: sql`${newsFeedPosts.comments} + 1` })
+      .where(eq(newsFeedPosts.id, commentData.postId as string));
+
+    return comment;
   }
 
   async getMarketItems(category?: string): Promise<any[]> {
@@ -459,6 +525,14 @@ class DatabaseStorage implements IStorage {
   async getMarketItem(id: string): Promise<any | null> {
     const [item] = await db.select().from(marketItems).where(eq(marketItems.id, id));
     return item || null;
+  }
+
+  async getPurchaseHistory(userId: string): Promise<any[]> {
+    return db
+      .select()
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), eq(transactions.type, "purchase")))
+      .orderBy(desc(transactions.createdAt));
   }
 
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {
@@ -533,7 +607,7 @@ class DatabaseStorage implements IStorage {
       })
     );
 
-    return conversationsWithUsers.sort((a, b) => 
+    return conversationsWithUsers.sort((a, b) =>
       new Date(b.lastMessageTime!).getTime() - new Date(a.lastMessageTime!).getTime()
     );
   }
@@ -610,25 +684,25 @@ class DatabaseStorage implements IStorage {
   async toggleDreamTaskComplete(id: string): Promise<DreamTask | undefined> {
     const task = await this.getDreamTask(id);
     if (!task) return undefined;
-    
+
     const isCompleted = !task.isCompleted;
     const [updated] = await db
       .update(dreamTasks)
-      .set({ 
-        isCompleted, 
+      .set({
+        isCompleted,
         completedAt: isCompleted ? new Date() : null,
-        updatedAt: new Date() 
+        updatedAt: new Date()
       })
       .where(eq(dreamTasks.id, id))
       .returning();
-    
+
     return updated;
   }
 
   async calculateDreamProgress(dreamId: string): Promise<number> {
     const tasks = await this.getDreamTasks(dreamId);
     if (tasks.length === 0) return 0;
-    
+
     const completedTasks = tasks.filter(t => t.isCompleted).length;
     return Math.round((completedTasks / tasks.length) * 100);
   }
@@ -636,7 +710,7 @@ class DatabaseStorage implements IStorage {
   async updateDreamProgress(dreamId: string): Promise<Dream | undefined> {
     const progress = await this.calculateDreamProgress(dreamId);
     const isCompleted = progress === 100;
-    
+
     return this.updateDream(dreamId, {
       progress,
       isCompleted,

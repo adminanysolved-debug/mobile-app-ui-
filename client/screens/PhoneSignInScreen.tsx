@@ -33,7 +33,7 @@ export default function PhoneSignInScreen({ navigation }: PhoneSignInScreenProps
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(0);
-  
+
   const buttonScale = useSharedValue(1);
   const recaptchaContainerId = "recaptcha-container";
 
@@ -108,10 +108,10 @@ export default function PhoneSignInScreen({ navigation }: PhoneSignInScreenProps
 
   const handleResendCode = async () => {
     if (countdown > 0) return;
-    
+
     setIsLoading(true);
     setError("");
-    
+
     const result = await sendPhoneCode(formatPhoneNumber(phoneNumber), recaptchaContainerId);
     setIsLoading(false);
 
@@ -130,7 +130,7 @@ export default function PhoneSignInScreen({ navigation }: PhoneSignInScreenProps
         locations={[0, 0.3, 0.6, 1]}
         style={StyleSheet.absoluteFillObject}
       />
-      
+
       <View style={styles.starsOverlay}>
         <View style={[styles.star, { top: "10%", left: "20%" }]} />
         <View style={[styles.star, { top: "15%", left: "80%" }]} />
@@ -168,7 +168,7 @@ export default function PhoneSignInScreen({ navigation }: PhoneSignInScreenProps
             {step === "phone" ? "Phone Sign In" : "Enter Code"}
           </ThemedText>
           <ThemedText type="body" style={styles.subtitle}>
-            {step === "phone" 
+            {step === "phone"
               ? "Enter your phone number with country code"
               : `We sent a verification code to ${phoneNumber}`}
           </ThemedText>
@@ -249,7 +249,7 @@ export default function PhoneSignInScreen({ navigation }: PhoneSignInScreenProps
                     {countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}
                   </ThemedText>
                 </Pressable>
-                
+
                 <Pressable
                   onPress={() => {
                     setStep("phone");

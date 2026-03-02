@@ -1,3 +1,4 @@
+import React from "react";
 import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 //import { useHeaderHeight } from "@react-navigation/elements";
@@ -69,9 +70,8 @@ const menuItems: MenuItemType[] = [
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-function MenuItem({ item, index }: { item: MenuItemType; index: number }) {
+const MenuItem = React.memo(function MenuItem({ item, index }: { item: MenuItemType; index: number }) {
   const navigation = useNavigation<any>();
-  const { theme } = useTheme();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -118,7 +118,7 @@ function MenuItem({ item, index }: { item: MenuItemType; index: number }) {
       </AnimatedPressable>
     </Animated.View>
   );
-}
+});
 
 export default function MainMenuScreen() {
   const safePadding = useSafeScrollPadding();

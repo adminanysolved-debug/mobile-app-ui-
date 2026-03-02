@@ -7,7 +7,6 @@ import {
   signUpWithEmail,
   signOutUser,
   resetPassword as firebaseResetPassword,
-  getIdToken,
   signInWithGooglePopup,
   signInWithFacebookPopup,
   onAuthStateChanged,
@@ -109,21 +108,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadStoredAuth = useCallback(async () => {
     try {
       const storedToken = await AsyncStorage.getItem('auth_token');
-      if (storedToken) {
-        const response = await fetch(new URL('/api/auth/me', apiUrl).toString(), {
-          headers: { Authorization: `Bearer ${storedToken}` },
-        });
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-          setToken(storedToken);
-        } else {
-          await AsyncStorage.removeItem('auth_token');
-        }
+
+      if (!storedToken) {
+        setIsLoading(false);
+        return;
       }
+
+      // ✅ 1. Trust token immediately (UNBLOCK UI)
+      setToken(storedToken);
+      setIsLoading(false);
+
+      // ✅ 2. Verify in background (DON'T await)
+      fetch(new URL('/api/auth/me', apiUrl).toString(), {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      })
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+          if (data) setUser(data);
+          else AsyncStorage.removeItem('auth_token');
+        })
+        .catch(() => { });
     } catch (error) {
       console.error('Error loading auth:', error);
-    } finally {
       setIsLoading(false);
     }
   }, [apiUrl]);
@@ -134,43 +140,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(async (firebaseUser) => {
       if (!mounted) return;
 
-      // ⛔ Prevent duplicate backend sync
-      if (firebaseUser && !token) {
-        try {
-          const idToken = await firebaseUser.getIdToken();
-          const response = await fetch(new URL('/api/auth/me', apiUrl).toString(), {
-            headers: { Authorization: `Bearer ${idToken}` },
-          });
+      if (firebaseUser) {
+        // ✅ Trust Firebase auth instantly to unblock UI logic based on Token Presence
+        const idToken = await firebaseUser.getIdToken();
+        setToken(idToken);
+        await AsyncStorage.setItem('auth_token', idToken);
 
-          if (response.ok && mounted) {
-            const userData = await response.json();
-            setUser(userData);
-            setToken(idToken);
-            await AsyncStorage.setItem('auth_token', idToken);
-          }
-        } catch (error) {
-          console.error('Auth state change error:', error);
-        }
+        // Fetch user data from backend but do NOT block UI rendering waiting for it
+        fetch(new URL('/api/auth/me', apiUrl).toString(), {
+          headers: { Authorization: `Bearer ${idToken}` },
+        })
+          .then(res => (res.ok ? res.json() : null))
+          .then(data => {
+            if (mounted && data) {
+              setUser(data);
+            }
+          })
+          .catch(() => { });
+      } else {
+        // Clear auth state smoothly
+        setToken(null);
+        setUser(null);
+        AsyncStorage.removeItem('auth_token');
       }
 
-      if (mounted) {
-        setIsLoading(false);
-      }
+      if (mounted) setIsLoading(false);
     });
-
-
-    // Only load stored auth if no Firebase user
-    setTimeout(() => {
-      if (mounted && !auth.currentUser) {
-        loadStoredAuth();
-      }
-    }, 500);
 
     return () => {
       mounted = false;
       unsubscribe();
     };
-  }, [apiUrl, loadStoredAuth]); // ✅ Remove loadStoredAuth from dependencies
+  }, [apiUrl]);
 
   const login = async (emailOrUsername: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -199,7 +200,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userCredential = await signInWithEmail(email, password);
       const firebaseToken = await userCredential.user.getIdToken();
 
-      return await syncUserWithBackend(firebaseToken, userCredential.user);
+      // ✅ 1. Optimistically set auth state (INSTANT UI)
+      setToken(firebaseToken);
+      await AsyncStorage.setItem('auth_token', firebaseToken);
+
+      // Minimal temporary user (UI unblock)
+      setUser({
+        id: 'temp',
+        email: userCredential.user.email || '',
+        username: '',
+        fullName: userCredential.user.displayName || '',
+        coins: 0,
+        trophies: 0,
+        awards: 0,
+        subscriptionTier: 'free',
+        isVendor: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      // ✅ 2. Backend sync in background (DON'T await)
+      syncUserWithBackend(firebaseToken, userCredential.user);
+
+      // ✅ 3. Return success immediately
+      return { success: true };
     } catch (error: any) {
       console.error('Login error:', error);
       let errorMessage = 'Login failed';
@@ -224,21 +247,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (Platform.OS === 'web') {
-      // WEB stays same
       const userCredential = await signInWithGooglePopup();
       if (!userCredential) {
         return { success: false, error: 'Cancelled' };
       }
 
       const token = await userCredential.user.getIdToken();
-      return await syncUserWithBackend(token, userCredential.user);
+
+      // Optimistic auth
+      setToken(token);
+      await AsyncStorage.setItem('auth_token', token);
+
+      setUser({
+        id: 'temp',
+        email: userCredential.user.email || '',
+        fullName: userCredential.user.displayName || '',
+        username: '',
+        coins: 0,
+        trophies: 0,
+        awards: 0,
+        subscriptionTier: 'free',
+        isVendor: false,
+        createdAt: new Date().toISOString(),
+        authProvider: 'google',
+      });
+
+      syncUserWithBackend(token, userCredential.user);
+      return { success: true };
     }
 
-    // ANDROID → navigate to GoogleAuth screen
+    // ✅ ANDROID path
     return { success: false, error: 'ANDROID_GOOGLE_AUTH' };
   };
-
-
 
   const loginWithFacebook = async (): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -325,7 +365,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshUser = async () => {
-    const currentToken = token || await getIdToken();
+    const currentToken =
+      token || (auth.currentUser ? await auth.currentUser.getIdToken() : null);
     if (!currentToken) return;
 
     try {

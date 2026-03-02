@@ -359,6 +359,19 @@ export const dreamTasksRelations = relations(dreamTasks, ({ one }) => ({
   }),
 }));
 
+export const adminUsers = pgTable("admin_users", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull().unique(),
+  passwordHash: varchar("password_hash").notNull(),
+  fullName: varchar("full_name").notNull(),
+  role: varchar("role").notNull().default("admin"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
 export const insertUserSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3),

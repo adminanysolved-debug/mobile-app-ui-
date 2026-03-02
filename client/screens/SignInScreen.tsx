@@ -46,17 +46,15 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
       setError("Please enter your email/username and password");
       return;
     }
-    
+
     setIsLoading(true);
     setError("");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     const result = await login(email.trim().toLowerCase(), password);
     setIsLoading(false);
-    
-    if (result.success) {
-      navigation.replace("MainTabs");
-    } else {
+
+    if (!result.success) {
       setError(result.error || "Login failed");
     }
   };
@@ -66,7 +64,7 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
     setError("");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("GoogleAuth");
-};
+  };
   /*
     try {
       const result = await loginWithGoogle();
@@ -93,10 +91,8 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
     try {
       const result = await loginWithFacebook();
       setIsFacebookLoading(false);
-      
-      if (result.success) {
-        navigation.replace("MainTabs");
-      } else {
+
+      if (!result.success) {
         setError(result.error || "Facebook login failed");
       }
     } catch (err) {
@@ -124,7 +120,7 @@ export default function SignInScreen({ navigation }: SignInScreenProps) {
         locations={[0, 0.3, 0.6, 1]}
         style={StyleSheet.absoluteFillObject}
       />
-      
+
       <View style={styles.starsOverlay}>
         <View style={[styles.star, { top: "10%", left: "20%" }]} />
         <View style={[styles.star, { top: "15%", left: "80%" }]} />

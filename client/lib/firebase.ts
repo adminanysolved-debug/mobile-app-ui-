@@ -25,34 +25,34 @@ const extra = Constants.expoConfig?.extra || {};
 const firebaseConfig =
   Platform.OS === 'web'
     ? {
-        apiKey: extra.firebaseApiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-        authDomain:
-          extra.firebaseAuthDomain ||
-          process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId:
-          extra.firebaseProjectId ||
-          process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket:
-          extra.firebaseStorageBucket ||
-          process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId:
-          extra.firebaseMessagingSenderId ||
-          process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: extra.firebaseAppId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-      }
+      apiKey: extra.firebaseApiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+      authDomain:
+        extra.firebaseAuthDomain ||
+        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId:
+        extra.firebaseProjectId ||
+        process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket:
+        extra.firebaseStorageBucket ||
+        process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId:
+        extra.firebaseMessagingSenderId ||
+        process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: extra.firebaseAppId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+    }
     : {
-        apiKey: 'AIzaSyBnrYh1GpuL6InMp61rOA40cE7qJTYbQN4', // from google-services.json
-        projectId:
-          extra.firebaseProjectId ||
-          process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket:
-          extra.firebaseStorageBucket ||
-          process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId:
-          extra.firebaseMessagingSenderId ||
-          process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: extra.firebaseAppId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-      };
+      apiKey: 'AIzaSyBnrYh1GpuL6InMp61rOA40cE7qJTYbQN4', // from google-services.json
+      projectId:
+        extra.firebaseProjectId ||
+        process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket:
+        extra.firebaseStorageBucket ||
+        process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId:
+        extra.firebaseMessagingSenderId ||
+        process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: extra.firebaseAppId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+    };
 
 let app: FirebaseApp;
 let auth: Auth;
@@ -157,4 +157,11 @@ export async function verifyPhoneOTP(code: string) {
   const res = await confirmationResult.confirm(code);
   confirmationResult = null;
   return res;
+}
+
+export function clearRecaptcha() {
+  if (recaptchaVerifier) {
+    recaptchaVerifier.clear();
+    recaptchaVerifier = null;
+  }
 }

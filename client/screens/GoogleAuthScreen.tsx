@@ -31,7 +31,7 @@ export default function GoogleAuthScreen({ navigation }: Props) {
           if (!idToken) throw new Error('No ID token');
 
           await signInWithGoogleCredential(idToken);
-          navigation.replace('MainTabs');
+
         } catch {
           Alert.alert('Google login failed');
           navigation.replace('SignIn');

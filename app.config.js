@@ -46,7 +46,7 @@ module.exports = {
     },
     extra: {
       eas: {
-        projectId: "9b3b2b97-a3f7-4a66-9069-cde06ead3148"
+      
       },
       firebaseApiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY,
       firebaseAuthDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || process.env.FIREBASE_AUTH_DOMAIN,

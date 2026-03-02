@@ -56,11 +56,11 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
       setError("Password must be at least 6 characters");
       return;
     }
-    
+
     setIsLoading(true);
     setError("");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     const result = await register({
       email: email.trim().toLowerCase(),
       username: username.trim().toLowerCase(),
@@ -68,10 +68,8 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
       fullName: fullName.trim(),
     });
     setIsLoading(false);
-    
-    if (result.success) {
-      navigation.replace("MainTabs");
-    } else {
+
+    if (!result.success) {
       setError(result.error || "Registration failed");
     }
   };
@@ -91,7 +89,7 @@ export default function SignUpScreen({ navigation }: SignUpScreenProps) {
         locations={[0, 0.3, 0.6, 1]}
         style={StyleSheet.absoluteFillObject}
       />
-      
+
       <View style={styles.starsOverlay}>
         <View style={[styles.star, { top: "5%", left: "20%" }]} />
         <View style={[styles.star, { top: "10%", left: "80%" }]} />

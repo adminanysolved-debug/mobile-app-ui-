@@ -11,7 +11,10 @@ import { generateTaskDates, validateDreamFields } from "./task-generator.js";
 import multer from "multer";
 import { uploadToCloudinary, deleteFromCloudinary } from "./cloudinary-storage.js";
 
-const JWT_SECRET = process.env.SESSION_SECRET || "real-dream-secret-key";
+if (!process.env.SESSION_SECRET) {
+  throw new Error("FATAL: SESSION_SECRET environment variable is missing. Refusing to start with insecure hardcoded fallback.");
+}
+const JWT_SECRET = process.env.SESSION_SECRET;
 
 let firebaseInitialized = false;
 try {
@@ -312,8 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: "Password reset instructions sent to your email",
-        resetToken: token,
+        message: "Password reset instructions sent to your email"
       });
     } catch (error) {
       console.error("Forgot password error:", error);
@@ -354,6 +356,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Reset password error:", error);
       res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  app.post("/api/auth/logout", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      // Since it's JWT, logout is mostly handled client-side by deleting the token.
+      // But we clear the server-side memory cache just to be safe.
+      const authHeader = req.headers.authorization;
+      if (authHeader) {
+        const token = authHeader.split(" ")[1];
+        tokenCache.delete(token);
+      }
+      res.json({ success: true, message: "Logged out successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  app.post("/api/auth/refresh", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      // Re-sign the JWT for another 7 days to keep the session alive
+      const token = jwt.sign({ id: req.user!.id, email: req.user!.email }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      res.json({ success: true, token });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to refresh token" });
+    }
+  });
+
+  app.post("/api/auth/change-password", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+
+      if (!oldPassword || !newPassword || newPassword.length < 6) {
+        return res.status(400).json({ error: "Invalid password format" });
+      }
+
+      const user = await storage.getUser(req.user!.id);
+      if (!user || user.authProvider !== "email" || !user.password) {
+        return res.status(400).json({ error: "Social media accounts cannot specify a password" });
+      }
+
+      const isValid = await bcrypt.compare(oldPassword, user.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Incorrect current password" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, { password: hashedPassword });
+
+      res.json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to change password" });
     }
   });
 
@@ -482,7 +538,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/profile", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const user = await storage.updateUser(req.user!.id, req.body);
+      // SECURITY FIX: Whitelist only fields users are allowed to change
+      const allowedUpdates: any = {};
+      const { fullName, profileImage, username, bio, settings } = req.body;
+
+      if (fullName !== undefined) allowedUpdates.fullName = fullName;
+      if (profileImage !== undefined) allowedUpdates.profileImage = profileImage;
+      if (username !== undefined) allowedUpdates.username = username;
+      if (bio !== undefined) allowedUpdates.bio = bio;
+      if (settings !== undefined) allowedUpdates.settings = settings;
+
+      const user = await storage.updateUser(req.user!.id, allowedUpdates);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -811,7 +877,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Dream not found" });
       }
 
-      // Add user as member (simplified - you may want to check if already member)
+      // Add user as member (check if already member first)
+      const isMember = await storage.isDreamMember(dreamId, req.user!.id);
+      if (isMember) {
+        return res.status(400).json({ error: "You are already a member of this dream" });
+      }
+
       await storage.addDreamMember(dreamId, req.user!.id, "member");
 
       res.json({ success: true });
@@ -853,6 +924,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const dreamId = req.params.dreamId as string;
       const { title, description, dueDate, reminderDate, order } = req.body;
+
+      // SECURITY: Ensure user owns this dream before adding tasks to it
+      const dream = await storage.getDream(dreamId);
+      if (!dream) {
+        return res.status(404).json({ error: "Dream not found" });
+      }
+      if (dream.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Only the creator can add tasks to this dream" });
+      }
+
       const task = await storage.createDreamTask({
         dreamId,
         title,
@@ -1061,6 +1142,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/notifications/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const id = req.params.id as string;
+      const deleted = await storage.deleteNotification(id, req.user!.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete notification" });
+    }
+  });
+
+  app.get("/api/notifications/unread", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.user!.id);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get unread notification count" });
+    }
+  });
+
   app.get("/api/wallet", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const user = await storage.getUser(req.user!.id);
@@ -1192,6 +1295,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/news-feed/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const postId = req.params.id as string;
+      const deleted = await storage.deleteNewsFeedPost(postId, req.user!.id);
+      if (!deleted) {
+        return res.status(403).json({ error: "Cannot delete post" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete post" });
+    }
+  });
+
   app.post("/api/news-feed/:id/like", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const postId = req.params.id as string;
@@ -1199,6 +1315,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to like post" });
+    }
+  });
+
+  app.delete("/api/news-feed/:id/like", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const postId = req.params.id as string;
+      await storage.unlikePost(postId, req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to unlike post" });
+    }
+  });
+
+  app.get("/api/news-feed/:id/comments", async (req, res) => {
+    try {
+      const postId = req.params.id as string;
+      const comments = await storage.getPostComments(postId);
+      res.json(comments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/news-feed/:id/comments", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const postId = req.params.id as string;
+      if (!req.body.content || req.body.content.trim() === "") {
+        return res.status(400).json({ error: "Comment content required" });
+      }
+      const comment = await storage.createPostComment({
+        postId,
+        userId: req.user!.id,
+        content: req.body.content
+      });
+      res.status(201).json(comment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create comment" });
     }
   });
 
@@ -1256,11 +1409,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const themeId = req.params.id as string;
       const userId = req.user!.id;
-      const { price, name } = req.body;
 
-      if (!price || price < 0) {
-        return res.status(400).json({ error: "Invalid price" });
+      // Fetch actual theme from database to prevent price manipulation
+      const themeItem = await storage.getMarketItem(themeId);
+      if (!themeItem || !themeItem.isActive || themeItem.category !== "Themes") {
+        return res.status(404).json({ error: "Theme not found or unavailable" });
       }
+
+      const price = themeItem.price;
+      const name = themeItem.title;
 
       const user = await storage.getUser(userId);
       if (!user) {
@@ -1288,8 +1445,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Seed market items if none exist
-  app.post("/api/seed/market", async (req, res) => {
+  app.post("/api/seed/market", authMiddleware, async (req: AuthRequest, res) => {
     try {
+      // Must be an admin/system user to seed the market
+      const requestingUser = await storage.getUser(req.user!.id);
+      if (!requestingUser || requestingUser.email !== "system@realdream.app") {
+        return res.status(403).json({ error: "Only system administrators can seed the marketplace" });
+      }
+
       const count = await storage.getMarketItemCount();
       if (count > 0) {
         return res.json({ message: "Market already seeded", count });
@@ -1330,6 +1493,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to seed market:", error);
       res.status(500).json({ error: "Failed to seed market items" });
+    }
+  });
+
+  app.get("/api/market/history", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const history = await storage.getPurchaseHistory(req.user!.id);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get purchase history" });
     }
   });
 
@@ -1381,8 +1553,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+
+      // Data Transfer Object stripping secure properties
+      const {
+        password: _,
+        firebaseUid: __,
+        googleId: ___,
+        facebookId: ____,
+        ...userDto
+      } = user;
+
+      res.json(userDto);
     } catch (error) {
       res.status(500).json({ error: "Failed to get user" });
     }
