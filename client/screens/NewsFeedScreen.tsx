@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -75,10 +75,16 @@ export default function NewsFeedScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
-  
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPostContent, setNewPostContent] = useState("");
   const [isPosting, setIsPosting] = useState(false);
+
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isCommenting, setIsCommenting] = useState(false);
 
   const fetchNewsFeed = async () => {
     try {
@@ -101,10 +107,10 @@ export default function NewsFeedScreen() {
 
   const handleCreatePost = async () => {
     if (!newPostContent.trim() || !token) return;
-    
+
     setIsPosting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     try {
       const response = await fetch(new URL('/api/news-feed', getApiUrl()).toString(), {
         method: 'POST',
@@ -116,7 +122,7 @@ export default function NewsFeedScreen() {
           content: newPostContent.trim(),
         }),
       });
-      
+
       if (response.ok) {
         setNewPostContent("");
         setShowCreateModal(false);
@@ -135,27 +141,103 @@ export default function NewsFeedScreen() {
 
   const handleLike = async (postId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    if (likedPosts.has(postId)) return;
-    
+    const isLiked = likedPosts.has(postId);
+    const method = isLiked ? 'DELETE' : 'POST';
+    const url = isLiked
+      ? new URL(`/api/news-feed/${postId}/like`, getApiUrl()).toString()
+      : new URL(`/api/news-feed/${postId}/like`, getApiUrl()).toString(); // Same endpoint design assumed
+
     try {
-      const response = await fetch(new URL(`/api/news-feed/${postId}/like`, getApiUrl()).toString(), {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      
+
       if (response.ok) {
-        setLikedPosts(prev => new Set([...prev, postId]));
-        setFeedPosts(prev => 
-          prev.map(post => 
-            post.id === postId ? { ...post, likes: post.likes + 1 } : post
+        setLikedPosts(prev => {
+          const newSet = new Set(prev);
+          if (isLiked) newSet.delete(postId);
+          else newSet.add(postId);
+          return newSet;
+        });
+
+        setFeedPosts(prev =>
+          prev.map(post =>
+            post.id === postId ? {
+              ...post,
+              likes: isLiked ? post.likes - 1 : post.likes + 1
+            } : post
           )
         );
       }
     } catch (error) {
-      console.error("Failed to like post:", error);
+      console.error("Failed to toggle like:", error);
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete", style: "destructive", onPress: async () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          try {
+            const response = await fetch(new URL(`/api/news-feed/${postId}`, getApiUrl()).toString(), {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+              setFeedPosts(prev => prev.filter(p => p.id !== postId));
+            }
+          } catch (error) {
+            console.error("Failed to delete post:", error);
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleOpenComments = async (postId: string) => {
+    setActivePostId(postId);
+    setShowCommentsModal(true);
+    setComments([]);
+    try {
+      const res = await fetch(new URL(`/api/news-feed/${postId}/comments`, getApiUrl()).toString(), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setComments(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch comments", error);
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!newComment.trim() || !activePostId) return;
+    setIsCommenting(true);
+    try {
+      const res = await fetch(new URL(`/api/news-feed/${activePostId}/comments`, getApiUrl()).toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ content: newComment.trim() })
+      });
+      if (res.ok) {
+        const postedComment = await res.json();
+        setComments(prev => [...prev, postedComment]);
+        setNewComment("");
+        setFeedPosts(prev => prev.map(p => p.id === activePostId ? { ...p, comments: p.comments + 1 } : p));
+      }
+    } catch (error) {
+      console.error("Failed to post comment", error);
+    } finally {
+      setIsCommenting(false);
     }
   };
 
@@ -225,6 +307,11 @@ export default function NewsFeedScreen() {
                       {formatTimeAgo(post.createdAt)}
                     </ThemedText>
                   </View>
+                  {user?.id === post.userId && (
+                    <Pressable onPress={() => handleDeletePost(post.id)} hitSlop={10}>
+                      <Feather name="trash-2" size={16} color={theme.textMuted} />
+                    </Pressable>
+                  )}
                 </View>
 
                 <ThemedText type="body" style={styles.postContent}>
@@ -245,16 +332,16 @@ export default function NewsFeedScreen() {
                     onPress={() => handleLike(post.id)}
                     style={styles.actionButton}
                   >
-                    <Feather 
-                      name={likedPosts.has(post.id) ? "heart" : "heart"} 
-                      size={18} 
-                      color={likedPosts.has(post.id) ? theme.error : theme.textSecondary} 
+                    <Feather
+                      name={likedPosts.has(post.id) ? "heart" : "heart"}
+                      size={18}
+                      color={likedPosts.has(post.id) ? theme.error : theme.textSecondary}
                     />
                     <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
                       {post.likes}
                     </ThemedText>
                   </Pressable>
-                  <Pressable style={styles.actionButton}>
+                  <Pressable style={styles.actionButton} onPress={() => handleOpenComments(post.id)}>
                     <Feather name="message-circle" size={18} color={theme.textSecondary} />
                     <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
                       {post.comments}
@@ -330,7 +417,7 @@ export default function NewsFeedScreen() {
                 <Feather name="x" size={24} color={theme.textSecondary} />
               </Pressable>
             </View>
-            
+
             <View style={styles.composerHeader}>
               <LinearGradient
                 colors={["#8B5CF6", "#A855F7"]}
@@ -344,7 +431,7 @@ export default function NewsFeedScreen() {
                 {user?.fullName || user?.username || "You"}
               </ThemedText>
             </View>
-            
+
             <TextInput
               style={[
                 styles.postInput,
@@ -363,11 +450,11 @@ export default function NewsFeedScreen() {
               textAlignVertical="top"
               testID="input-post-content"
             />
-            
+
             <ThemedText type="xs" style={[styles.charCount, { color: theme.textMuted }]}>
               {newPostContent.length}/500 characters
             </ThemedText>
-            
+
             <View style={styles.modalActions}>
               <Button
                 onPress={() => {
@@ -387,6 +474,102 @@ export default function NewsFeedScreen() {
               >
                 {isPosting ? "Posting..." : "Post"}
               </Button>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Comments Modal */}
+      <Modal
+        visible={showCommentsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCommentsModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalContainer}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowCommentsModal(false)}
+          />
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary, height: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="h4">Comments</ThemedText>
+              <Pressable
+                onPress={() => setShowCommentsModal(false)}
+                hitSlop={12}
+              >
+                <Feather name="x" size={24} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ flex: 1, marginBottom: Spacing.md }}>
+              {comments.map((comment: any, idx) => (
+                <View key={idx} style={{ flexDirection: "row", marginBottom: Spacing.md }}>
+                  <LinearGradient
+                    colors={["#8B5CF6", "#A855F7"]}
+                    style={styles.composerAvatar}
+                  >
+                    <Feather name="user" size={16} color="#FFFFFF" />
+                  </LinearGradient>
+                  <View style={{ flex: 1, backgroundColor: "rgba(139, 127, 199, 0.1)", padding: Spacing.sm, borderRadius: BorderRadius.md }}>
+                    <ThemedText type="small" style={{ fontWeight: "600", marginBottom: 2 }}>
+                      {comment.user?.fullName || comment.user?.username || "Anonymous"}
+                    </ThemedText>
+                    <ThemedText type="body" style={{ color: theme.text }}>
+                      {comment.content}
+                    </ThemedText>
+                  </View>
+                </View>
+              ))}
+              {comments.length === 0 && (
+                <View style={{ alignItems: "center", paddingVertical: Spacing.xl }}>
+                  <ThemedText type="body" style={{ color: theme.textMuted }}>No comments yet.</ThemedText>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+              <TextInput
+                style={[
+                  styles.postInput,
+                  {
+                    flex: 1,
+                    minHeight: 44,
+                    maxHeight: 100,
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: "rgba(139, 127, 199, 0.3)",
+                    padding: Spacing.sm,
+                  },
+                ]}
+                placeholder="Write a comment..."
+                placeholderTextColor={theme.textMuted}
+                multiline
+                value={newComment}
+                onChangeText={setNewComment}
+              />
+              <Pressable
+                onPress={handlePostComment}
+                disabled={!newComment.trim() || isCommenting}
+                style={{
+                  backgroundColor: theme.link,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: (!newComment.trim() || isCommenting) ? 0.5 : 1
+                }}
+              >
+                {isCommenting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Feather name="send" size={18} color="#FFFFFF" />
+                )}
+              </Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>

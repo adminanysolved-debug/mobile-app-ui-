@@ -141,23 +141,30 @@ export default function NotificationsScreen() {
       }
     }
 
-    switch (notification.type) {
-      case "achievement":
-        setSelectedNotification(notification);
-        setModalVisible(true);
-        break;
-      case "social":
-        setSelectedNotification(notification);
-        setModalVisible(true);
-        break;
-      case "reward":
-        navigation.goBack();
-        break;
-      case "system":
-      default:
-        setSelectedNotification(notification);
-        setModalVisible(true);
-        break;
+    // Don't open modal if we're just deleting
+    if (notification.type === "reward") {
+      navigation.goBack();
+      return;
+    }
+
+    setSelectedNotification(notification);
+    setModalVisible(true);
+  };
+
+  const handleDeleteNotification = async (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try {
+      const response = await fetch(new URL(`/api/notifications/${id}`, getApiUrl()).toString(), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        setModalVisible(false);
+        setSelectedNotification(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
     }
   };
 
@@ -343,16 +350,16 @@ export default function NotificationsScreen() {
                 <View style={styles.modalButtons}>
                   <Button
                     variant="outline"
-                    onPress={() => setModalVisible(false)}
-                    style={styles.modalButton}
+                    onPress={() => handleDeleteNotification(selectedNotification.id)}
+                    style={[styles.modalButton, { borderColor: "#EF4444" }]}
                   >
-                    Dismiss
+                    Delete
                   </Button>
                   <Button
                     onPress={handleModalAction}
                     style={styles.modalButton}
                   >
-                    View Details
+                    Close
                   </Button>
                 </View>
               </>

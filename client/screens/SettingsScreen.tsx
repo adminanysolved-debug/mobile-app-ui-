@@ -1,4 +1,4 @@
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -34,7 +34,7 @@ export default function SettingsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout, forgotPassword } = useAuth();
 
   const handleNavigate = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -42,7 +42,58 @@ export default function SettingsScreen() {
       navigation.navigate("ProfileTab");
     } else if (route === "Subscription") {
       navigation.navigate("Subscription");
+    } else if (route === "Notifications") {
+      navigation.navigate("Notifications");
     }
+  };
+
+  const handleLogout = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to log out of your account?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await logout();
+              Alert.alert("Success", "You have been logged out.");
+            } catch (err) {
+              console.error("Logout error", err);
+              Alert.alert("Error", "Logout failed. Please try again.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleChangePassword = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      "Change Password",
+      "We will send a password reset link to your email. Proceed?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send Email",
+          style: "default",
+          onPress: async () => {
+            if (user?.email) {
+              const res = await forgotPassword(user.email);
+              if (res.success) {
+                Alert.alert("Success", "Password reset instructions sent to your email.");
+              } else {
+                Alert.alert("Error", res.error || "Failed to send reset link.");
+              }
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -114,6 +165,35 @@ export default function SettingsScreen() {
                 <Feather name="chevron-right" size={20} color="#A78BFA" />
               </Pressable>
             ))}
+          </Card>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(200).springify()}>
+          <Card style={styles.menuCard}>
+            <Pressable
+              onPress={handleChangePassword}
+              style={[styles.menuRow, styles.menuRowBorder]}
+            >
+              <View style={styles.menuIcon}>
+                <Feather name="lock" size={20} color={theme.textSecondary} />
+              </View>
+              <ThemedText type="body" style={[styles.menuLabel, { color: theme.text }]}>
+                CHANGE PASSWORD
+              </ThemedText>
+              <Feather name="chevron-right" size={20} color="#A78BFA" />
+            </Pressable>
+
+            <Pressable
+              onPress={handleLogout}
+              style={styles.menuRow}
+            >
+              <View style={styles.menuIcon}>
+                <Feather name="log-out" size={20} color="#EF4444" />
+              </View>
+              <ThemedText type="body" style={[styles.menuLabel, { color: "#EF4444" }]}>
+                LOG OUT
+              </ThemedText>
+            </Pressable>
           </Card>
         </Animated.View>
       </ScrollView>

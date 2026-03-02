@@ -59,6 +59,9 @@ export default function MarketScreen() {
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const fetchMarketItems = async () => {
     try {
@@ -93,7 +96,7 @@ export default function MarketScreen() {
 
   const confirmPurchase = async () => {
     if (!selectedItem || !token) return;
-    
+
     setIsPurchasing(true);
     try {
       const response = await fetch(
@@ -108,7 +111,7 @@ export default function MarketScreen() {
       );
 
       const data = await response.json();
-      
+
       if (response.ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert("Success", `You purchased ${selectedItem.title}!`);
@@ -132,8 +135,26 @@ export default function MarketScreen() {
     fetchMarketItems();
   };
 
-  const filteredItems = selectedCategory === "All" 
-    ? marketItems 
+  const handleOpenHistory = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch(new URL('/api/market/history', getApiUrl()).toString(), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setPurchaseHistory(await response.json());
+        setShowHistoryModal(true);
+      }
+    } catch (error) {
+      console.error("Failed to load history", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const filteredItems = selectedCategory === "All"
+    ? marketItems
     : marketItems.filter(item => item.category === selectedCategory);
 
   const getGradient = (category: string | null): [string, string] => {
@@ -170,6 +191,18 @@ export default function MarketScreen() {
                 Available Balance
               </ThemedText>
               <ThemedText type="h3">{(user?.coins || 0).toLocaleString()} points</ThemedText>
+            </View>
+            <View style={{ flex: 1, alignItems: "flex-end" }}>
+              <Pressable
+                onPress={handleOpenHistory}
+                style={{ padding: Spacing.sm, backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.md }}
+              >
+                {isLoadingHistory ? (
+                  <ActivityIndicator size="small" color={theme.link} />
+                ) : (
+                  <Feather name="clock" size={20} color={theme.textSecondary} />
+                )}
+              </Pressable>
             </View>
           </View>
         </Animated.View>
@@ -281,7 +314,7 @@ export default function MarketScreen() {
         onRequestClose={() => setPurchaseModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
             {selectedItem ? (
               <>
                 <LinearGradient
@@ -336,8 +369,63 @@ export default function MarketScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* History Modal */}
+      <Modal
+        visible={showHistoryModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowHistoryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary, maxHeight: '80%' }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: Spacing.lg }}>
+              <ThemedText type="h3">Purchase History</ThemedText>
+              <Pressable onPress={() => setShowHistoryModal(false)} hitSlop={12}>
+                <Feather name="x" size={24} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ width: "100%" }} showsVerticalScrollIndicator={false}>
+              {purchaseHistory.length === 0 ? (
+                <View style={{ paddingVertical: Spacing.xl, alignItems: "center" }}>
+                  <ThemedText type="body" style={{ color: theme.textMuted }}>No purchases yet.</ThemedText>
+                </View>
+              ) : (
+                purchaseHistory.map((txn, index) => (
+                  <View
+                    key={txn.id || index}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      backgroundColor: theme.backgroundSecondary,
+                      padding: Spacing.md,
+                      borderRadius: BorderRadius.sm,
+                      marginBottom: Spacing.sm
+                    }}
+                  >
+                    <View>
+                      <ThemedText type="body" style={{ fontWeight: "600" }}>Market Item Purchase</ThemedText>
+                      <ThemedText type="xs" style={{ color: theme.textSecondary }}>{formatDateOnly(txn.createdAt)}</ThemedText>
+                    </View>
+                    <ThemedText type="body" style={{ color: theme.yellow, fontWeight: "700" }}>
+                      -{txn.amount} pts
+                    </ThemedText>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </GalaxyBackground>
   );
+}
+
+function formatDateOnly(dateString: string) {
+  if (!dateString) return "Unknown Date";
+  return new Date(dateString).toLocaleDateString();
 }
 
 const styles = StyleSheet.create({
