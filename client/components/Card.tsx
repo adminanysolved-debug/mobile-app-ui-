@@ -52,12 +52,28 @@ export function Card({
     }
   };
 
+  if (onPress) {
+    return (
+      <AnimatedPressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.backgroundDefault,
+          },
+          animatedStyle,
+          style,
+        ]}
+      >
+        {children}
+      </AnimatedPressable>
+    );
+  }
+
   return (
-    <AnimatedPressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={!onPress}
+    <Animated.View
       style={[
         styles.card,
         {
@@ -68,7 +84,7 @@ export function Card({
       ]}
     >
       {children}
-    </AnimatedPressable>
+    </Animated.View>
   );
 }
 
