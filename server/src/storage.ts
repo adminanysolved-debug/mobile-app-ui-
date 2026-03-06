@@ -15,6 +15,7 @@ import {
   postLikes,
   postComments,
   marketItems,
+  marketPurchases,
   passwordResetTokens,
   conversations,
   type User,
@@ -85,6 +86,10 @@ export interface IStorage {
   getMarketItems(category?: string): Promise<any[]>;
   getMarketItem(id: string): Promise<any | null>;
   getPurchaseHistory(userId: string): Promise<any[]>;
+  createMarketItem(itemData: Partial<typeof marketItems.$inferInsert>): Promise<any>;
+  purchaseMarketItem(userId: string, marketItemId: string, price: number, vendorId: string): Promise<boolean>;
+  getVendorMarketItemsCount(vendorId: string): Promise<number>;
+  hasPurchasedMarketItem(userId: string, marketItemId: string): Promise<boolean>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -529,10 +534,68 @@ class DatabaseStorage implements IStorage {
 
   async getPurchaseHistory(userId: string): Promise<any[]> {
     return db
-      .select()
-      .from(transactions)
-      .where(and(eq(transactions.userId, userId), eq(transactions.type, "purchase")))
-      .orderBy(desc(transactions.createdAt));
+      .select({
+        purchase: marketPurchases,
+        item: marketItems,
+      })
+      .from(marketPurchases)
+      .innerJoin(marketItems, eq(marketPurchases.marketItemId, marketItems.id))
+      .where(eq(marketPurchases.userId, userId))
+      .orderBy(desc(marketPurchases.createdAt));
+  }
+
+  async purchaseMarketItem(userId: string, marketItemId: string, price: number, vendorId: string): Promise<boolean> {
+    try {
+      await db.transaction(async (tx) => {
+        // Deduct coins from buyer
+        await tx.update(users)
+          .set({ coins: sql`${users.coins} - ${price}` })
+          .where(eq(users.id, userId));
+
+        // Add coins to vendor
+        await tx.update(users)
+          .set({ coins: sql`${users.coins} + ${price}` })
+          .where(eq(users.id, vendorId));
+
+        // Log transaction for buyer
+        await tx.insert(transactions).values({
+          userId,
+          amount: -price,
+          type: "market_purchase",
+          description: `Purchased market item ${marketItemId}`
+        });
+
+        // Log transaction for vendor
+        await tx.insert(transactions).values({
+          userId: vendorId,
+          amount: price,
+          type: "market_sale",
+          description: `Sold market item ${marketItemId}`
+        });
+
+        // Create market purchase record
+        await tx.insert(marketPurchases).values({
+          userId,
+          marketItemId,
+          vendorId,
+          amount: price
+        });
+      });
+      return true;
+    } catch (e) {
+      console.error("Purchase transaction failed:", e);
+      return false;
+    }
+  }
+
+  async getVendorMarketItemsCount(vendorId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(marketItems).where(eq(marketItems.userId, vendorId));
+    return result[0]?.count || 0;
+  }
+
+  async hasPurchasedMarketItem(userId: string, marketItemId: string): Promise<boolean> {
+    const [purchase] = await db.select().from(marketPurchases).where(and(eq(marketPurchases.userId, userId), eq(marketPurchases.marketItemId, marketItemId)));
+    return !!purchase;
   }
 
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {

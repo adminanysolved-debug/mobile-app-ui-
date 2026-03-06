@@ -35,7 +35,7 @@ app.get('/api/stats', async (req, res) => {
 app.get('/api/users', async (req, res) => {
     try {
         const usersRes = await pool.query(`
-            SELECT id, email, username, full_name, auth_provider, is_vendor, subscription_tier, created_at 
+            SELECT id, email, username, full_name, auth_provider, is_vendor, vendor_business_name, vendor_tier, subscription_tier, created_at 
             FROM users 
             ORDER BY created_at DESC
         `);
@@ -96,6 +96,44 @@ app.get('/api/newsfeed', async (req, res) => {
     } catch (error: any) {
         console.error("Failed to fetch news feed", error);
         res.status(500).json({ error: "Failed to fetch news feed" });
+    }
+});
+
+app.get('/api/market-items', async (req, res) => {
+    try {
+        const itemsRes = await pool.query(`
+            SELECT m.id, m.title, m.category, m.price, m.is_premium, m.is_active, m.created_at, u.username as vendor_name, u.vendor_tier
+            FROM market_items m
+            LEFT JOIN users u ON m.user_id = u.id
+            ORDER BY m.created_at DESC
+        `);
+        res.json(itemsRes.rows);
+    } catch (error: any) {
+        console.error("Failed to fetch market items", error);
+        res.status(500).json({ error: "Failed to fetch market items" });
+    }
+});
+
+app.delete('/api/admin/market-items/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM market_items WHERE id = $1', [id]);
+        res.json({ success: true, message: 'Market item deleted successfully' });
+    } catch (error: any) {
+        console.error("Failed to delete market item", error);
+        res.status(500).json({ error: "Failed to delete market item" });
+    }
+});
+
+app.put('/api/admin/users/:id/vendor', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_vendor, vendor_tier } = req.body;
+        await pool.query('UPDATE users SET is_vendor = $1, vendor_tier = $2 WHERE id = $3', [is_vendor, vendor_tier, id]);
+        res.json({ success: true, message: 'Vendor status updated successfully' });
+    } catch (error: any) {
+        console.error("Failed to update vendor status", error);
+        res.status(500).json({ error: "Failed to update vendor status" });
     }
 });
 

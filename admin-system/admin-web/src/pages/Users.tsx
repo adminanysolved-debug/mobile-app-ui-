@@ -8,6 +8,8 @@ interface User {
     full_name: string;
     auth_provider: string;
     is_vendor: boolean;
+    vendor_tier: string;
+    vendor_business_name: string | null;
     subscription_tier: string;
     created_at: string;
 }
@@ -17,6 +19,9 @@ export default function Users() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [editRole, setEditRole] = useState(false);
+    const [newIsVendor, setNewIsVendor] = useState(false);
+    const [newVendorTier, setNewVendorTier] = useState('basic');
 
     useEffect(() => {
         fetchUsers();
@@ -62,6 +67,41 @@ export default function Users() {
             console.error('Error deleting user:', error);
             alert('An error occurred while deleting the user.');
         }
+    };
+
+    const handleUpdateVendor = async () => {
+        if (!selectedUser) return;
+        try {
+            const res = await fetch(`http://localhost:5001/api/admin/users/${selectedUser.id}/vendor`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ is_vendor: newIsVendor, vendor_tier: newVendorTier })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message);
+                fetchUsers();
+                setSelectedUser({ ...selectedUser, is_vendor: newIsVendor, vendor_tier: newVendorTier });
+                setEditRole(false);
+            } else {
+                const data = await res.json();
+                alert(`Failed to update vendor: ${data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating vendor:', error);
+            alert('An error occurred while updating the vendor.');
+        }
+    };
+
+    const openUserModal = (user: User) => {
+        setSelectedUser(user);
+        setNewIsVendor(user.is_vendor);
+        setNewVendorTier(user.vendor_tier || 'basic');
+        setEditRole(false);
     };
 
     const filteredUsers = users.filter(u =>
@@ -161,7 +201,7 @@ export default function Users() {
                                         </td>
                                         <td className="px-6 py-4 text-right flex justify-end gap-2">
                                             <button
-                                                onClick={() => setSelectedUser(user)}
+                                                onClick={() => openUserModal(user)}
                                                 className="text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-brand-500/30"
                                             >
                                                 View
@@ -231,6 +271,55 @@ export default function Users() {
                                 <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
                                     <div className="text-slate-500 text-xs mb-1">Auth Provider</div>
                                     <div className="text-slate-200 capitalize">{selectedUser.auth_provider || 'Email'}</div>
+                                </div>
+                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50 col-span-2">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <div className="text-slate-500 text-xs font-semibold">Vendor Configuration</div>
+                                        {editRole ? (
+                                            <div className="flex gap-2">
+                                                <button onClick={handleUpdateVendor} className="text-emerald-400 text-xs hover:underline">Save</button>
+                                                <button onClick={() => setEditRole(false)} className="text-slate-400 text-xs hover:underline">Cancel</button>
+                                            </div>
+                                        ) : (
+                                            <button onClick={() => setEditRole(true)} className="text-brand-400 text-xs hover:underline">Edit Vendor Status</button>
+                                        )}
+                                    </div>
+
+                                    {editRole ? (
+                                        <div className="flex flex-col gap-3 mt-2">
+                                            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newIsVendor}
+                                                    onChange={(e) => setNewIsVendor(e.target.checked)}
+                                                    className="rounded bg-slate-700 border-slate-600 text-brand-500 focus:ring-brand-500 focus:ring-offset-slate-900"
+                                                />
+                                                Is Vendor
+                                            </label>
+
+                                            {newIsVendor && (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-slate-400 text-xs">Vendor Tier</span>
+                                                    <select
+                                                        value={newVendorTier}
+                                                        onChange={(e) => setNewVendorTier(e.target.value)}
+                                                        className="bg-slate-900 border border-slate-700 rounded p-1.5 text-slate-200 text-sm outline-none w-full"
+                                                    >
+                                                        <option value="basic">Basic (Max 5 items)</option>
+                                                        <option value="pro">Pro (Max 20 items)</option>
+                                                        <option value="enterprise">Enterprise (Unlimited)</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-slate-200 flex gap-4 text-sm mt-1">
+                                            <div><span className="text-slate-500">Is Vendor:</span> {selectedUser.is_vendor ? 'Yes' : 'No'}</div>
+                                            {selectedUser.is_vendor && (
+                                                <div><span className="text-slate-500">Tier:</span> <span className="capitalize text-amber-400">{selectedUser.vendor_tier || 'Basic'}</span></div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

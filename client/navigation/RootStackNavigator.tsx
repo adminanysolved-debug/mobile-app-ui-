@@ -11,6 +11,7 @@ import WallOfFameScreen from "@/screens/WallOfFameScreen";
 import WalletScreen from "@/screens/WalletScreen";
 import ChatScreen from "@/screens/ChatScreen";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
+import VendorHubScreen from "@/screens/VendorHubScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
@@ -32,6 +33,7 @@ export type RootStackParamList = {
   NewsFeed: undefined;
   Connections: undefined;
   VendorProfile: undefined;
+  VendorHub: undefined;
   Subscription: undefined;
   Notifications: undefined;
   LuckySpin: undefined; // 👈 Ye line add karo
@@ -64,7 +66,7 @@ export default function RootStackNavigator() {
           />
           <Stack.Screen
             name="Notifications"
-            component={NotificationsScreen} 
+            component={NotificationsScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
@@ -94,6 +96,11 @@ export default function RootStackNavigator() {
             component={SubscriptionScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="VendorHub"
+            component={VendorHubScreen}
+            options={{ headerTitle: "Vendor Hub" }}
+          />
         </>
       ) : (
         <>
@@ -103,10 +110,10 @@ export default function RootStackNavigator() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
-  name="GoogleAuth"
-  component={GoogleAuthScreen}
-  options={{ headerShown: false }}
-/>
+            name="GoogleAuth"
+            component={GoogleAuthScreen}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="SignUp"
             component={SignUpScreen}

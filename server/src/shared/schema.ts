@@ -19,6 +19,12 @@ export const subscriptionTierEnum = pgEnum("subscription_tier", [
   "platinum",
 ]);
 
+export const vendorTierEnum = pgEnum("vendor_tier", [
+  "basic",
+  "pro",
+  "enterprise",
+]);
+
 export const dreamTypeEnum = pgEnum("dream_type", [
   "personal",
   "challenge",
@@ -84,6 +90,7 @@ export const users = pgTable("users", {
   isVendor: boolean("is_vendor").default(false),
   vendorBusinessName: text("vendor_business_name"),
   vendorDescription: text("vendor_description"),
+  vendorTier: vendorTierEnum("vendor_tier").default("basic"),
   subscriptionTier: subscriptionTierEnum("subscription_tier").default("free"),
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
   coins: integer("coins").default(100),
@@ -327,7 +334,25 @@ export const marketItems = pgTable("market_items", {
   category: text("category"),
   imageUrl: text("image_url"),
   price: integer("price"),
+  isPremium: boolean("is_premium").default(false),
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const marketPurchases = pgTable("market_purchases", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  marketItemId: varchar("market_item_id")
+    .notNull()
+    .references(() => marketItems.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -341,6 +366,32 @@ export const userRelations = relations(users, ({ many }) => ({
   following: many(connections, { relationName: "following" }),
   galleryPosts: many(galleryPosts),
   newsFeedPosts: many(newsFeedPosts),
+  marketItems: many(marketItems),
+  marketPurchases: many(marketPurchases),
+}));
+
+export const marketItemsRelations = relations(marketItems, ({ one }) => ({
+  vendor: one(users, {
+    fields: [marketItems.userId],
+    references: [users.id],
+  }),
+}));
+
+export const marketPurchasesRelations = relations(marketPurchases, ({ one }) => ({
+  user: one(users, {
+    fields: [marketPurchases.userId],
+    references: [users.id],
+    relationName: "buyer",
+  }),
+  vendor: one(users, {
+    fields: [marketPurchases.vendorId],
+    references: [users.id],
+    relationName: "seller",
+  }),
+  marketItem: one(marketItems, {
+    fields: [marketPurchases.marketItemId],
+    references: [marketItems.id],
+  }),
 }));
 
 export const dreamsRelations = relations(dreams, ({ one, many }) => ({
@@ -420,3 +471,5 @@ export type GalleryPost = typeof galleryPosts.$inferSelect;
 export type NewsFeedPost = typeof newsFeedPosts.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
+export type MarketItem = typeof marketItems.$inferSelect;
+export type MarketPurchase = typeof marketPurchases.$inferSelect;
