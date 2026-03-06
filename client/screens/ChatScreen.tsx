@@ -27,11 +27,7 @@ type Message = {
   createdAt: string;
 };
 
-type ChatScreenProps = {
-  route: ChatScreenRouteProp;
-};
-
-export default function ChatScreen({ route }: ChatScreenProps) {
+export default function ChatScreen({ route }: any) {
   const { otherUserId, otherUserName } = route.params;
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();

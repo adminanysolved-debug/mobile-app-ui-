@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, MoonStar, CheckCircle2, Circle } from 'lucide-react';
+import { Search, MoonStar, CheckCircle2, Circle, X } from 'lucide-react';
 
 interface Dream {
     id: string;
@@ -17,9 +17,19 @@ export default function Dreams() {
     const [dreams, setDreams] = useState<Dream[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDream, setSelectedDream] = useState<Dream | null>(null);
 
     useEffect(() => {
-        fetch('http://localhost:5001/api/dreams')
+        fetchDreams();
+    }, []);
+
+    const fetchDreams = () => {
+        setLoading(true);
+        fetch('http://localhost:5001/api/dreams', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+            }
+        })
             .then(res => res.json())
             .then(data => {
                 setDreams(data);
@@ -29,7 +39,31 @@ export default function Dreams() {
                 console.error("Failed to fetch dreams", err);
                 setLoading(false);
             });
-    }, []);
+    };
+
+    const handleDeleteDream = async (id: string, title: string) => {
+        if (!confirm(`Are you sure you want to delete the dream "${title}"?\nThis action cannot be undone.`)) return;
+
+        try {
+            const res = await fetch(`http://localhost:5001/api/admin/dreams/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+                }
+            });
+
+            if (res.ok) {
+                // Refresh the list after successful deletion
+                fetchDreams();
+            } else {
+                const data = await res.json();
+                alert(`Failed to delete dream: ${data.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error deleting dream:', error);
+            alert('An error occurred while deleting the dream.');
+        }
+    };
 
     const filteredDreams = dreams.filter(d =>
         d.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,9 +159,18 @@ export default function Dreams() {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button className="text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-brand-500/30">
+                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                            <button
+                                                onClick={() => setSelectedDream(dream)}
+                                                className="text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-brand-500/30"
+                                            >
                                                 Details
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteDream(dream.id, dream.title)}
+                                                className="text-red-400 hover:text-red-300 hover:bg-red-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-red-500/30"
+                                            >
+                                                Delete
                                             </button>
                                         </td>
                                     </tr>
@@ -136,6 +179,72 @@ export default function Dreams() {
                         </tbody>
                     </table>
                 </div>
+
+                {/* View Dream Modal */}
+                {selectedDream && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedDream(null)}>
+                        <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-md overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
+                                <h3 className="text-lg font-semibold text-slate-200">Dream Details</h3>
+                                <button onClick={() => setSelectedDream(null)} className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-center gap-4 border-b border-slate-800/50 pb-4">
+                                    <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 border border-indigo-500/20 shadow-inner">
+                                        <MoonStar size={32} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xl font-bold text-slate-100">{selectedDream.title}</h4>
+                                        <p className="text-brand-400 font-medium text-sm">Owner: @{selectedDream.username}</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 text-sm mt-4">
+                                    <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                        <div className="text-slate-500 text-xs mb-1">Type</div>
+                                        <div className="text-slate-200 capitalize">{selectedDream.type}</div>
+                                    </div>
+                                    <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                        <div className="text-slate-500 text-xs mb-1">Privacy</div>
+                                        <div className="text-slate-200 capitalize">{selectedDream.privacy}</div>
+                                    </div>
+                                    <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                        <div className="text-slate-500 text-xs mb-1">Progress</div>
+                                        <div className="text-slate-200 relative w-full h-4 bg-slate-900 rounded overflow-hidden mt-1">
+                                            <div className="absolute top-0 left-0 h-full bg-brand-500" style={{ width: `${selectedDream.progress}%` }}></div>
+                                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold mix-blend-difference">{selectedDream.progress}%</div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                        <div className="text-slate-500 text-xs mb-1">Status</div>
+                                        <div className="text-slate-200">
+                                            {selectedDream.is_completed ? (
+                                                <span className="text-emerald-400 flex items-center gap-1"><CheckCircle2 size={12} /> Completed</span>
+                                            ) : (
+                                                <span className="text-slate-400 flex items-center gap-1"><Circle size={12} /> Active</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50 col-span-2">
+                                        <div className="text-slate-500 text-xs mb-1">Dream ID</div>
+                                        <div className="text-slate-200 font-mono text-xs break-all">{selectedDream.id}</div>
+                                    </div>
+                                    <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50 col-span-2">
+                                        <div className="text-slate-500 text-xs mb-1">Created At</div>
+                                        <div className="text-slate-200">{new Date(selectedDream.created_at).toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+                                <button onClick={() => setSelectedDream(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors text-sm font-medium">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

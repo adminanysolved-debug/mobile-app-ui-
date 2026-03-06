@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl,Platform  } from "react-native";
+import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -60,13 +60,14 @@ export default function DreamDetailScreen() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
 
   // ✅ Universal padding that works on ALL Android devices
   // Note: headerHeight already includes status bar (insets.top) on Android
   const topPadding =
-  insets.top +
-  Spacing.lg +
-  Spacing.xl;
+    insets.top +
+    Spacing.lg +
+    Spacing.xl;
 
   const bottomPadding = tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA;
 
@@ -74,11 +75,14 @@ export default function DreamDetailScreen() {
     if (!token || !dreamId) return;
 
     try {
-      const [dreamRes, tasksRes] = await Promise.all([
+      const [dreamRes, tasksRes, membersRes] = await Promise.all([
         fetch(new URL(`/api/dreams/${dreamId}`, getApiUrl()).toString(), {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(new URL(`/api/dreams/${dreamId}/tasks`, getApiUrl()).toString(), {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(new URL(`/api/dreams/${dreamId}/members`, getApiUrl()).toString(), {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -91,6 +95,11 @@ export default function DreamDetailScreen() {
       if (tasksRes.ok) {
         const tasksData = await tasksRes.json();
         setTasks(tasksData);
+      }
+
+      if (membersRes.ok) {
+        const membersData = await membersRes.json();
+        setMembers(membersData);
       }
     } catch (error) {
       console.error("Failed to fetch dream:", error);
@@ -107,6 +116,17 @@ export default function DreamDetailScreen() {
   const handleInvite = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowInviteModal(true);
+  };
+
+  const handleEdit = () => {
+    if (!dream) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate("CreateDream", {
+      type: dream.type,
+      editDreamId: dream.id,
+      dreamTitle: dream.title,
+      dreamDescription: dream.description,
+    });
   };
 
   const onRefresh = useCallback(() => {
@@ -273,21 +293,51 @@ export default function DreamDetailScreen() {
               </View>
             ) : null}
           </View>
-          {(dream.type === "group" || dream.type === "challenge") && (
-            <View style={styles.actionButtons}>
+          <View style={styles.actionButtons}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={handleEdit}
+              testID="button-edit-dream"
+            >
+              <Feather name="edit-2" size={16} color="#60A5FA" />
+              <ThemedText type="small" style={styles.actionButtonText}>Edit</ThemedText>
+            </Pressable>
+
+            {(dream.type === "group" || dream.type === "challenge") && (
               <Pressable
                 style={[styles.actionButton, styles.inviteButton]}
                 onPress={handleInvite}
                 testID="button-invite-members"
               >
-                <Feather name="user-plus" size={20} color="#22C55E" />
+                <Feather name="user-plus" size={16} color="#22C55E" />
+                <ThemedText type="small" style={{ color: "#22C55E", marginLeft: 4 }}>Invite</ThemedText>
               </Pressable>
-            </View>
-          )}
+            )}
+          </View>
           <ThemedText type="h2" style={styles.title}>{dream.title}</ThemedText>
           {dream.description ? (
             <ThemedText type="body" style={styles.description}>{dream.description}</ThemedText>
           ) : null}
+
+          {members.length > 0 && dream.type !== "personal" && (
+            <View style={styles.membersContainer}>
+              <ThemedText type="small" style={styles.membersLabel}>MEMBERS ({members.length})</ThemedText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.membersScroll}>
+                {members.map((member: any) => (
+                  <View key={member.id} style={styles.memberAvatar}>
+                    {member.user?.profileImage ? (
+                      /* If we had an Image component from expo-image we'd use it here, fallback to icon */
+                      <Feather name="user" size={16} color="#FFFFFF" />
+                    ) : (
+                      <ThemedText style={styles.memberInitial}>
+                        {member.user?.fullName?.charAt(0).toUpperCase() || member.user?.username?.charAt(0).toUpperCase() || "?"}
+                      </ThemedText>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(100).springify()}>
@@ -493,17 +543,47 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   actionButton: {
-    width: 36,
     height: 36,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.full,
     backgroundColor: "rgba(45, 39, 82, 0.8)",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(139, 127, 199, 0.3)",
   },
+  actionButtonText: {
+    color: "#60A5FA",
+    marginLeft: 4,
+  },
   inviteButton: {
     borderColor: "rgba(34, 197, 94, 0.3)",
+  },
+  membersContainer: {
+    marginTop: Spacing.md,
+  },
+  membersLabel: {
+    color: "#8B7FC7",
+    marginBottom: Spacing.sm,
+  },
+  membersScroll: {
+    gap: Spacing.xs,
+  },
+  memberAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(139, 127, 199, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(45, 39, 82, 0.8)",
+  },
+  memberInitial: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   loadingContainer: {
     flex: 1,

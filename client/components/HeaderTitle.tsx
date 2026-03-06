@@ -74,25 +74,6 @@ export function HeaderIcons() {
     <View style={styles.iconsContainer}
       pointerEvents="box-none">
       <Pressable
-        onPress={() => handlePress("Chat")}
-        style={[styles.iconButton, { backgroundColor: theme.backgroundSecondary }]}
-      >
-        <Feather name="message-circle" size={20} color={theme.text} />
-      </Pressable>
-      <Pressable
-        onPress={() => handlePress("Notifications")}
-        style={[styles.iconButton, { backgroundColor: theme.backgroundSecondary }]}
-      >
-        <Feather name="bell" size={20} color={theme.text} />
-        {unreadCount > 0 && (
-          <View style={[styles.badge, { backgroundColor: theme.error }]}>
-            <ThemedText style={styles.badgeText}>
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </ThemedText>
-          </View>
-        )}
-      </Pressable>
-      <Pressable
         onPress={() => handlePress("LuckySpin")}
         style={[styles.iconButton, { backgroundColor: theme.backgroundSecondary }]}
       >

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image, Alert, ActionSheetIOS, Platform } from "react-native";
 //import { useSafeAreaInsets } from "react-native-safe-area-context";
 //import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -6,7 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring, withDelay, withSequence, withTiming, withRepeat } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -130,8 +130,8 @@ function MenuRow({
 }
 
 export default function ProfileScreen() {
-  const safePadding = useSafeScrollPadding(); 
- // const insets = useSafeAreaInsets();
+  const safePadding = useSafeScrollPadding();
+  // const insets = useSafeAreaInsets();
   //const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme, currentTheme } = useTheme();
@@ -146,6 +146,37 @@ export default function ProfileScreen() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profilePhoto || null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  // 3D Animated Avatar logic
+  const avatarTranslateY = useSharedValue(-150);
+  const avatarTranslateX = useSharedValue(-60);
+  const avatarRotation = useSharedValue(0);
+
+  useEffect(() => {
+    // Jump over username to the top of the profile card
+    avatarTranslateY.value = withDelay(300, withSpring(-10, { damping: 6, stiffness: 80 }));
+    avatarTranslateX.value = withDelay(300, withSpring(30, { damping: 6, stiffness: 80 }, () => {
+      // Wave hand after landing
+      avatarRotation.value = withRepeat(withSequence(
+        withTiming(-15, { duration: 150 }),
+        withTiming(15, { duration: 150 }),
+        withTiming(-15, { duration: 150 }),
+        withTiming(0, { duration: 150 })
+      ), 3);
+    }));
+  }, []);
+
+  const animated3DAvatarStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: avatarTranslateX.value },
+      { translateY: avatarTranslateY.value },
+      { rotate: `${avatarRotation.value}deg` }
+    ],
+    position: 'absolute',
+    top: -55,
+    right: 20,
+    zIndex: 999,
+  }));
 
   const handleNavigate = (route?: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -307,7 +338,7 @@ export default function ProfileScreen() {
               );
 
               if (response.ok) {
-                updateUser({profilePhoto:undefined});      
+                updateUser({ profilePhoto: undefined });
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               } else {
                 const errorData = await response.json();
@@ -336,8 +367,8 @@ export default function ProfileScreen() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
-          fullName: editFullName, 
+        body: JSON.stringify({
+          fullName: editFullName,
           bio: editBio,
           age: editAge ? parseInt(editAge) : null,
           gender: editGender || null,
@@ -395,7 +426,12 @@ export default function ProfileScreen() {
           </ThemedText>
         </View>
 
-        <Animated.View entering={FadeInDown.springify()}>
+        <Animated.View entering={FadeInDown.springify()} style={{ position: 'relative' }}>
+          <Animated.Image
+            source={{ uri: 'https://static.vecteezy.com/system/resources/thumbnails/023/125/465/small_2x/3d-illustration-of-an-astronaut-waving-isolated-on-a-transparent-background-png.png' }}
+            style={[{ width: 120, height: 120 }, animated3DAvatarStyle]}
+            resizeMode="contain"
+          />
           <Card style={styles.profileCard}>
             <View style={styles.profileContainer}>
               {/* Profile Photo with Upload Button - LEFT SIDE */}

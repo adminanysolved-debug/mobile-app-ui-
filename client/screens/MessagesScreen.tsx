@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, FlatList } from "react-native";
+import { useState, useEffect, useMemo } from "react";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, FlatList, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -79,6 +79,16 @@ export default function MessagesScreen() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [chatableUsers, setChatableUsers] = useState<ChatableUser[]>([]);
   const [isLoadingChatableUsers, setIsLoadingChatableUsers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredChatableUsers = useMemo(() => {
+    if (!searchQuery.trim()) return chatableUsers;
+    const query = searchQuery.toLowerCase();
+    return chatableUsers.filter(u =>
+      u.username.toLowerCase().includes(query) ||
+      u.fullName?.toLowerCase().includes(query)
+    );
+  }, [chatableUsers, searchQuery]);
 
   const fetchConversations = async () => {
     try {
@@ -325,6 +335,17 @@ export default function MessagesScreen() {
               You can only message people you follow or who follow you
             </ThemedText>
 
+            <View style={styles.searchContainer}>
+              <Feather name="search" size={16} color={theme.textMuted} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.text, backgroundColor: "rgba(45, 39, 82, 0.4)" }]}
+                placeholder="Search people..."
+                placeholderTextColor={theme.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
             {isLoadingChatableUsers ? (
               <View style={styles.modalLoading}>
                 <ActivityIndicator size="large" color={theme.link} />
@@ -341,7 +362,7 @@ export default function MessagesScreen() {
               </View>
             ) : (
               <FlatList
-                data={chatableUsers}
+                data={filteredChatableUsers}
                 keyExtractor={(item) => item.id}
                 style={styles.modalList}
                 showsVerticalScrollIndicator={false}
@@ -518,6 +539,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.sm,
+    backgroundColor: "rgba(45, 39, 82, 0.4)",
+  },
+  searchIcon: {
+    marginRight: Spacing.xs,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    fontSize: 14,
   },
   modalEmptyText: {
     fontSize: 16,

@@ -11,10 +11,10 @@ import { generateTaskDates, validateDreamFields } from "./task-generator.js";
 import multer from "multer";
 import { uploadToCloudinary, deleteFromCloudinary } from "./cloudinary-storage.js";
 
+const JWT_SECRET = process.env.SESSION_SECRET || "fallback_secret_for_development_only";
 if (!process.env.SESSION_SECRET) {
-  throw new Error("FATAL: SESSION_SECRET environment variable is missing. Refusing to start with insecure hardcoded fallback.");
+  console.warn("WARNING: SESSION_SECRET environment variable is missing. Using insecure fallback.");
 }
-const JWT_SECRET = process.env.SESSION_SECRET;
 
 let firebaseInitialized = false;
 try {
@@ -892,683 +892,713 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dreams/:dreamId/tasks", authMiddleware, async (req: AuthRequest, res) => {
+  // Get members for a dream
+  app.get("/api/dreams/:dreamId/members", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const dreamId = req.params.dreamId as string;
-
-      // Security check: Verify user has access to this dream
       const dream = await storage.getDream(dreamId);
+
       if (!dream) {
         return res.status(404).json({ error: "Dream not found" });
       }
 
-      if (dream.type === "personal" && dream.userId !== req.user!.id) {
+      let hasAccess = dream.userId === req.user!.id;
+      if (!hasAccess && dream.type !== "personal") {
+        hasAccess = await storage.isDreamMember(dreamId, req.user!.id);
+      }
+
+      if (!hasAccess) {
         return res.status(403).json({ error: "Access denied" });
       }
 
-      if (dream.type !== "personal" && dream.userId !== req.user!.id) {
-        const isMember = await storage.isDreamMember(dreamId, req.user!.id);
-        if (!isMember) {
-          return res.status(403).json({ error: "Access denied" });
-        }
-      }
-
-      const tasks = await storage.getDreamTasks(dreamId);
-      res.json(tasks);
+      const members = await storage.getDreamMembers(dreamId);
+      res.json(members);
     } catch (error) {
-      res.status(500).json({ error: "Failed to get tasks" });
+      console.error("Fetch members error:", error);
+      res.status(500).json({ error: "Failed to fetch dream members" });
     }
   });
+  res.status(500).json({ error: "Failed to join dream" });
+}
+  });
 
-  app.post("/api/dreams/:dreamId/tasks", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const dreamId = req.params.dreamId as string;
-      const { title, description, dueDate, reminderDate, order } = req.body;
+app.get("/api/dreams/:dreamId/tasks", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const dreamId = req.params.dreamId as string;
 
-      // SECURITY: Ensure user owns this dream before adding tasks to it
-      const dream = await storage.getDream(dreamId);
-      if (!dream) {
-        return res.status(404).json({ error: "Dream not found" });
+    // Security check: Verify user has access to this dream
+    const dream = await storage.getDream(dreamId);
+    if (!dream) {
+      return res.status(404).json({ error: "Dream not found" });
+    }
+
+    if (dream.type === "personal" && dream.userId !== req.user!.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (dream.type !== "personal" && dream.userId !== req.user!.id) {
+      const isMember = await storage.isDreamMember(dreamId, req.user!.id);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied" });
       }
-      if (dream.userId !== req.user!.id) {
-        return res.status(403).json({ error: "Only the creator can add tasks to this dream" });
-      }
+    }
 
-      const task = await storage.createDreamTask({
-        dreamId,
-        title,
-        description,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        reminderDate: reminderDate ? new Date(reminderDate) : undefined,
-        order: order || 0,
+    const tasks = await storage.getDreamTasks(dreamId);
+    res.json(tasks);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get tasks" });
+  }
+});
+
+app.post("/api/dreams/:dreamId/tasks", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const dreamId = req.params.dreamId as string;
+    const { title, description, dueDate, reminderDate, order } = req.body;
+
+    // SECURITY: Ensure user owns this dream before adding tasks to it
+    const dream = await storage.getDream(dreamId);
+    if (!dream) {
+      return res.status(404).json({ error: "Dream not found" });
+    }
+    if (dream.userId !== req.user!.id) {
+      return res.status(403).json({ error: "Only the creator can add tasks to this dream" });
+    }
+
+    const task = await storage.createDreamTask({
+      dreamId,
+      title,
+      description,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+      reminderDate: reminderDate ? new Date(reminderDate) : undefined,
+      order: order || 0,
+    });
+
+    await storage.updateDreamProgress(dreamId);
+
+    if (reminderDate) {
+      await storage.createNotification({
+        userId: req.user!.id,
+        title: "Task Reminder",
+        description: `Reminder for "${title}"`,
+        type: "system",
       });
+    }
 
-      await storage.updateDreamProgress(dreamId);
+    res.status(201).json(task);
+  } catch (error) {
+    console.error("Create task error:", error);
+    res.status(500).json({ error: "Failed to create task" });
+  }
+});
 
-      if (reminderDate) {
+app.put("/api/dreams/:dreamId/tasks/:taskId", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const dreamId = req.params.dreamId as string;
+    const taskId = req.params.taskId as string;
+    const { title, description, dueDate, reminderDate, order } = req.body;
+    const task = await storage.updateDreamTask(taskId, {
+      title,
+      description,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+      reminderDate: reminderDate ? new Date(reminderDate) : undefined,
+      order,
+    });
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update task" });
+  }
+});
+
+app.delete("/api/dreams/:dreamId/tasks/:taskId", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const dreamId = req.params.dreamId as string;
+    const taskId = req.params.taskId as string;
+    await storage.deleteDreamTask(taskId);
+    await storage.updateDreamProgress(dreamId);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete task" });
+  }
+});
+
+app.post("/api/dreams/:dreamId/tasks/:taskId/toggle", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const dreamId = req.params.dreamId as string;
+    const taskId = req.params.taskId as string;
+    const task = await storage.toggleDreamTaskComplete(taskId);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    const dream = await storage.updateDreamProgress(dreamId);
+
+    if (task.isCompleted) {
+      const user = await storage.getUser(req.user!.id);
+      if (user) {
+        await storage.updateUser(user.id, {
+          totalPoints: (user.totalPoints || 0) + 10,
+        });
         await storage.createNotification({
           userId: req.user!.id,
-          title: "Task Reminder",
-          description: `Reminder for "${title}"`,
-          type: "system",
+          title: "Task Completed!",
+          description: `You earned 10 points for completing "${task.title}"`,
+          type: "achievement",
         });
       }
-
-      res.status(201).json(task);
-    } catch (error) {
-      console.error("Create task error:", error);
-      res.status(500).json({ error: "Failed to create task" });
     }
-  });
 
-  app.put("/api/dreams/:dreamId/tasks/:taskId", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const dreamId = req.params.dreamId as string;
-      const taskId = req.params.taskId as string;
-      const { title, description, dueDate, reminderDate, order } = req.body;
-      const task = await storage.updateDreamTask(taskId, {
-        title,
-        description,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        reminderDate: reminderDate ? new Date(reminderDate) : undefined,
-        order,
+    res.json({ task, dream });
+  } catch (error) {
+    console.error("Toggle task error:", error);
+    res.status(500).json({ error: "Failed to toggle task" });
+  }
+});
+
+app.get("/api/connections", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const connections = await storage.getConnections(req.user!.id);
+    res.json(connections);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get connections" });
+  }
+});
+
+app.post("/api/connections/:userId/follow", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const targetUserId = req.params.userId as string;
+    const isAlreadyFollowing = await storage.isFollowing(req.user!.id, targetUserId);
+    if (isAlreadyFollowing) {
+      return res.status(400).json({ error: "Already following" });
+    }
+    await storage.createConnection(req.user!.id, targetUserId);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to follow user" });
+  }
+});
+
+app.delete("/api/connections/:userId/unfollow", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const targetUserId = req.params.userId as string;
+    await storage.deleteConnection(req.user!.id, targetUserId);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to unfollow user" });
+  }
+});
+
+app.get("/api/conversations", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const conversations = await storage.getConversations(req.user!.id);
+    res.json(conversations);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get conversations" });
+  }
+});
+
+app.get("/api/messages", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const messages = await storage.getMessages(req.user!.id);
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get messages" });
+  }
+});
+
+app.get("/api/messages/:userId", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const targetUserId = req.params.userId as string;
+    const messages = await storage.getConversation(req.user!.id, targetUserId);
+    await storage.markAllMessagesRead(req.user!.id, targetUserId);
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get conversation" });
+  }
+});
+
+app.post("/api/messages", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const message = await storage.createMessage({
+      ...req.body,
+      senderId: req.user!.id,
+    });
+    res.status(201).json(message);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to send message" });
+  }
+});
+
+app.put("/api/messages/read-all", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { otherUserId } = req.body;
+    if (otherUserId) {
+      await storage.markAllMessagesRead(req.user!.id, otherUserId);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to mark messages as read" });
+  }
+});
+
+app.get("/api/notifications", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const notifications = await storage.getNotifications(req.user!.id);
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get notifications" });
+  }
+});
+
+app.put("/api/notifications/:id/read", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+    const updated = await storage.markNotificationRead(id, req.user!.id);
+    if (!updated) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to mark notification as read" });
+  }
+});
+
+app.put("/api/notifications/read-all", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    await storage.markAllNotificationsRead(req.user!.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to mark all notifications as read" });
+  }
+});
+
+app.delete("/api/notifications/:id", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const id = req.params.id as string;
+    const deleted = await storage.deleteNotification(id, req.user!.id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete notification" });
+  }
+});
+
+app.get("/api/notifications/unread", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const count = await storage.getUnreadNotificationCount(req.user!.id);
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get unread notification count" });
+  }
+});
+
+app.get("/api/wallet", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const user = await storage.getUser(req.user!.id);
+    const transactions = await storage.getTransactions(req.user!.id);
+    res.json({
+      coins: user?.coins || 0,
+      trophies: user?.trophies || 0,
+      awards: user?.awards || 0,
+      transactions,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get wallet" });
+  }
+});
+
+app.post("/api/wallet/spin", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const user = await storage.getUser(req.user!.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const today = new Date().toDateString();
+    const lastSpinDate = user.lastSpinDate ? new Date(user.lastSpinDate).toDateString() : null;
+    let spinsLeft = user.dailySpinsLeft || 0;
+
+    if (lastSpinDate !== today) {
+      spinsLeft = 3;
+    }
+
+    if (spinsLeft <= 0) {
+      return res.status(400).json({ error: "No spins left today" });
+    }
+
+    const prizes = [10, 25, 50, 100, 200, 500];
+    const prize = prizes[Math.floor(Math.random() * prizes.length)];
+
+    await storage.updateUser(user.id, {
+      coins: (user.coins || 0) + prize,
+      dailySpinsLeft: spinsLeft - 1,
+      lastSpinDate: new Date(),
+    });
+
+    await storage.createTransaction({
+      userId: user.id,
+      amount: prize,
+      type: "spin",
+      description: `Won ${prize} coins from lucky spin`,
+    });
+
+    res.json({ prize, spinsLeft: spinsLeft - 1 });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to spin" });
+  }
+});
+
+app.get("/api/champions", async (req, res) => {
+  try {
+    const { tier, year } = req.query;
+    const champions = await storage.getChampions(
+      tier as string | undefined,
+      year ? parseInt(year as string) : undefined
+    );
+    res.json(champions);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get champions" });
+  }
+});
+
+app.get("/api/wall-of-fame", async (req, res) => {
+  try {
+    const { period } = req.query;
+    const users = await storage.getWallOfFame(period as string || "all");
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get wall of fame" });
+  }
+});
+
+app.get("/api/leaderboard", async (req, res) => {
+  try {
+    const { limit } = req.query;
+    const users = await storage.getLeaderboard(limit ? parseInt(limit as string) : 10);
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get leaderboard" });
+  }
+});
+
+app.get("/api/gallery", async (req, res) => {
+  try {
+    const posts = await storage.getGalleryPosts();
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get gallery" });
+  }
+});
+
+app.post("/api/gallery", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const post = await storage.createGalleryPost({
+      ...req.body,
+      userId: req.user!.id,
+    });
+    res.status(201).json(post);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create gallery post" });
+  }
+});
+
+app.get("/api/news-feed", async (req, res) => {
+  try {
+    const posts = await storage.getNewsFeed();
+    res.json(posts);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get news feed" });
+  }
+});
+
+app.post("/api/news-feed", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const post = await storage.createNewsFeedPost({
+      ...req.body,
+      userId: req.user!.id,
+    });
+    res.status(201).json(post);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create post" });
+  }
+});
+
+app.delete("/api/news-feed/:id", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const postId = req.params.id as string;
+    const deleted = await storage.deleteNewsFeedPost(postId, req.user!.id);
+    if (!deleted) {
+      return res.status(403).json({ error: "Cannot delete post" });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete post" });
+  }
+});
+
+app.post("/api/news-feed/:id/like", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const postId = req.params.id as string;
+    await storage.likePost(postId, req.user!.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to like post" });
+  }
+});
+
+app.delete("/api/news-feed/:id/like", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const postId = req.params.id as string;
+    await storage.unlikePost(postId, req.user!.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to unlike post" });
+  }
+});
+
+app.get("/api/news-feed/:id/comments", async (req, res) => {
+  try {
+    const postId = req.params.id as string;
+    const comments = await storage.getPostComments(postId);
+    res.json(comments);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch comments" });
+  }
+});
+
+app.post("/api/news-feed/:id/comments", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const postId = req.params.id as string;
+    if (!req.body.content || req.body.content.trim() === "") {
+      return res.status(400).json({ error: "Comment content required" });
+    }
+    const comment = await storage.createPostComment({
+      postId,
+      userId: req.user!.id,
+      content: req.body.content
+    });
+    res.status(201).json(comment);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create comment" });
+  }
+});
+
+app.get("/api/market", async (req, res) => {
+  try {
+    const { category } = req.query;
+    const items = await storage.getMarketItems(category as string | undefined);
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get market items" });
+  }
+});
+
+// Purchase a market item
+app.post("/api/market/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const itemId = req.params.id as string;
+    const userId = req.user!.id;
+
+    const item = await storage.getMarketItem(itemId);
+    if (!item) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    if (!item.isActive) {
+      return res.status(400).json({ error: "Item is no longer available" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if ((user.coins || 0) < item.price) {
+      return res.status(400).json({ error: "Insufficient coins" });
+    }
+
+    await storage.updateUser(userId, {
+      coins: (user.coins || 0) - item.price,
+    });
+
+    await storage.createTransaction({
+      userId,
+      amount: -item.price,
+      type: "purchase",
+      description: `Purchased ${item.title}`,
+    });
+
+    res.json({ success: true, newBalance: (user.coins || 0) - item.price });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to purchase item" });
+  }
+});
+
+// Purchase a theme
+app.post("/api/themes/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const themeId = req.params.id as string;
+    const userId = req.user!.id;
+
+    // Fetch actual theme from database to prevent price manipulation
+    const themeItem = await storage.getMarketItem(themeId);
+    if (!themeItem || !themeItem.isActive || themeItem.category !== "Themes") {
+      return res.status(404).json({ error: "Theme not found or unavailable" });
+    }
+
+    const price = themeItem.price;
+    const name = themeItem.title;
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if ((user.coins || 0) < price) {
+      return res.status(400).json({ error: "Insufficient coins" });
+    }
+
+    await storage.updateUser(userId, {
+      coins: (user.coins || 0) - price,
+    });
+
+    await storage.createTransaction({
+      userId,
+      amount: -price,
+      type: "purchase",
+      description: `Purchased ${name || themeId} theme`,
+    });
+
+    res.json({ success: true, newBalance: (user.coins || 0) - price });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to purchase theme" });
+  }
+});
+
+// Seed market items if none exist
+app.post("/api/seed/market", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    // Must be an admin/system user to seed the market
+    const requestingUser = await storage.getUser(req.user!.id);
+    if (!requestingUser || requestingUser.email !== "system@realdream.app") {
+      return res.status(403).json({ error: "Only system administrators can seed the marketplace" });
+    }
+
+    const count = await storage.getMarketItemCount();
+    if (count > 0) {
+      return res.json({ message: "Market already seeded", count });
+    }
+
+    // Get or create a system user for market items
+    let systemUser = await storage.getUserByUsername("realdream_system");
+    if (!systemUser) {
+      const hashedPassword = await bcrypt.hash("not-a-real-password-12345", 10);
+      systemUser = await storage.createUser({
+        email: "system@realdream.app",
+        username: "realdream_system",
+        fullName: "Real Dream System",
+        password: hashedPassword,
+        authProvider: "email",
       });
-      res.json(task);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update task" });
     }
-  });
+    const systemUserId = systemUser.id;
 
-  app.delete("/api/dreams/:dreamId/tasks/:taskId", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const dreamId = req.params.dreamId as string;
-      const taskId = req.params.taskId as string;
-      await storage.deleteDreamTask(taskId);
-      await storage.updateDreamProgress(dreamId);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete task" });
+    const marketItemsData = [
+      { title: "Premium Badge Pack", description: "Unlock exclusive badges to showcase your achievements", category: "Badges", price: 299, userId: systemUserId, isActive: true },
+      { title: "Gold Achievement Badge", description: "A prestigious gold badge for top performers", category: "Badges", price: 199, userId: systemUserId, isActive: true },
+      { title: "Custom Avatar Frame", description: "Stand out from the crowd with unique avatar frames", category: "Customization", price: 199, userId: systemUserId, isActive: true },
+      { title: "Profile Theme Pack", description: "Personalize your profile with beautiful themes", category: "Customization", price: 249, userId: systemUserId, isActive: true },
+      { title: "Streak Booster", description: "Boost your streak progress by 2x for 7 days", category: "Boosters", price: 149, userId: systemUserId, isActive: true },
+      { title: "XP Multiplier", description: "Double your XP gain for 24 hours", category: "Boosters", price: 99, userId: systemUserId, isActive: true },
+      { title: "Galaxy Theme", description: "Beautiful galaxy-themed profile customization", category: "Themes", price: 399, userId: systemUserId, isActive: true },
+      { title: "Sunset Theme", description: "Warm sunset colors for your profile", category: "Themes", price: 299, userId: systemUserId, isActive: true },
+      { title: "Exclusive Stickers", description: "Fun stickers for chat and celebrations", category: "Stickers", price: 99, userId: systemUserId, isActive: true },
+      { title: "Celebration Pack", description: "Animated celebration stickers", category: "Stickers", price: 149, userId: systemUserId, isActive: true },
+    ];
+
+    for (const item of marketItemsData) {
+      await storage.createMarketItem(item);
     }
-  });
 
-  app.post("/api/dreams/:dreamId/tasks/:taskId/toggle", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const dreamId = req.params.dreamId as string;
-      const taskId = req.params.taskId as string;
-      const task = await storage.toggleDreamTaskComplete(taskId);
+    res.json({ message: "Market seeded successfully", count: marketItemsData.length });
+  } catch (error) {
+    console.error("Failed to seed market:", error);
+    res.status(500).json({ error: "Failed to seed market items" });
+  }
+});
 
-      if (!task) {
-        return res.status(404).json({ error: "Task not found" });
-      }
+app.get("/api/market/history", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const history = await storage.getPurchaseHistory(req.user!.id);
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get purchase history" });
+  }
+});
 
-      const dream = await storage.updateDreamProgress(dreamId);
+// Search users by username or name
+app.get("/api/users/search", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const query = (req.query.q as string)?.toLowerCase().trim();
 
-      if (task.isCompleted) {
-        const user = await storage.getUser(req.user!.id);
-        if (user) {
-          await storage.updateUser(user.id, {
-            totalPoints: (user.totalPoints || 0) + 10,
-          });
-          await storage.createNotification({
-            userId: req.user!.id,
-            title: "Task Completed!",
-            description: `You earned 10 points for completing "${task.title}"`,
-            type: "achievement",
-          });
-        }
-      }
-
-      res.json({ task, dream });
-    } catch (error) {
-      console.error("Toggle task error:", error);
-      res.status(500).json({ error: "Failed to toggle task" });
+    if (!query || query.length < 2) {
+      return res.json([]);
     }
-  });
 
-  app.get("/api/connections", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const connections = await storage.getConnections(req.user!.id);
-      res.json(connections);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get connections" });
-    }
-  });
-
-  app.post("/api/connections/:userId/follow", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const targetUserId = req.params.userId as string;
-      const isAlreadyFollowing = await storage.isFollowing(req.user!.id, targetUserId);
-      if (isAlreadyFollowing) {
-        return res.status(400).json({ error: "Already following" });
-      }
-      await storage.createConnection(req.user!.id, targetUserId);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to follow user" });
-    }
-  });
-
-  app.delete("/api/connections/:userId/unfollow", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const targetUserId = req.params.userId as string;
-      await storage.deleteConnection(req.user!.id, targetUserId);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to unfollow user" });
-    }
-  });
-
-  app.get("/api/conversations", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const conversations = await storage.getConversations(req.user!.id);
-      res.json(conversations);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get conversations" });
-    }
-  });
-
-  app.get("/api/messages", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const messages = await storage.getMessages(req.user!.id);
-      res.json(messages);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get messages" });
-    }
-  });
-
-  app.get("/api/messages/:userId", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const targetUserId = req.params.userId as string;
-      const messages = await storage.getConversation(req.user!.id, targetUserId);
-      await storage.markAllMessagesRead(req.user!.id, targetUserId);
-      res.json(messages);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get conversation" });
-    }
-  });
-
-  app.post("/api/messages", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const message = await storage.createMessage({
-        ...req.body,
-        senderId: req.user!.id,
-      });
-      res.status(201).json(message);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to send message" });
-    }
-  });
-
-  app.put("/api/messages/read-all", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const { otherUserId } = req.body;
-      if (otherUserId) {
-        await storage.markAllMessagesRead(req.user!.id, otherUserId);
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to mark messages as read" });
-    }
-  });
-
-  app.get("/api/notifications", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const notifications = await storage.getNotifications(req.user!.id);
-      res.json(notifications);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get notifications" });
-    }
-  });
-
-  app.put("/api/notifications/:id/read", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const id = req.params.id as string;
-      const updated = await storage.markNotificationRead(id, req.user!.id);
-      if (!updated) {
-        return res.status(404).json({ error: "Notification not found" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to mark notification as read" });
-    }
-  });
-
-  app.put("/api/notifications/read-all", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      await storage.markAllNotificationsRead(req.user!.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to mark all notifications as read" });
-    }
-  });
-
-  app.delete("/api/notifications/:id", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const id = req.params.id as string;
-      const deleted = await storage.deleteNotification(id, req.user!.id);
-      if (!deleted) {
-        return res.status(404).json({ error: "Notification not found" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete notification" });
-    }
-  });
-
-  app.get("/api/notifications/unread", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const count = await storage.getUnreadNotificationCount(req.user!.id);
-      res.json({ count });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get unread notification count" });
-    }
-  });
-
-  app.get("/api/wallet", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const user = await storage.getUser(req.user!.id);
-      const transactions = await storage.getTransactions(req.user!.id);
-      res.json({
-        coins: user?.coins || 0,
-        trophies: user?.trophies || 0,
-        awards: user?.awards || 0,
-        transactions,
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get wallet" });
-    }
-  });
-
-  app.post("/api/wallet/spin", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const user = await storage.getUser(req.user!.id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      const today = new Date().toDateString();
-      const lastSpinDate = user.lastSpinDate ? new Date(user.lastSpinDate).toDateString() : null;
-      let spinsLeft = user.dailySpinsLeft || 0;
-
-      if (lastSpinDate !== today) {
-        spinsLeft = 3;
-      }
-
-      if (spinsLeft <= 0) {
-        return res.status(400).json({ error: "No spins left today" });
-      }
-
-      const prizes = [10, 25, 50, 100, 200, 500];
-      const prize = prizes[Math.floor(Math.random() * prizes.length)];
-
-      await storage.updateUser(user.id, {
-        coins: (user.coins || 0) + prize,
-        dailySpinsLeft: spinsLeft - 1,
-        lastSpinDate: new Date(),
-      });
-
-      await storage.createTransaction({
-        userId: user.id,
-        amount: prize,
-        type: "spin",
-        description: `Won ${prize} coins from lucky spin`,
-      });
-
-      res.json({ prize, spinsLeft: spinsLeft - 1 });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to spin" });
-    }
-  });
-
-  app.get("/api/champions", async (req, res) => {
-    try {
-      const { tier, year } = req.query;
-      const champions = await storage.getChampions(
-        tier as string | undefined,
-        year ? parseInt(year as string) : undefined
-      );
-      res.json(champions);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get champions" });
-    }
-  });
-
-  app.get("/api/wall-of-fame", async (req, res) => {
-    try {
-      const { period } = req.query;
-      const users = await storage.getWallOfFame(period as string || "all");
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get wall of fame" });
-    }
-  });
-
-  app.get("/api/leaderboard", async (req, res) => {
-    try {
-      const { limit } = req.query;
-      const users = await storage.getLeaderboard(limit ? parseInt(limit as string) : 10);
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get leaderboard" });
-    }
-  });
-
-  app.get("/api/gallery", async (req, res) => {
-    try {
-      const posts = await storage.getGalleryPosts();
-      res.json(posts);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get gallery" });
-    }
-  });
-
-  app.post("/api/gallery", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const post = await storage.createGalleryPost({
-        ...req.body,
-        userId: req.user!.id,
-      });
-      res.status(201).json(post);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create gallery post" });
-    }
-  });
-
-  app.get("/api/news-feed", async (req, res) => {
-    try {
-      const posts = await storage.getNewsFeed();
-      res.json(posts);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get news feed" });
-    }
-  });
-
-  app.post("/api/news-feed", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const post = await storage.createNewsFeedPost({
-        ...req.body,
-        userId: req.user!.id,
-      });
-      res.status(201).json(post);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create post" });
-    }
-  });
-
-  app.delete("/api/news-feed/:id", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const postId = req.params.id as string;
-      const deleted = await storage.deleteNewsFeedPost(postId, req.user!.id);
-      if (!deleted) {
-        return res.status(403).json({ error: "Cannot delete post" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete post" });
-    }
-  });
-
-  app.post("/api/news-feed/:id/like", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const postId = req.params.id as string;
-      await storage.likePost(postId, req.user!.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to like post" });
-    }
-  });
-
-  app.delete("/api/news-feed/:id/like", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const postId = req.params.id as string;
-      await storage.unlikePost(postId, req.user!.id);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to unlike post" });
-    }
-  });
-
-  app.get("/api/news-feed/:id/comments", async (req, res) => {
-    try {
-      const postId = req.params.id as string;
-      const comments = await storage.getPostComments(postId);
-      res.json(comments);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch comments" });
-    }
-  });
-
-  app.post("/api/news-feed/:id/comments", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const postId = req.params.id as string;
-      if (!req.body.content || req.body.content.trim() === "") {
-        return res.status(400).json({ error: "Comment content required" });
-      }
-      const comment = await storage.createPostComment({
-        postId,
-        userId: req.user!.id,
-        content: req.body.content
-      });
-      res.status(201).json(comment);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create comment" });
-    }
-  });
-
-  app.get("/api/market", async (req, res) => {
-    try {
-      const { category } = req.query;
-      const items = await storage.getMarketItems(category as string | undefined);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get market items" });
-    }
-  });
-
-  // Purchase a market item
-  app.post("/api/market/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const itemId = req.params.id as string;
-      const userId = req.user!.id;
-
-      const item = await storage.getMarketItem(itemId);
-      if (!item) {
-        return res.status(404).json({ error: "Item not found" });
-      }
-      if (!item.isActive) {
-        return res.status(400).json({ error: "Item is no longer available" });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      if ((user.coins || 0) < item.price) {
-        return res.status(400).json({ error: "Insufficient coins" });
-      }
-
-      await storage.updateUser(userId, {
-        coins: (user.coins || 0) - item.price,
-      });
-
-      await storage.createTransaction({
-        userId,
-        amount: -item.price,
-        type: "purchase",
-        description: `Purchased ${item.title}`,
-      });
-
-      res.json({ success: true, newBalance: (user.coins || 0) - item.price });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to purchase item" });
-    }
-  });
-
-  // Purchase a theme
-  app.post("/api/themes/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const themeId = req.params.id as string;
-      const userId = req.user!.id;
-
-      // Fetch actual theme from database to prevent price manipulation
-      const themeItem = await storage.getMarketItem(themeId);
-      if (!themeItem || !themeItem.isActive || themeItem.category !== "Themes") {
-        return res.status(404).json({ error: "Theme not found or unavailable" });
-      }
-
-      const price = themeItem.price;
-      const name = themeItem.title;
-
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      if ((user.coins || 0) < price) {
-        return res.status(400).json({ error: "Insufficient coins" });
-      }
-
-      await storage.updateUser(userId, {
-        coins: (user.coins || 0) - price,
-      });
-
-      await storage.createTransaction({
-        userId,
-        amount: -price,
-        type: "purchase",
-        description: `Purchased ${name || themeId} theme`,
-      });
-
-      res.json({ success: true, newBalance: (user.coins || 0) - price });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to purchase theme" });
-    }
-  });
-
-  // Seed market items if none exist
-  app.post("/api/seed/market", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      // Must be an admin/system user to seed the market
-      const requestingUser = await storage.getUser(req.user!.id);
-      if (!requestingUser || requestingUser.email !== "system@realdream.app") {
-        return res.status(403).json({ error: "Only system administrators can seed the marketplace" });
-      }
-
-      const count = await storage.getMarketItemCount();
-      if (count > 0) {
-        return res.json({ message: "Market already seeded", count });
-      }
-
-      // Get or create a system user for market items
-      let systemUser = await storage.getUserByUsername("realdream_system");
-      if (!systemUser) {
-        const hashedPassword = await bcrypt.hash("not-a-real-password-12345", 10);
-        systemUser = await storage.createUser({
-          email: "system@realdream.app",
-          username: "realdream_system",
-          fullName: "Real Dream System",
-          password: hashedPassword,
-          authProvider: "email",
-        });
-      }
-      const systemUserId = systemUser.id;
-
-      const marketItemsData = [
-        { title: "Premium Badge Pack", description: "Unlock exclusive badges to showcase your achievements", category: "Badges", price: 299, userId: systemUserId, isActive: true },
-        { title: "Gold Achievement Badge", description: "A prestigious gold badge for top performers", category: "Badges", price: 199, userId: systemUserId, isActive: true },
-        { title: "Custom Avatar Frame", description: "Stand out from the crowd with unique avatar frames", category: "Customization", price: 199, userId: systemUserId, isActive: true },
-        { title: "Profile Theme Pack", description: "Personalize your profile with beautiful themes", category: "Customization", price: 249, userId: systemUserId, isActive: true },
-        { title: "Streak Booster", description: "Boost your streak progress by 2x for 7 days", category: "Boosters", price: 149, userId: systemUserId, isActive: true },
-        { title: "XP Multiplier", description: "Double your XP gain for 24 hours", category: "Boosters", price: 99, userId: systemUserId, isActive: true },
-        { title: "Galaxy Theme", description: "Beautiful galaxy-themed profile customization", category: "Themes", price: 399, userId: systemUserId, isActive: true },
-        { title: "Sunset Theme", description: "Warm sunset colors for your profile", category: "Themes", price: 299, userId: systemUserId, isActive: true },
-        { title: "Exclusive Stickers", description: "Fun stickers for chat and celebrations", category: "Stickers", price: 99, userId: systemUserId, isActive: true },
-        { title: "Celebration Pack", description: "Animated celebration stickers", category: "Stickers", price: 149, userId: systemUserId, isActive: true },
-      ];
-
-      for (const item of marketItemsData) {
-        await storage.createMarketItem(item);
-      }
-
-      res.json({ message: "Market seeded successfully", count: marketItemsData.length });
-    } catch (error) {
-      console.error("Failed to seed market:", error);
-      res.status(500).json({ error: "Failed to seed market items" });
-    }
-  });
-
-  app.get("/api/market/history", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const history = await storage.getPurchaseHistory(req.user!.id);
-      res.json(history);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get purchase history" });
-    }
-  });
-
-  // Search users by username or name
-  app.get("/api/users/search", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const query = (req.query.q as string)?.toLowerCase().trim();
-
-      if (!query || query.length < 2) {
-        return res.json([]);
-      }
-
-      const searchResults = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          profilePhoto: users.profilePhoto,
-        })
-        .from(users)
-        .where(
-          or(
-            sql`LOWER(${users.username}) LIKE ${`%${query}%`}`,
-            sql`LOWER(${users.fullName}) LIKE ${`%${query}%`}`
-          )
+    const searchResults = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        fullName: users.fullName,
+        profilePhoto: users.profilePhoto,
+      })
+      .from(users)
+      .where(
+        or(
+          sql`LOWER(${users.username}) LIKE ${`%${query}%`}`,
+          sql`LOWER(${users.fullName}) LIKE ${`%${query}%`}`
         )
-        .limit(20);
+      )
+      .limit(20);
 
-      // Filter out current user and add isFollowing status
-      const filteredResults = searchResults.filter(u => u.id !== req.user!.id);
+    // Filter out current user and add isFollowing status
+    const filteredResults = searchResults.filter(u => u.id !== req.user!.id);
 
-      const resultsWithStatus = await Promise.all(
-        filteredResults.map(async (user) => ({
-          ...user,
-          isFollowing: await storage.isFollowing(req.user!.id, user.id),
-        }))
-      );
+    const resultsWithStatus = await Promise.all(
+      filteredResults.map(async (user) => ({
+        ...user,
+        isFollowing: await storage.isFollowing(req.user!.id, user.id),
+      }))
+    );
 
-      res.json(resultsWithStatus);
-    } catch (error) {
-      console.error("Search users error:", error);
-      res.status(500).json({ error: "Failed to search users" });
+    res.json(resultsWithStatus);
+  } catch (error) {
+    console.error("Search users error:", error);
+    res.status(500).json({ error: "Failed to search users" });
+  }
+});
+app.get("/api/users/:id", async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const user = await storage.getUser(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
-  });
-  app.get("/api/users/:id", async (req, res) => {
-    try {
-      const id = req.params.id as string;
-      const user = await storage.getUser(id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
 
-      // Data Transfer Object stripping secure properties
-      const {
-        password: _,
-        firebaseUid: __,
-        googleId: ___,
-        facebookId: ____,
-        ...userDto
-      } = user;
+    // Data Transfer Object stripping secure properties
+    const {
+      password: _,
+      firebaseUid: __,
+      googleId: ___,
+      facebookId: ____,
+      ...userDto
+    } = user;
 
-      res.json(userDto);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get user" });
-    }
-  });
+    res.json(userDto);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get user" });
+  }
+});
 
-  const httpServer = createServer(app);
-  return httpServer;
+const httpServer = createServer(app);
+return httpServer;
 }

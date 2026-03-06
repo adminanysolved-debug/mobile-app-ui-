@@ -69,7 +69,7 @@ const menuItems: MenuItemType[] = [
   {
     icon: "message-circle",
     label: "Chat",
-    route: "Chat",
+    route: "Messages",
     gradient: ["#3B82F6", "#60A5FA"],
   },
   {

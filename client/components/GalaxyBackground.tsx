@@ -46,7 +46,7 @@ export function GalaxyBackground({ children }: GalaxyBackgroundProps) {
         style={StyleSheet.absoluteFillObject}
       />
       {showStars ? (
-        <View style={styles.starsOverlay}>
+        <View style={styles.starsOverlay} pointerEvents="none">
           <View style={[styles.star, { top: "5%", left: "15%" }]} />
           <View style={[styles.star, { top: "8%", left: "75%" }]} />
           <View style={[styles.star, { top: "12%", left: "45%" }]} />

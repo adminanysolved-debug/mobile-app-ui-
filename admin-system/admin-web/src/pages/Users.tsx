@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Mail, Search, Shield, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Mail, Search, Shield, ShieldCheck, X } from 'lucide-react';
 
 interface User {
     id: string;
@@ -16,9 +16,19 @@ export default function Users() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
     useEffect(() => {
-        fetch('http://localhost:5001/api/users')
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = () => {
+        setLoading(true);
+        fetch('http://localhost:5001/api/users', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+            }
+        })
             .then(res => res.json())
             .then(data => {
                 setUsers(data);
@@ -28,7 +38,31 @@ export default function Users() {
                 console.error("Failed to fetch users", err);
                 setLoading(false);
             });
-    }, []);
+    };
+
+    const handleDeleteUser = async (id: string, username: string) => {
+        if (!confirm(`Are you sure you want to delete the user "${username}"?\nThis action cannot be undone.`)) return;
+
+        try {
+            const res = await fetch(`http://localhost:5001/api/admin/users/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+                }
+            });
+
+            if (res.ok) {
+                // Refresh the list after successful deletion
+                fetchUsers();
+            } else {
+                const data = await res.json();
+                alert(`Failed to delete user: ${data.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            alert('An error occurred while deleting the user.');
+        }
+    };
 
     const filteredUsers = users.filter(u =>
         u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,9 +159,18 @@ export default function Users() {
                                         <td className="px-6 py-4 text-slate-400 text-xs whitespace-nowrap">
                                             {new Date(user.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button className="text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-brand-500/30">
+                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                            <button
+                                                onClick={() => setSelectedUser(user)}
+                                                className="text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-brand-500/30"
+                                            >
                                                 View
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteUser(user.id, user.username)}
+                                                className="text-red-400 hover:text-red-300 hover:bg-red-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-red-500/30"
+                                            >
+                                                Delete
                                             </button>
                                         </td>
                                     </tr>
@@ -140,6 +183,65 @@ export default function Users() {
                     <span>Showing {filteredUsers.length} users</span>
                 </div>
             </div>
+
+            {/* View User Modal */}
+            {selectedUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedUser(null)}>
+                    <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-md overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
+                            <h3 className="text-lg font-semibold text-slate-200">User Details</h3>
+                            <button onClick={() => setSelectedUser(null)} className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-center gap-4 border-b border-slate-800/50 pb-4">
+                                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center font-bold text-2xl text-white shadow-lg">
+                                    {selectedUser.username?.charAt(0).toUpperCase() || '?'}
+                                </div>
+                                <div>
+                                    <h4 className="text-xl font-bold text-slate-100">{selectedUser.full_name || 'No Name'}</h4>
+                                    <p className="text-brand-400 font-medium">@{selectedUser.username}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 text-sm mt-4">
+                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div className="text-slate-500 text-xs mb-1">Email</div>
+                                    <div className="text-slate-200 break-all">{selectedUser.email}</div>
+                                </div>
+                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div className="text-slate-500 text-xs mb-1">User ID</div>
+                                    <div className="text-slate-200 font-mono text-xs break-all">{selectedUser.id}</div>
+                                </div>
+                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div className="text-slate-500 text-xs mb-1">Role</div>
+                                    <div className="text-slate-200">
+                                        {selectedUser.is_vendor ? 'Vendor' : 'Standard User'}
+                                    </div>
+                                </div>
+                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div className="text-slate-500 text-xs mb-1">Subscription</div>
+                                    <div className="text-slate-200 capitalize">{selectedUser.subscription_tier || 'Free'}</div>
+                                </div>
+                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div className="text-slate-500 text-xs mb-1">Joined Date</div>
+                                    <div className="text-slate-200">{new Date(selectedUser.created_at).toLocaleDateString()}</div>
+                                </div>
+                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div className="text-slate-500 text-xs mb-1">Auth Provider</div>
+                                    <div className="text-slate-200 capitalize">{selectedUser.auth_provider || 'Email'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+                            <button onClick={() => setSelectedUser(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors text-sm font-medium">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

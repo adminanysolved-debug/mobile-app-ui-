@@ -61,6 +61,28 @@ app.get('/api/dreams', async (req, res) => {
     }
 });
 
+app.delete('/api/admin/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM users WHERE id = $1', [id]);
+        res.json({ success: true, message: 'User deleted successfully' });
+    } catch (error: any) {
+        console.error("Failed to delete user", error);
+        res.status(500).json({ error: "Failed to delete user" });
+    }
+});
+
+app.delete('/api/admin/dreams/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM dreams WHERE id = $1', [id]);
+        res.json({ success: true, message: 'Dream deleted successfully' });
+    } catch (error: any) {
+        console.error("Failed to delete dream", error);
+        res.status(500).json({ error: "Failed to delete dream" });
+    }
+});
+
 app.get('/api/newsfeed', async (req, res) => {
     try {
         const feedRes = await pool.query(`

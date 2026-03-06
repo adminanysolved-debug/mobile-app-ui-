@@ -174,7 +174,7 @@ function generateTaskDates(startDate: Date, duration: number, durationUnit: Dura
   if (duration <= 0) return [];
   const start = normalizeToLocalMidnight(startDate);
   const endDate = calculateEndDate(start, duration, durationUnit);
-  
+
   switch (recurrence) {
     case "daily": return generateDailyTasks(start, endDate);
     case "weekly": return generateWeeklyTasks(start, endDate);
@@ -198,28 +198,39 @@ export default function CreateDreamScreen() {
   const [selectedType, setSelectedType] = useState<DreamTypeOption>(route.params?.type || "personal");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [showStartPicker, setShowStartPicker] = useState(false);
-  
+
   const [duration, setDuration] = useState<string>("4");
   const [durationUnit, setDurationUnit] = useState<DurationUnit>("weeks");
   const [recurrence, setRecurrence] = useState<Recurrence>("weekly");
-  
+
   const [showDurationUnitPicker, setShowDurationUnitPicker] = useState(false);
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
-  
+
   const [webDateModal, setWebDateModal] = useState<'start' | null>(null);
   const [tempWebDate, setTempWebDate] = useState("");
 
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
 
+  const isEditing = !!route.params?.editDreamId;
+  const editDreamId = route.params?.editDreamId;
+
   useEffect(() => {
-    if (route.params?.type) {
+    if (isEditing) {
+      setTitle(route.params?.dreamTitle || "");
+      setDescription(route.params?.dreamDescription || "");
+      if (route.params?.type) setSelectedType(route.params.type);
+    }
+  }, [isEditing, route.params]);
+
+  useEffect(() => {
+    if (route.params?.type && !isEditing) {
       setSelectedType(route.params.type);
     }
-  }, [route.params?.type]);
+  }, [route.params?.type, isEditing]);
 
   useEffect(() => {
     const durationNum = parseInt(duration, 10);
@@ -278,7 +289,7 @@ export default function CreateDreamScreen() {
   };
 
   const updateTaskText = (index: number, text: string) => {
-    setGeneratedTasks(prev => prev.map((task, i) => 
+    setGeneratedTasks(prev => prev.map((task, i) =>
       i === index ? { ...task, text } : task
     ));
   };
@@ -287,14 +298,14 @@ export default function CreateDreamScreen() {
     if (generatedTasks.length === 0) return;
     const firstTaskText = generatedTasks[0].text;
     if (!firstTaskText.trim()) return;
-    
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setGeneratedTasks(prev => prev.map(task => ({ ...task, text: firstTaskText })));
   };
 
   const handleCreate = async () => {
     setError("");
-    
+
     if (!title.trim()) {
       setError("Please enter a dream name");
       return;
@@ -307,42 +318,51 @@ export default function CreateDreamScreen() {
       setError("Description must be 60 characters or less");
       return;
     }
-    
-    const durationNum = parseInt(duration, 10);
-    if (!durationNum || durationNum <= 0) {
-      setError("Duration must be a positive number");
-      return;
+
+    if (!isEditing) {
+      const durationNum = parseInt(duration, 10);
+      if (!durationNum || durationNum <= 0) {
+        setError("Duration must be a positive number");
+        return;
+      }
+
+      const validRecurrences = getValidRecurrences(durationUnit);
+      if (!validRecurrences.includes(recurrence)) {
+        setError(`${recurrence} is not valid for ${durationUnit} duration. Please select: ${validRecurrences.join(", ")}`);
+        return;
+      }
+
+      if (generatedTasks.length === 0) {
+        setError("No tasks can be generated with this combination. Please adjust duration or recurrence.");
+        return;
+      }
     }
-    
-    const validRecurrences = getValidRecurrences(durationUnit);
-    if (!validRecurrences.includes(recurrence)) {
-      setError(`${recurrence} is not valid for ${durationUnit} duration. Please select: ${validRecurrences.join(", ")}`);
-      return;
-    }
-    
-    if (generatedTasks.length === 0) {
-      setError("No tasks can be generated with this combination. Please adjust duration or recurrence.");
-      return;
-    }
-    
+
     if (!token) return;
 
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const response = await fetch(new URL('/api/dreams', getApiUrl()).toString(), {
-        method: 'POST',
+      const url = isEditing
+        ? new URL(`/api/dreams/${editDreamId}`, getApiUrl()).toString()
+        : new URL('/api/dreams', getApiUrl()).toString();
+
+      const response = await fetch(url, {
+        method: isEditing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
+        body: JSON.stringify(isEditing ? {
+          title: title.trim(),
+          description: description.trim() || null,
+        } : {
           title: title.trim(),
           description: description.trim() || null,
           type: selectedType,
           startDate: startDate.toISOString(),
-          duration: durationNum,
+          duration: parseInt(duration, 10),
           durationUnit: durationUnit,
           recurrence: recurrence,
           tasks: generatedTasks.map(t => t.text),
@@ -352,10 +372,15 @@ export default function CreateDreamScreen() {
       if (response.ok) {
         const dream = await response.json();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.navigate("DreamDetail", { dreamId: dream.id });
+
+        if (isEditing) {
+          navigation.goBack();
+        } else {
+          navigation.replace("DreamDetail", { dreamId: dream.id });
+        }
       } else {
         const data = await response.json();
-        setError(data.error || "Failed to create dream");
+        setError(data.error || `Failed to ${isEditing ? 'update' : 'create'} dream`);
       }
     } catch (err) {
       setError("Network error. Please try again.");
@@ -401,9 +426,11 @@ export default function CreateDreamScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.springify()}>
-          <ThemedText type="h2" style={styles.title}>Create Your Dream</ThemedText>
+          <ThemedText type="h2" style={styles.title}>
+            {isEditing ? "Edit Dream" : "Create Your Dream"}
+          </ThemedText>
           <ThemedText type="body" style={styles.subtitle}>
-            Set a goal and start your journey
+            {isEditing ? "Update your dream details" : "Set a goal and start your journey"}
           </ThemedText>
         </Animated.View>
 
@@ -441,151 +468,157 @@ export default function CreateDreamScreen() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(200).springify()}>
-          <ThemedText type="small" style={styles.label}>DURATION</ThemedText>
-          <View style={styles.durationRow}>
-            <TextInput
-              style={[styles.input, styles.durationInput]}
-              value={duration}
-              onChangeText={handleDurationChange}
-              placeholder="4"
-              placeholderTextColor="#8B7FC7"
-              keyboardType="number-pad"
-              testID="input-duration"
-            />
-            <Pressable
-              style={styles.dropdownButton}
-              onPress={() => setShowDurationUnitPicker(true)}
-              testID="button-duration-unit"
-            >
-              <ThemedText style={styles.dropdownText}>
-                {durationUnitOptions.find(o => o.value === durationUnit)?.label}
-              </ThemedText>
-              <Feather name="chevron-down" size={16} color="#A78BFA" />
-            </Pressable>
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(250).springify()}>
-          <ThemedText type="small" style={styles.label}>OCCURRENCE</ThemedText>
-          <Pressable
-            style={styles.dropdownButtonFull}
-            onPress={() => setShowRecurrencePicker(true)}
-            testID="button-recurrence"
-          >
-            <ThemedText style={styles.dropdownText}>
-              {recurrenceOptions.find(o => o.value === recurrence)?.label}
-            </ThemedText>
-            <Feather name="chevron-down" size={16} color="#A78BFA" />
-          </Pressable>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(300).springify()}>
-          <ThemedText type="small" style={styles.label}>START DATE</ThemedText>
-          <Pressable 
-            style={styles.dateButtonFull}
-            onPress={handleDateButtonPress}
-            testID="button-start-date"
-          >
-            <Feather name="calendar" size={18} color="#A78BFA" />
-            <ThemedText style={styles.dateValue}>{formatDate(startDate)}</ThemedText>
-          </Pressable>
-          {targetDate ? (
-            <View style={styles.targetDateInfo}>
-              <Feather name="flag" size={14} color="#22C55E" />
-              <ThemedText type="small" style={styles.targetDateText}>
-                Target completion: {formatDate(targetDate)}
-              </ThemedText>
-            </View>
-          ) : null}
-        </Animated.View>
-
-        {Platform.OS !== 'web' && showStartPicker && DateTimePicker ? (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onStartDateChange}
-            minimumDate={new Date()}
-          />
-        ) : null}
-
-        {generatedTasks.length > 0 ? (
-          <Animated.View entering={FadeInDown.delay(350).springify()}>
-            <View style={styles.tasksHeader}>
-              <ThemedText type="small" style={styles.label}>
-                GENERATED TASKS ({generatedTasks.length})
-              </ThemedText>
-              {generatedTasks[0]?.text.trim() ? (
-                <Pressable 
-                  onPress={applyFirstTaskToAll}
-                  style={styles.applyAllButton}
-                  testID="button-apply-all"
+        {!isEditing && (
+          <>
+            <Animated.View entering={FadeInDown.delay(200).springify()}>
+              <ThemedText type="small" style={styles.label}>DURATION</ThemedText>
+              <View style={styles.durationRow}>
+                <TextInput
+                  style={[styles.input, styles.durationInput]}
+                  value={duration}
+                  onChangeText={handleDurationChange}
+                  placeholder="4"
+                  placeholderTextColor="#8B7FC7"
+                  keyboardType="number-pad"
+                  testID="input-duration"
+                />
+                <Pressable
+                  style={styles.dropdownButton}
+                  onPress={() => setShowDurationUnitPicker(true)}
+                  testID="button-duration-unit"
                 >
-                  <Feather name="copy" size={14} color="#A78BFA" />
-                  <ThemedText type="small" style={styles.applyAllText}>
-                    Apply to all
+                  <ThemedText style={styles.dropdownText}>
+                    {durationUnitOptions.find(o => o.value === durationUnit)?.label}
                   </ThemedText>
+                  <Feather name="chevron-down" size={16} color="#A78BFA" />
                 </Pressable>
-              ) : null}
-            </View>
-            <ThemedText type="small" style={styles.helperText}>
-              Fill in the first task, then tap "Apply to all" to copy it
-            </ThemedText>
-            
-            <View style={styles.tasksList}>
-              {(showAllTasks ? generatedTasks : generatedTasks.slice(0, 10)).map((task, index) => (
-                <View key={index} style={styles.taskItem}>
-                  <View style={styles.taskNumber}>
-                    <ThemedText style={styles.taskNumberText}>{index + 1}</ThemedText>
-                  </View>
-                  <View style={styles.taskContent}>
-                    <TextInput
-                      style={styles.taskInput}
-                      value={task.text}
-                      onChangeText={(text) => updateTaskText(index, text)}
-                      placeholder="Enter task description..."
-                      placeholderTextColor="#8B7FC7"
-                      testID={`input-task-${index}`}
-                    />
-                    <ThemedText type="small" style={styles.taskDate}>
-                      {formatDate(task.date)}
-                    </ThemedText>
-                  </View>
+              </View>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(250).springify()}>
+              <ThemedText type="small" style={styles.label}>OCCURRENCE</ThemedText>
+              <Pressable
+                style={styles.dropdownButtonFull}
+                onPress={() => setShowRecurrencePicker(true)}
+                testID="button-recurrence"
+              >
+                <ThemedText style={styles.dropdownText}>
+                  {recurrenceOptions.find(o => o.value === recurrence)?.label}
+                </ThemedText>
+                <Feather name="chevron-down" size={16} color="#A78BFA" />
+              </Pressable>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(300).springify()}>
+              <ThemedText type="small" style={styles.label}>START DATE</ThemedText>
+              <Pressable
+                style={styles.dateButtonFull}
+                onPress={handleDateButtonPress}
+                testID="button-start-date"
+              >
+                <Feather name="calendar" size={18} color="#A78BFA" />
+                <ThemedText style={styles.dateValue}>{formatDate(startDate)}</ThemedText>
+              </Pressable>
+              {targetDate ? (
+                <View style={styles.targetDateInfo}>
+                  <Feather name="flag" size={14} color="#22C55E" />
+                  <ThemedText type="small" style={styles.targetDateText}>
+                    Target completion: {formatDate(targetDate)}
+                  </ThemedText>
                 </View>
-              ))}
-              {generatedTasks.length > 10 ? (
-                <Pressable 
-                  onPress={() => setShowAllTasks(!showAllTasks)}
-                  style={styles.moreTasksButton}
-                  testID="button-toggle-tasks"
-                >
-                  <Feather 
-                    name={showAllTasks ? "chevron-up" : "chevron-down"} 
-                    size={16} 
-                    color="#A78BFA" 
-                  />
-                  <ThemedText type="small" style={styles.moreTasksText}>
-                    {showAllTasks ? "Show less" : `+${generatedTasks.length - 10} more tasks...`}
-                  </ThemedText>
-                </Pressable>
               ) : null}
-            </View>
-          </Animated.View>
-        ) : null}
+            </Animated.View>
+
+            {Platform.OS !== 'web' && showStartPicker && DateTimePicker ? (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onStartDateChange}
+                minimumDate={new Date()}
+              />
+            ) : null}
+
+            {generatedTasks.length > 0 ? (
+              <Animated.View entering={FadeInDown.delay(350).springify()}>
+                <View style={styles.tasksHeader}>
+                  <ThemedText type="small" style={styles.label}>
+                    GENERATED TASKS ({generatedTasks.length})
+                  </ThemedText>
+                  {generatedTasks[0]?.text.trim() ? (
+                    <Pressable
+                      onPress={applyFirstTaskToAll}
+                      style={styles.applyAllButton}
+                      testID="button-apply-all"
+                    >
+                      <Feather name="copy" size={14} color="#A78BFA" />
+                      <ThemedText type="small" style={styles.applyAllText}>
+                        Apply to all
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+                </View>
+                <ThemedText type="small" style={styles.helperText}>
+                  Fill in the first task, then tap "Apply to all" to copy it
+                </ThemedText>
+
+                <View style={styles.tasksList}>
+                  {(showAllTasks ? generatedTasks : generatedTasks.slice(0, 10)).map((task, index) => (
+                    <View key={index} style={styles.taskItem}>
+                      <View style={styles.taskNumber}>
+                        <ThemedText style={styles.taskNumberText}>{index + 1}</ThemedText>
+                      </View>
+                      <View style={styles.taskContent}>
+                        <TextInput
+                          style={styles.taskInput}
+                          value={task.text}
+                          onChangeText={(text) => updateTaskText(index, text)}
+                          placeholder="Enter task description..."
+                          placeholderTextColor="#8B7FC7"
+                          testID={`input-task-${index}`}
+                        />
+                        <ThemedText type="small" style={styles.taskDate}>
+                          {formatDate(task.date)}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  ))}
+                  {generatedTasks.length > 10 ? (
+                    <Pressable
+                      onPress={() => setShowAllTasks(!showAllTasks)}
+                      style={styles.moreTasksButton}
+                      testID="button-toggle-tasks"
+                    >
+                      <Feather
+                        name={showAllTasks ? "chevron-up" : "chevron-down"}
+                        size={16}
+                        color="#A78BFA"
+                      />
+                      <ThemedText type="small" style={styles.moreTasksText}>
+                        {showAllTasks ? "Show less" : `+${generatedTasks.length - 10} more tasks...`}
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </Animated.View>
+            ) : null}
+          </>
+        )}
 
         {error ? (
           <ThemedText type="small" style={styles.errorText}>{error}</ThemedText>
         ) : null}
 
-        <Animated.View entering={FadeInDown.delay(400).springify()}>
-          <View style={styles.progressInfo}>
-            <Feather name="info" size={16} color="#A78BFA" />
-            <ThemedText type="small" style={styles.progressInfoText}>
-              {generatedTasks.length} tasks will be created based on your schedule
-            </ThemedText>
-          </View>
-          
+        <Animated.View entering={FadeInDown.delay(isEditing ? 200 : 400).springify()}>
+          {!isEditing && (
+            <View style={styles.progressInfo}>
+              <Feather name="info" size={16} color="#A78BFA" />
+              <ThemedText type="small" style={styles.progressInfoText}>
+                {generatedTasks.length} tasks will be created based on your schedule
+              </ThemedText>
+            </View>
+          )}
+
           <Button
             onPress={handleCreate}
             disabled={isLoading}
@@ -596,8 +629,8 @@ export default function CreateDreamScreen() {
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <View style={styles.buttonContent}>
-                <Feather name="star" size={20} color="#FFFFFF" />
-                <ThemedText style={styles.buttonText}>Start My Dream</ThemedText>
+                <Feather name={isEditing ? "save" : "star"} size={20} color="#FFFFFF" />
+                <ThemedText style={styles.buttonText}>{isEditing ? "Update Dream" : "Start My Dream"}</ThemedText>
               </View>
             )}
           </Button>
@@ -610,13 +643,13 @@ export default function CreateDreamScreen() {
         animationType="fade"
         onRequestClose={() => setWebDateModal(null)}
       >
-        <Pressable 
-          style={styles.modalOverlay} 
+        <Pressable
+          style={styles.modalOverlay}
           onPress={() => setWebDateModal(null)}
         >
           <Pressable style={styles.modalContent} onPress={e => e.stopPropagation()}>
             <ThemedText type="h3" style={styles.modalTitle}>Select Start Date</ThemedText>
-            
+
             <TextInput
               style={styles.webDateInput}
               value={tempWebDate}
@@ -626,20 +659,20 @@ export default function CreateDreamScreen() {
               keyboardType="default"
               testID="input-web-date"
             />
-            
+
             <ThemedText type="small" style={styles.dateHelperText}>
               Enter date in format: YYYY-MM-DD
             </ThemedText>
 
             <View style={styles.modalButtons}>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onPress={() => setWebDateModal(null)}
                 style={styles.modalButton}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onPress={handleWebDateConfirm}
                 style={styles.modalButton}
                 testID="button-confirm-date"
@@ -657,8 +690,8 @@ export default function CreateDreamScreen() {
         animationType="fade"
         onRequestClose={() => setShowDurationUnitPicker(false)}
       >
-        <Pressable 
-          style={styles.modalOverlay} 
+        <Pressable
+          style={styles.modalOverlay}
           onPress={() => setShowDurationUnitPicker(false)}
         >
           <View style={styles.pickerModalContent}>
@@ -702,8 +735,8 @@ export default function CreateDreamScreen() {
         animationType="fade"
         onRequestClose={() => setShowRecurrencePicker(false)}
       >
-        <Pressable 
-          style={styles.modalOverlay} 
+        <Pressable
+          style={styles.modalOverlay}
           onPress={() => setShowRecurrencePicker(false)}
         >
           <View style={styles.pickerModalContent}>
@@ -711,29 +744,29 @@ export default function CreateDreamScreen() {
             {recurrenceOptions
               .filter(option => getValidRecurrences(durationUnit).includes(option.value))
               .map(option => (
-              <Pressable
-                key={option.value}
-                style={[
-                  styles.pickerOption,
-                  recurrence === option.value && styles.pickerOptionSelected,
-                ]}
-                onPress={() => {
-                  setRecurrence(option.value);
-                  setShowRecurrencePicker(false);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-              >
-                <ThemedText style={[
-                  styles.pickerOptionText,
-                  recurrence === option.value && styles.pickerOptionTextSelected,
-                ]}>
-                  {option.label}
-                </ThemedText>
-                {recurrence === option.value ? (
-                  <Feather name="check" size={18} color="#8B5CF6" />
-                ) : null}
-              </Pressable>
-            ))}
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.pickerOption,
+                    recurrence === option.value && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setRecurrence(option.value);
+                    setShowRecurrencePicker(false);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                >
+                  <ThemedText style={[
+                    styles.pickerOptionText,
+                    recurrence === option.value && styles.pickerOptionTextSelected,
+                  ]}>
+                    {option.label}
+                  </ThemedText>
+                  {recurrence === option.value ? (
+                    <Feather name="check" size={18} color="#8B5CF6" />
+                  ) : null}
+                </Pressable>
+              ))}
           </View>
         </Pressable>
       </Modal>

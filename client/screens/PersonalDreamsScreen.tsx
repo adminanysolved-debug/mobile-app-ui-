@@ -54,48 +54,10 @@ function DreamCard({
     setShowMenu(false);
     navigation.navigate("CreateDream", {
       type: dream.type,
-      editMode: true,
-      dreamData: dream,
+      editDreamId: dream.id,
+      dreamTitle: dream.title,
+      dreamDescription: dream.description,
     });
-  };
-
-  const handleDelete = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowMenu(false);
-
-    Alert.alert(
-      "Delete Dream",
-      "Are you sure you want to delete this dream?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const response = await fetch(
-                new URL(`/api/dreams/${dream.id}`, getApiUrl()).toString(),
-                {
-                  method: "DELETE",
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                }
-              );
-
-              if (response.ok) {
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Success
-                );
-                onRefresh();
-              }
-            } catch (error) {
-              console.error("Failed to delete dream:", error);
-            }
-          },
-        },
-      ]
-    );
   };
 
   return (
@@ -131,13 +93,6 @@ function DreamCard({
                   <Pressable style={styles.menuItem} onPress={handleEdit}>
                     <Feather name="edit-2" size={16} color="#60A5FA" />
                     <ThemedText type="small">Edit</ThemedText>
-                  </Pressable>
-
-                  <Pressable style={styles.menuItem} onPress={handleDelete}>
-                    <Feather name="trash-2" size={16} color="#EF4444" />
-                    <ThemedText type="small" style={{ color: "#EF4444" }}>
-                      Delete
-                    </ThemedText>
                   </Pressable>
                 </View>
               )}
@@ -197,11 +152,11 @@ export default function PersonalDreamsScreen() {
     <GalaxyBackground>
       <ScrollView
         style={{ flex: 1 }}
-      contentContainerStyle={{
-        paddingTop: insets.top + Spacing.lg + Spacing.xl,
-        paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
-        paddingHorizontal: Spacing.lg,
-      }}
+        contentContainerStyle={{
+          paddingTop: insets.top + Spacing.lg + Spacing.xl,
+          paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
+          paddingHorizontal: Spacing.lg,
+        }}
         showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A78BFA" />

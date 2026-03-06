@@ -8,6 +8,7 @@ import MarketScreen from "@/screens/MarketScreen";
 import GalleryScreen from "@/screens/GalleryScreen";
 import NewsFeedScreen from "@/screens/NewsFeedScreen";
 import MessagesScreen from "@/screens/MessagesScreen";
+import ChatScreen from "@/screens/ChatScreen";
 import NotificationsScreen from "@/screens/NotificationsScreen";
 import LuckySpinScreen from "@/screens/LuckySpinScreen";
 import MyRealDreamScreen from "@/screens/MyRealDreamScreen";
@@ -26,7 +27,8 @@ export type HomeStackParamList = {
   Market: undefined;
   Gallery: undefined;
   NewsFeed: undefined;
-  Chat: undefined;
+  Chat: { otherUserId: string; otherUserName?: string };
+  Messages: undefined;
   Notifications: undefined;
   LuckySpin: undefined;
   MyRealDream: undefined;
@@ -49,7 +51,6 @@ export default function HomeStackNavigator() {
         component={MainMenuScreen}
         options={{
           headerTitle: () => <HeaderTitle title="Real Dream" />,
-          headerRight: () => <HeaderIcons />,
         }}
       />
       <Stack.Screen
@@ -88,10 +89,17 @@ export default function HomeStackNavigator() {
         }}
       />
       <Stack.Screen
-        name="Chat"
+        name="Messages"
         component={MessagesScreen}
         options={{
           headerTitle: "MESSAGES",
+        }}
+      />
+      <Stack.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          headerTitle: "CHAT",
         }}
       />
       <Stack.Screen
