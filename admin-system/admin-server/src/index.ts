@@ -64,6 +64,22 @@ app.get('/api/dreams', async (req, res) => {
 app.delete('/api/admin/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM market_purchases WHERE user_id = $1 OR vendor_id = $1', [id]);
+        await pool.query('DELETE FROM market_items WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM post_comments WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM post_likes WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM news_feed_posts WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM gallery_posts WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM champions WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM transactions WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM notifications WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1', [id]);
+        await pool.query('DELETE FROM conversations WHERE participant1_id = $1 OR participant2_id = $1', [id]);
+        await pool.query('DELETE FROM connections WHERE follower_id = $1 OR following_id = $1', [id]);
+        await pool.query('DELETE FROM dream_members WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM dream_tasks WHERE dream_id IN (SELECT id FROM dreams WHERE user_id = $1)', [id]);
+        await pool.query('DELETE FROM dreams WHERE user_id = $1', [id]);
         await pool.query('DELETE FROM users WHERE id = $1', [id]);
         res.json({ success: true, message: 'User deleted successfully' });
     } catch (error: any) {
@@ -75,6 +91,9 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 app.delete('/api/admin/dreams/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        await pool.query('DELETE FROM dream_tasks WHERE dream_id = $1', [id]);
+        await pool.query('DELETE FROM dream_members WHERE dream_id = $1', [id]);
+        await pool.query('DELETE FROM news_feed_posts WHERE dream_id = $1', [id]);
         await pool.query('DELETE FROM dreams WHERE id = $1', [id]);
         res.json({ success: true, message: 'Dream deleted successfully' });
     } catch (error: any) {
@@ -117,6 +136,7 @@ app.get('/api/market-items', async (req, res) => {
 app.delete('/api/admin/market-items/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        await pool.query('DELETE FROM market_purchases WHERE item_id = $1', [id]);
         await pool.query('DELETE FROM market_items WHERE id = $1', [id]);
         res.json({ success: true, message: 'Market item deleted successfully' });
     } catch (error: any) {

@@ -71,20 +71,6 @@ const ordersItems: MenuItem[] = [
   },
 ];
 
-const vendorItem: MenuItem = {
-  icon: "briefcase",
-  label: "Vendor Hub",
-  route: "VendorHub",
-  iconBg: "rgba(45, 39, 82, 0.6)",
-  iconColor: "#F59E0B",
-};
-
-const becomeVendorItem: MenuItem = {
-  icon: "star",
-  label: "Become a Vendor",
-  iconBg: "rgba(45, 39, 82, 0.6)",
-  iconColor: "#F59E0B",
-};
 
 const accountItems: MenuItem[] = [
   {
@@ -154,9 +140,6 @@ export default function ProfileScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPhotoOptionsModal, setShowPhotoOptionsModal] = useState(false);
-  const [showVendorModal, setShowVendorModal] = useState(false);
-  const [vendorBusinessName, setVendorBusinessName] = useState("");
-  const [vendorDescription, setVendorDescription] = useState("");
   const [editFullName, setEditFullName] = useState(user?.fullName || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
   const [editAge, setEditAge] = useState(user?.age?.toString() || "");
@@ -208,48 +191,8 @@ export default function ProfileScreen() {
       setShowEditModal(true);
     } else if (route === "DeleteAccount") {
       setShowDeleteModal(true);
-    } else if (route === "VendorHub") {
-      navigation.navigate("VendorHub");
     } else if (route) {
       navigation.navigate(route);
-    }
-  };
-
-  const handleApplyVendor = async () => {
-    if (!token) return;
-    if (!vendorBusinessName.trim()) {
-      alert("Business Name is required");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(new URL('/api/vendor/apply', getApiUrl()).toString(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          businessName: vendorBusinessName,
-          description: vendorDescription
-        })
-      });
-
-      if (response.ok) {
-        updateUser({ isVendor: true });
-        setShowVendorModal(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Success", "You are now a vendor!");
-      } else {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.error || "Failed to apply as vendor");
-      }
-    } catch (error) {
-      console.error("Apply vendor error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -681,29 +624,6 @@ export default function ProfileScreen() {
           </Card>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(225).springify()}>
-          <ThemedText
-            type="xs"
-            style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: Spacing.sm }]}
-          >
-            VENDOR CONTROLS
-          </ThemedText>
-          <Card style={Object.assign({}, styles.menuCard, { marginTop: Spacing.xs })}>
-            {user?.isVendor ? (
-              <MenuRow
-                item={vendorItem}
-                isLast={true}
-                onPress={() => handleNavigate(vendorItem.route)}
-              />
-            ) : (
-              <MenuRow
-                item={becomeVendorItem}
-                isLast={true}
-                onPress={() => setShowVendorModal(true)}
-              />
-            )}
-          </Card>
-        </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(250).springify()}>
           <ThemedText
@@ -791,45 +711,6 @@ export default function ProfileScreen() {
                   {isLoading ? "Deleting..." : "Delete"}
                 </ThemedText>
               </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={showVendorModal} animationType="fade" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h3" style={styles.modalTitle}>Become a Vendor</ThemedText>
-            <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.lg }}>
-              Start selling premium items on the marketplace and earn coins!
-            </ThemedText>
-
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Business Name *</ThemedText>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, marginBottom: Spacing.md }]}
-              value={vendorBusinessName}
-              onChangeText={setVendorBusinessName}
-              placeholder="E.g., Star Creations"
-              placeholderTextColor={theme.textMuted}
-            />
-
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Description (Optional)</ThemedText>
-            <TextInput
-              style={[styles.textInput, styles.bioInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
-              value={vendorDescription}
-              onChangeText={setVendorDescription}
-              placeholder="What do you sell?"
-              placeholderTextColor={theme.textMuted}
-              multiline
-            />
-
-            <View style={[styles.modalButtons, { marginTop: Spacing.xl }]}>
-              <Pressable onPress={() => setShowVendorModal(false)} style={[styles.modalButton, { borderColor: theme.border }]}>
-                <ThemedText type="body">Cancel</ThemedText>
-              </Pressable>
-              <Button onPress={handleApplyVendor} disabled={isLoading} style={styles.saveButton}>
-                {isLoading ? "Applying..." : "Apply Now"}
-              </Button>
             </View>
           </View>
         </View>

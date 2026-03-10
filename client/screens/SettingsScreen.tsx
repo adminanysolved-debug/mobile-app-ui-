@@ -1,4 +1,5 @@
-import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
+import { useState } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Alert, Modal, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -14,6 +15,8 @@ import { AdBanner } from "@/components/AdBanner";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
+import { getApiUrl } from "@/lib/query-client";
+import { Button } from "@/components/Button";
 
 type MenuItem = {
   icon: keyof typeof Feather.glyphMap;
@@ -23,7 +26,6 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
   { icon: "user", label: "PERSONAL PROFILE", route: "Profile" },
-  { icon: "briefcase", label: "VENDOR PROFILE", route: "VendorProfile" },
   { icon: "credit-card", label: "SUBSCRIPTION", route: "Subscription" },
   { icon: "bell", label: "NOTIFICATIONS", route: "Notifications" },
 ];
@@ -34,7 +36,58 @@ export default function SettingsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
-  const { user, logout, forgotPassword } = useAuth();
+  const { user, logout, forgotPassword, token, updateUser } = useAuth();
+
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [vendorBusinessName, setVendorBusinessName] = useState("");
+  const [vendorDescription, setVendorDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleVendorHubPress = () => {
+    if (user?.isVendor) {
+      navigation.navigate("VendorHub");
+    } else {
+      setShowVendorModal(true);
+    }
+  };
+
+  const handleApplyVendor = async () => {
+    if (!token) return;
+    if (!vendorBusinessName.trim()) {
+      alert("Business Name is required");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(new URL('/api/vendor/apply', getApiUrl()).toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          businessName: vendorBusinessName,
+          description: vendorDescription
+        })
+      });
+
+      if (response.ok) {
+        updateUser({ isVendor: true });
+        setShowVendorModal(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Success", "You are now a vendor!");
+      } else {
+        const errorData = await response.json();
+        Alert.alert("Error", errorData.error || "Failed to apply as vendor");
+      }
+    } catch (error) {
+      console.error("Apply vendor error:", error);
+      Alert.alert("Error", "An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleNavigate = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -145,6 +198,23 @@ export default function SettingsScreen() {
 
         <AdBanner variant="compact" />
 
+        <Animated.View entering={FadeInDown.delay(75).springify()}>
+          <Card style={styles.menuCard}>
+            <Pressable
+              onPress={handleVendorHubPress}
+              style={[styles.menuRow]}
+            >
+              <View style={styles.menuIcon}>
+                <Feather name="briefcase" size={20} color={theme.textSecondary} />
+              </View>
+              <ThemedText type="body" style={[styles.menuLabel, { color: theme.text }]}>
+                {user?.isVendor ? "VENDOR HUB" : "BECOME A VENDOR"}
+              </ThemedText>
+              <Feather name="chevron-right" size={20} color="#A78BFA" />
+            </Pressable>
+          </Card>
+        </Animated.View>
+
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           <Card style={styles.menuCard}>
             {menuItems.map((item, index) => (
@@ -197,6 +267,44 @@ export default function SettingsScreen() {
           </Card>
         </Animated.View>
       </ScrollView>
+      <Modal visible={showVendorModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h3" style={styles.modalTitle}>Become a Vendor</ThemedText>
+            <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+              Start selling premium dream themes and content on the marketplace.
+            </ThemedText>
+
+            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Business/Creator Name *</ThemedText>
+            <TextInput
+              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              value={vendorBusinessName}
+              onChangeText={setVendorBusinessName}
+              placeholder="Enter your creator name"
+              placeholderTextColor={theme.textMuted}
+            />
+
+            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Description</ThemedText>
+            <TextInput
+              style={[styles.textInput, styles.bioInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              value={vendorDescription}
+              onChangeText={setVendorDescription}
+              placeholder="What will you sell?"
+              placeholderTextColor={theme.textMuted}
+              multiline
+            />
+
+            <View style={styles.modalButtons}>
+              <Pressable onPress={() => setShowVendorModal(false)} style={[styles.modalButton, { borderColor: theme.border }]}>
+                <ThemedText type="body">Cancel</ThemedText>
+              </Pressable>
+              <Button onPress={handleApplyVendor} disabled={isLoading} style={styles.saveButton}>
+                {isLoading ? "Applying..." : "Apply Now"}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GalaxyBackground>
   );
 }
@@ -211,6 +319,50 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "90%",
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+  },
+  modalTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.md,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: Spacing.xl,
+    gap: Spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+    padding: Spacing.md,
+    alignItems: "center",
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  saveButton: {
+    flex: 1,
+  },
+  inputLabel: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
+  },
+  textInput: {
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    minHeight: 48,
+  },
+  bioInput: {
+    minHeight: 100,
+    textAlignVertical: "top",
   },
   userInfoCard: {
     padding: Spacing.lg,

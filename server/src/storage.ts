@@ -128,7 +128,29 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const result = await db.delete(users).where(eq(users.id, id));
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, id));
+    await db.delete(marketPurchases).where(or(eq(marketPurchases.userId, id), eq(marketPurchases.vendorId, id)));
+    await db.delete(marketItems).where(eq(marketItems.userId, id));
+    await db.delete(postComments).where(eq(postComments.userId, id));
+    await db.delete(postLikes).where(eq(postLikes.userId, id));
+    await db.delete(newsFeedPosts).where(eq(newsFeedPosts.userId, id));
+    await db.delete(galleryPosts).where(eq(galleryPosts.userId, id));
+    await db.delete(champions).where(eq(champions.userId, id));
+    await db.delete(transactions).where(eq(transactions.userId, id));
+    await db.delete(notifications).where(eq(notifications.userId, id));
+    await db.delete(messages).where(or(eq(messages.senderId, id), eq(messages.receiverId, id)));
+    await db.delete(conversations).where(or(eq(conversations.participant1Id, id), eq(conversations.participant2Id, id)));
+    await db.delete(connections).where(or(eq(connections.followerId, id), eq(connections.followingId, id)));
+    await db.delete(dreamMembers).where(eq(dreamMembers.userId, id));
+
+    const userDreams = await db.select({ id: dreams.id }).from(dreams).where(eq(dreams.userId, id));
+    if (userDreams.length > 0) {
+      const dreamIds = userDreams.map(d => d.id);
+      await db.delete(dreamTasks).where(inArray(dreamTasks.dreamId, dreamIds));
+      await db.delete(dreams).where(eq(dreams.userId, id));
+    }
+
+    await db.delete(users).where(eq(users.id, id));
     return true;
   }
 
@@ -156,6 +178,9 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteDream(id: string): Promise<boolean> {
+    await db.delete(dreamTasks).where(eq(dreamTasks.dreamId, id));
+    await db.delete(dreamMembers).where(eq(dreamMembers.dreamId, id));
+    await db.delete(newsFeedPosts).where(eq(newsFeedPosts.dreamId, id));
     await db.delete(dreams).where(eq(dreams.id, id));
     return true;
   }
@@ -274,8 +299,9 @@ class DatabaseStorage implements IStorage {
   async markNotificationRead(id: string, userId: string): Promise<boolean> {
     const result = await db.update(notifications)
       .set({ isRead: true })
-      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
-    return (result as any).rowCount > 0;
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning({ id: notifications.id });
+    return result.length > 0;
   }
 
   async markAllNotificationsRead(userId: string): Promise<void> {
@@ -283,8 +309,10 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteNotification(id: string, userId: string): Promise<boolean> {
-    const result = await db.delete(notifications).where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
-    return (result as any).rowCount > 0;
+    const result = await db.delete(notifications)
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning({ id: notifications.id });
+    return result.length > 0;
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {

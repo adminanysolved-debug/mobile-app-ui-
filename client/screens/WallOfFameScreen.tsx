@@ -102,7 +102,7 @@ export default function WallOfFameScreen() {
       setIsLoading(true);
       const url = new URL(`/api/wall-of-fame?period=${activeTab}`, getApiUrl()).toString();
       const response = await fetch(url, { credentials: "include" });
-      
+
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
@@ -217,7 +217,7 @@ export default function WallOfFameScreen() {
         ) : isEmpty ? (
           <View style={styles.emptyStateContainer}>
             <Feather name="award" size={48} color={theme.textMuted} />
-            <ThemedText type="h4" style={[styles.emptyStateTitle, { color: theme.textPrimary }]}>
+            <ThemedText type="h4" style={[styles.emptyStateTitle, { color: theme.text }]}>
               No Champions Yet
             </ThemedText>
             <ThemedText
