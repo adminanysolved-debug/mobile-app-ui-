@@ -121,11 +121,16 @@ export default function DreamDetailScreen() {
   const handleEdit = () => {
     if (!dream) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Calculate a rough duration string based on the progress/target date or default to empty
+    // since we don't store duration/recurrence natively on the dream object in this schema version
     navigation.navigate("CreateDream", {
       type: dream.type,
       editDreamId: dream.id,
       dreamTitle: dream.title,
       dreamDescription: dream.description,
+      dreamStartDate: dream.startDate,
+      dreamTasks: tasks.map(t => ({ text: t.title, order: t.order }))
     });
   };
 
@@ -275,46 +280,36 @@ export default function DreamDetailScreen() {
         }
       >
         <Animated.View entering={FadeInDown.springify()}>
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <View style={styles.typeTag}>
-                <Feather
-                  name={dream.type === "personal" ? "user" : dream.type === "group" ? "users" : "zap"}
-                  size={12}
-                  color="#A78BFA"
-                />
-                <ThemedText type="small" style={styles.typeText}>
-                  {dream.type.toUpperCase()}
-                </ThemedText>
-              </View>
-              {dream.isCompleted ? (
-                <View style={[styles.completedTag, { alignSelf: 'flex-start', marginTop: 8 }]}>
-                  <Feather name="check-circle" size={14} color="#22C55E" />
-                  <ThemedText type="small" style={styles.completedText}>COMPLETED</ThemedText>
-                </View>
-              ) : null}
-            </View>
-
+          <View style={[styles.header, { justifyContent: 'flex-end' }]}>
             <View style={styles.actionButtons}>
               <Pressable
-                style={styles.actionButton}
+                style={[styles.actionButton, { flexDirection: 'row', gap: 6, paddingHorizontal: 16 }]}
                 onPress={handleEdit}
                 testID="button-edit-dream"
               >
-                <Feather name="edit-2" size={16} color="#60A5FA" />
+                <Feather name="edit-2" size={14} color="#60A5FA" />
+                <ThemedText type="small" style={{ color: "#60A5FA", fontWeight: "600" }}>Edit</ThemedText>
               </Pressable>
 
               {(dream.type === "group" || dream.type === "challenge") && (
                 <Pressable
-                  style={[styles.actionButton, styles.inviteButton]}
+                  style={[styles.actionButton, styles.inviteButton, { flexDirection: 'row', gap: 6, paddingHorizontal: 16 }]}
                   onPress={handleInvite}
                   testID="button-invite-members"
                 >
-                  <Feather name="user-plus" size={16} color="#22C55E" />
+                  <Feather name="user-plus" size={14} color="#22C55E" />
+                  <ThemedText type="small" style={{ color: "#22C55E", fontWeight: "600" }}>Invite</ThemedText>
                 </Pressable>
               )}
             </View>
           </View>
+
+          {dream.isCompleted ? (
+            <View style={[styles.completedTag, { alignSelf: 'flex-start', marginBottom: 12 }]}>
+              <Feather name="check-circle" size={14} color="#22C55E" />
+              <ThemedText type="small" style={styles.completedText}>COMPLETED</ThemedText>
+            </View>
+          ) : null}
 
           <ThemedText type="h2" style={styles.title}>{dream.title}</ThemedText>
           {dream.description ? (

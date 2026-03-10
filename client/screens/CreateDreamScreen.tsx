@@ -235,6 +235,18 @@ export default function CreateDreamScreen() {
       setTitle(route.params?.dreamTitle || "");
       setDescription(route.params?.dreamDescription || "");
       if (route.params?.type) setSelectedType(route.params.type);
+      if (route.params?.dreamStartDate) setStartDate(new Date(route.params.dreamStartDate));
+
+      // If we have existing tasks passed from DreamDetail, load them directly.
+      // We skip setting duration string specifically so the useEffect below doesn't clobber them.
+      if (route.params?.dreamTasks && route.params.dreamTasks.length > 0) {
+        setGeneratedTasks(route.params.dreamTasks.map((t: any) => ({
+          text: t.text,
+          order: t.order,
+          date: new Date() // Dummy date since we aren't displaying dates in the edit UI right now
+        })));
+        setShowAllTasks(true); // Auto expand tasks when editing
+      }
     }
   }, [isEditing, route.params]);
 
@@ -245,6 +257,12 @@ export default function CreateDreamScreen() {
   }, [route.params?.type, isEditing]);
 
   useEffect(() => {
+    // DO NOT auto-generate tasks if we are actively EDITING an existing dream
+    // unless the user explicitly changes the duration dropdowns (we can gate that by checking if tasks are already loaded)
+    if (isEditing && generatedTasks.length > 0 && route.params?.dreamTasks?.length === generatedTasks.length) {
+      return;
+    }
+
     const durationNum = parseInt(duration, 10);
     if (durationNum > 0 && startDate) {
       const tasks = generateTaskDates(startDate, durationNum, durationUnit, recurrence);
