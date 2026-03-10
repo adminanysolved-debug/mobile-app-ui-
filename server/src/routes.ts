@@ -849,16 +849,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (Array.isArray(tasks)) {
         await storage.deleteDreamTasks(id);
 
+        let taskDates: { date: Date, order: number }[] = [];
+        if (dreamData.duration && dreamData.durationUnit && dreamData.recurrence && dreamData.startDate) {
+          taskDates = generateTaskDates(
+            new Date(dreamData.startDate),
+            dreamData.duration,
+            dreamData.durationUnit as "days" | "weeks" | "months" | "years",
+            dreamData.recurrence as "daily" | "weekly" | "semi-weekly" | "monthly" | "semi-monthly"
+          );
+        } else {
+           // fallback just in case
+           for (let i=0; i<tasks.length; i++) {
+             const d = new Date();
+             d.setDate(d.getDate() + i);
+             taskDates.push({ date: d, order: i });
+           }
+        }
+
         for (let i = 0; i < tasks.length; i++) {
           const taskText = tasks[i];
-          const taskDate = new Date();
-          taskDate.setDate(taskDate.getDate() + i);
+          const taskDateInfo = taskDates[i] || { date: new Date(), order: i };
 
           await storage.createDreamTask({
             dreamId: id,
             title: taskText || `Task ${i + 1}`,
-            dueDate: taskDate,
-            order: i,
+            dueDate: taskDateInfo.date,
+            order: taskDateInfo.order,
           });
         }
 

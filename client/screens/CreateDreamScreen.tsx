@@ -578,7 +578,8 @@ export default function CreateDreamScreen() {
           </Animated.View>
         )}
 
-        {!isEditing && (
+        {/* The Invite Friends picker defaults to hidden when editing because we assume you can't invite mid-flight via this UI, but we'll show all other fields! */}
+        {!isEditing && selectedType === "challenge" && (
           <>
             <Animated.View entering={FadeInDown.delay(200).springify()}>
               <ThemedText type="small" style={styles.label}>DURATION</ThemedText>
@@ -720,14 +721,12 @@ export default function CreateDreamScreen() {
         ) : null}
 
         <Animated.View entering={FadeInDown.delay(isEditing ? 200 : 400).springify()}>
-          {!isEditing && (
-            <View style={styles.progressInfo}>
-              <Feather name="info" size={16} color="#A78BFA" />
-              <ThemedText type="small" style={styles.progressInfoText}>
-                {generatedTasks.length} tasks will be created based on your schedule
-              </ThemedText>
-            </View>
-          )}
+          <View style={styles.progressInfo}>
+            <Feather name="info" size={16} color="#A78BFA" />
+            <ThemedText type="small" style={styles.progressInfoText}>
+              {generatedTasks.length} tasks will be {isEditing ? "saved" : "created"} based on your schedule
+            </ThemedText>
+          </View>
 
           <Button
             onPress={handleCreate}
@@ -880,7 +879,7 @@ export default function CreateDreamScreen() {
           </View>
         </Pressable>
       </Modal>
-    </GalaxyBackground>
+    </GalaxyBackground >
   );
 }
 
