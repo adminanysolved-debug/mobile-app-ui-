@@ -395,6 +395,11 @@ export default function CreateDreamScreen() {
         body: JSON.stringify(isEditing ? {
           title: title.trim(),
           description: description.trim() || null,
+          startDate: startDate.toISOString(),
+          duration: parseInt(duration, 10),
+          durationUnit: durationUnit,
+          recurrence: recurrence,
+          tasks: generatedTasks.map(t => t.text)
         } : {
           title: title.trim(),
           description: description.trim() || null,

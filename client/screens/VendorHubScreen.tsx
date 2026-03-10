@@ -10,6 +10,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigation } from "@react-navigation/native";
 import { getApiUrl } from "@/lib/query-client";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import * as Haptics from "expo-haptics";
@@ -25,6 +26,7 @@ type MarketItem = {
 
 export default function VendorHubScreen() {
     const insets = useSafeAreaInsets();
+    const navigation = useNavigation<any>();
     const { theme } = useTheme();
     const { token } = useAuth();
 
@@ -59,6 +61,43 @@ export default function VendorHubScreen() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleDeleteProfile = async () => {
+        Alert.alert(
+            "Delete Vendor Profile?",
+            "Are you sure you want to remove your vendor status? Your active marketplace items will remain but you will no longer have access to the Vendor Hub.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete Profile",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsLoading(true);
+                        try {
+                            const response = await fetch(new URL('/api/vendor', getApiUrl()).toString(), {
+                                method: 'DELETE',
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+
+                            if (response.ok) {
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                Alert.alert("Success", "Your vendor profile has been removed.");
+                                // Navigation goBack simulates exiting the hub now that access is revoked
+                                navigation.goBack();
+                            } else {
+                                const data = await response.json();
+                                Alert.alert("Error", data.error || "Failed to delete vendor profile");
+                            }
+                        } catch (error) {
+                            Alert.alert("Error", "A network error occurred.");
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleUploadItem = async () => {
@@ -198,6 +237,27 @@ export default function VendorHubScreen() {
                             </ThemedText>
                         )
                     )}
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.section, { marginTop: Spacing.xl }]}>
+                    <ThemedText type="h3" style={{ color: theme.error, marginBottom: Spacing.md }}>Danger Zone</ThemedText>
+                    <Card style={[styles.uploadCard, { borderColor: `${theme.error}40`, borderWidth: 1 }] as any}>
+                        <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
+                            Revoke your vendor privileges and return to a standard account.
+                        </ThemedText>
+                        <Pressable
+                            style={{
+                                backgroundColor: `${theme.error}20`,
+                                paddingVertical: Spacing.md,
+                                borderRadius: BorderRadius.md,
+                                alignItems: "center",
+                                justifyContent: "center"
+                            }}
+                            onPress={handleDeleteProfile}
+                        >
+                            <ThemedText type="bodyMedium" style={{ color: theme.error }}>Delete Vendor Profile</ThemedText>
+                        </Pressable>
+                    </Card>
                 </Animated.View>
 
             </ScrollView>

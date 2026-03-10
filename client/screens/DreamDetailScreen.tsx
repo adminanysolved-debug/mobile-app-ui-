@@ -276,44 +276,46 @@ export default function DreamDetailScreen() {
       >
         <Animated.View entering={FadeInDown.springify()}>
           <View style={styles.header}>
-            <View style={styles.typeTag}>
-              <Feather
-                name={dream.type === "personal" ? "user" : dream.type === "group" ? "users" : "zap"}
-                size={12}
-                color="#A78BFA"
-              />
-              <ThemedText type="small" style={styles.typeText}>
-                {dream.type.toUpperCase()}
-              </ThemedText>
-            </View>
-            {dream.isCompleted ? (
-              <View style={styles.completedTag}>
-                <Feather name="check-circle" size={14} color="#22C55E" />
-                <ThemedText type="small" style={styles.completedText}>COMPLETED</ThemedText>
+            <View style={{ flex: 1 }}>
+              <View style={styles.typeTag}>
+                <Feather
+                  name={dream.type === "personal" ? "user" : dream.type === "group" ? "users" : "zap"}
+                  size={12}
+                  color="#A78BFA"
+                />
+                <ThemedText type="small" style={styles.typeText}>
+                  {dream.type.toUpperCase()}
+                </ThemedText>
               </View>
-            ) : null}
-          </View>
-          <View style={styles.actionButtons}>
-            <Pressable
-              style={styles.actionButton}
-              onPress={handleEdit}
-              testID="button-edit-dream"
-            >
-              <Feather name="edit-2" size={16} color="#60A5FA" />
-              <ThemedText type="small" style={styles.actionButtonText}>Edit</ThemedText>
-            </Pressable>
+              {dream.isCompleted ? (
+                <View style={[styles.completedTag, { alignSelf: 'flex-start', marginTop: 8 }]}>
+                  <Feather name="check-circle" size={14} color="#22C55E" />
+                  <ThemedText type="small" style={styles.completedText}>COMPLETED</ThemedText>
+                </View>
+              ) : null}
+            </View>
 
-            {(dream.type === "group" || dream.type === "challenge") && (
+            <View style={styles.actionButtons}>
               <Pressable
-                style={[styles.actionButton, styles.inviteButton]}
-                onPress={handleInvite}
-                testID="button-invite-members"
+                style={styles.actionButton}
+                onPress={handleEdit}
+                testID="button-edit-dream"
               >
-                <Feather name="user-plus" size={16} color="#22C55E" />
-                <ThemedText type="small" style={{ color: "#22C55E", marginLeft: 4 }}>Invite</ThemedText>
+                <Feather name="edit-2" size={16} color="#60A5FA" />
               </Pressable>
-            )}
+
+              {(dream.type === "group" || dream.type === "challenge") && (
+                <Pressable
+                  style={[styles.actionButton, styles.inviteButton]}
+                  onPress={handleInvite}
+                  testID="button-invite-members"
+                >
+                  <Feather name="user-plus" size={16} color="#22C55E" />
+                </Pressable>
+              )}
+            </View>
           </View>
+
           <ThemedText type="h2" style={styles.title}>{dream.title}</ThemedText>
           {dream.description ? (
             <ThemedText type="body" style={styles.description}>{dream.description}</ThemedText>

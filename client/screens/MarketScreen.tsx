@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, Alert, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -79,6 +79,18 @@ export default function MarketScreen() {
     }
   };
 
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvc, setCvc] = useState("");
+
+  const resetForm = () => {
+    setPurchaseModalVisible(false);
+    setSelectedItem(null);
+    setCardNumber("");
+    setExpiry("");
+    setCvc("");
+  };
+
   useEffect(() => {
     fetchMarketItems();
   }, [selectedCategory]);
@@ -92,6 +104,21 @@ export default function MarketScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedItem(item);
     setPurchaseModalVisible(true);
+  };
+
+  const formatCardNumber = (text: string) => {
+    const cleaned = text.replace(/\s+/g, "");
+    const formatted = cleaned.match(/.{1,4}/g)?.join(" ") || cleaned;
+    setCardNumber(formatted.substring(0, 19));
+  };
+
+  const formatExpiry = (text: string) => {
+    const cleaned = text.replace(/\//g, "");
+    if (cleaned.length >= 2) {
+      setExpiry(`${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`);
+    } else {
+      setExpiry(cleaned);
+    }
   };
 
   const confirmPurchase = async () => {
@@ -115,8 +142,7 @@ export default function MarketScreen() {
       if (response.ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert("Success", `You purchased ${selectedItem.title}!`);
-        setPurchaseModalVisible(false);
-        setSelectedItem(null);
+        resetForm();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Error", data.error || "Failed to purchase item");
@@ -342,10 +368,52 @@ export default function MarketScreen() {
                     {selectedItem.price || 0}
                   </ThemedText>
                 </View>
+
+                {/* Dummy Credit Card Form */}
+                <View style={[styles.cardForm, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>Card Number</ThemedText>
+                  <TextInput
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundSecondary }]}
+                    placeholder="0000 0000 0000 0000"
+                    placeholderTextColor={theme.textMuted}
+                    keyboardType="numeric"
+                    value={cardNumber}
+                    onChangeText={formatCardNumber}
+                    maxLength={19}
+                  />
+                  <View style={{ flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.sm }}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>Expiry</ThemedText>
+                      <TextInput
+                        style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundSecondary }]}
+                        placeholder="MM/YY"
+                        placeholderTextColor={theme.textMuted}
+                        keyboardType="numeric"
+                        value={expiry}
+                        onChangeText={formatExpiry}
+                        maxLength={5}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>CVC</ThemedText>
+                      <TextInput
+                        style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundSecondary }]}
+                        placeholder="123"
+                        placeholderTextColor={theme.textMuted}
+                        keyboardType="numeric"
+                        value={cvc}
+                        onChangeText={setCvc}
+                        maxLength={3}
+                        secureTextEntry
+                      />
+                    </View>
+                  </View>
+                </View>
+
                 <View style={styles.modalButtons}>
                   <Pressable
                     style={[styles.modalButton, styles.cancelButton]}
-                    onPress={() => setPurchaseModalVisible(false)}
+                    onPress={resetForm}
                     disabled={isPurchasing}
                   >
                     <ThemedText type="bodyMedium">Cancel</ThemedText>
@@ -578,4 +646,17 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: "rgba(255, 255, 255, 0.1)",
   },
+  cardForm: {
+    width: "100%",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.xl,
+  },
+  input: {
+    height: 44,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.sm,
+    fontSize: 14,
+  }
 });

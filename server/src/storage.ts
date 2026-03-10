@@ -46,6 +46,7 @@ export interface IStorage {
   createDream(dream: Partial<Dream>): Promise<Dream>;
   updateDream(id: string, data: Partial<Dream>): Promise<Dream | undefined>;
   deleteDream(id: string): Promise<boolean>;
+  deleteDreamTasks(dreamId: string): Promise<void>;
 
   getConnections(userId: string): Promise<{ followers: User[]; following: User[] }>;
   createConnection(followerId: string, followingId: string): Promise<Connection>;
@@ -776,6 +777,10 @@ class DatabaseStorage implements IStorage {
   async deleteDreamTask(id: string): Promise<boolean> {
     await db.delete(dreamTasks).where(eq(dreamTasks.id, id));
     return true;
+  }
+
+  async deleteDreamTasks(dreamId: string): Promise<void> {
+    await db.delete(dreamTasks).where(eq(dreamTasks.dreamId, dreamId));
   }
 
   async toggleDreamTaskComplete(id: string): Promise<DreamTask | undefined> {

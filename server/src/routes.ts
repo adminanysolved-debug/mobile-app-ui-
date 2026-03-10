@@ -830,6 +830,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/dreams/:id", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const id = req.params.id as string;
+      const { tasks, ...dreamData } = req.body;
+
       const existingDream = await storage.getDream(id);
       if (!existingDream) {
         return res.status(404).json({ error: "Dream not found" });
@@ -840,9 +842,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
 
-      const dream = await storage.updateDream(id, req.body);
-      res.json(dream);
+      // 1. Update the base dream fields
+      const dream = await storage.updateDream(id, dreamData);
+
+      // 2. Clear old tasks and insert new tasks if provided in the Edit payload
+      if (Array.isArray(tasks)) {
+        await storage.deleteDreamTasks(id);
+
+        for (let i = 0; i < tasks.length; i++) {
+          const taskText = tasks[i];
+          const taskDate = new Date();
+          taskDate.setDate(taskDate.getDate() + i);
+
+          await storage.createDreamTask({
+            dreamId: id,
+            title: taskText || `Task ${i + 1}`,
+            dueDate: taskDate,
+            order: i,
+          });
+        }
+
+        // Ensure progress recalculates immediately
+        await storage.updateDreamProgress(id);
+      }
+
+      // Re-fetch the fully updated dream for the response
+      const updatedDream = await storage.getDream(id);
+      res.json(updatedDream);
     } catch (error) {
+      console.error("Update dream error:", error);
       res.status(500).json({ error: "Failed to update dream" });
     }
   });
@@ -905,33 +933,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Join dream (accept invite)
+  // Join dream (accept invite) - Clones the dream to the user
   app.post("/api/dreams/:dreamId/join", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const dreamId = req.params.dreamId as string;
 
-      // Verify dream exists
-      const dream = await storage.getDream(dreamId);
-      if (!dream) {
-        return res.status(404).json({ error: "Dream not found" });
+      // Verify source dream exists
+      const sourceDream = await storage.getDream(dreamId);
+      if (!sourceDream) {
+        return res.status(404).json({ error: "Source dream not found" });
       }
 
-      // Check existing member status manually since isDreamMember ignores pending
+      // Check existing pending member status
       const members = await storage.getDreamMembers(dreamId);
       const existingMember = members.find(m => m.userId === req.user!.id);
 
-      if (existingMember) {
-        if (existingMember.role !== "pending") {
-          return res.status(400).json({ error: "You are already a member of this dream" });
-        }
-        // They are pending! Accept the invite
-        await storage.updateDreamMemberRole(dreamId, req.user!.id, "member");
-      } else {
-        // Not a member at all; standard join
-        await storage.addDreamMember(dreamId, req.user!.id, "member");
+      if (!existingMember || existingMember.role !== "pending") {
+        return res.status(400).json({ error: "No pending invite found to accept" });
       }
 
-      res.json({ success: true });
+      // Clone the dream for the accepting user
+      const clonedDream = await storage.createDream({
+        userId: req.user!.id,
+        title: sourceDream.title,
+        description: sourceDream.description,
+        type: "challenge", // KEEP as challenge to maintain UX formatting
+      });
+
+      // Add the accepting user as the sole member of their cloned copy
+      await storage.addDreamMember(clonedDream.id, req.user!.id, "admin");
+
+      // Clone all tasks
+      const sourceTasks = await storage.getDreamTasks(dreamId);
+      for (const task of sourceTasks) {
+        await storage.createDreamTask({
+          dreamId: clonedDream.id,
+          title: task.title,
+          description: task.description,
+          dueDate: task.dueDate,
+          order: task.order,
+        });
+      }
+
+      // Delete the pending invite from the source owner's dream
+      await storage.removeDreamMember(dreamId, req.user!.id);
+
+      res.json({ success: true, newDreamId: clonedDream.id });
     } catch (error) {
       console.error("Join dream error:", error);
       res.status(500).json({ error: "Failed to join dream" });
@@ -1676,6 +1723,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(user);
     } catch (error) {
       res.status(500).json({ error: "Failed to apply as vendor" });
+    }
+  });
+
+  app.delete("/api/vendor", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const user = await storage.updateUser(req.user!.id, {
+        isVendor: false,
+        vendorBusinessName: null,
+        vendorDescription: null,
+        vendorTier: null
+      });
+      res.json({ success: true, user });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vendor profile" });
     }
   });
 

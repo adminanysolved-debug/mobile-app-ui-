@@ -42,22 +42,9 @@ function DreamCard({
 }) {
   const navigation = useNavigation<any>();
   const { token } = useAuth();
-  const [showMenu, setShowMenu] = useState(false);
-
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate("DreamDetail", { dreamId: dream.id });
-  };
-
-  const handleEdit = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowMenu(false);
-    navigation.navigate("CreateDream", {
-      type: dream.type,
-      editDreamId: dream.id,
-      dreamTitle: dream.title,
-      dreamDescription: dream.description,
-    });
   };
 
   return (
@@ -75,29 +62,6 @@ function DreamCard({
               </ThemedText>
             ) : null}
           </View>
-
-          {!dream.isCompleted && (
-            <View style={styles.cardActions}>
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(!showMenu);
-                }}
-                style={styles.menuButton}
-              >
-                <Feather name="more-vertical" size={20} color="#8B7FC7" />
-              </Pressable>
-
-              {showMenu && (
-                <View style={styles.menuDropdown}>
-                  <Pressable style={styles.menuItem} onPress={handleEdit}>
-                    <Feather name="edit-2" size={16} color="#60A5FA" />
-                    <ThemedText type="small">Edit</ThemedText>
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          )}
         </View>
       </Card>
     </Animated.View>

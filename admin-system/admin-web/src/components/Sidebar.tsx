@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
+    Briefcase,
     MoonStar,
     MessageSquare,
     Bell,
@@ -15,6 +16,7 @@ import {
 const MENU_ITEMS = [
     { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
     { label: 'Users', icon: Users, href: '/users' },
+    { label: 'Vendors', icon: Briefcase, href: '/vendors' },
     { label: 'Dreams', icon: MoonStar, href: '/dreams' },
     { label: 'Social', icon: MessageSquare, href: '/social' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
