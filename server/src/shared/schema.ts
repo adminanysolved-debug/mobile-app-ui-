@@ -7,6 +7,7 @@ import {
   boolean,
   timestamp,
   pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -199,6 +200,8 @@ export const notifications = pgTable("notifications", {
   title: text("title").notNull(),
   description: text("description"),
   type: notificationTypeEnum("type").default("system"),
+  actionType: varchar("action_type"),
+  actionData: jsonb("action_data"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
