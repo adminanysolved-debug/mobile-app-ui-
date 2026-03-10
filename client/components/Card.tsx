@@ -15,6 +15,7 @@ interface CardProps {
   onPress?: () => void;
   style?: ViewStyle;
   elevation?: number;
+  testID?: string;
 }
 
 const springConfig: WithSpringConfig = {
@@ -32,6 +33,7 @@ export function Card({
   onPress,
   style,
   elevation = 1,
+  testID,
 }: CardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
@@ -58,6 +60,7 @@ export function Card({
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        testID={testID}
         style={[
           styles.card,
           {
@@ -74,6 +77,7 @@ export function Card({
 
   return (
     <Animated.View
+      testID={testID}
       style={[
         styles.card,
         {

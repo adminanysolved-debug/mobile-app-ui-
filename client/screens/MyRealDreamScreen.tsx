@@ -17,7 +17,7 @@ import { useSafeBottomPadding } from "@/hooks/useSafeBottomPadding";
 type DreamTypeItem = {
   type: "personal" | "challenge" | "group";
   title: string;
-  //subtitle: string;
+  subtitle: string;
   description: string;
   icon: keyof typeof Feather.glyphMap;
   gradient: [string, string];
@@ -28,7 +28,7 @@ const dreamTypes: DreamTypeItem[] = [
   {
     type: "personal",
     title: "Personal Dreams",
-   // subtitle: "PERSONAL REALDREAM",
+    subtitle: "PERSONAL REALDREAM",
     description: "Set and achieve your individual goals and aspirations. Track your personal journey to success.",
     icon: "user",
     gradient: ["#3B82F6", "#60A5FA"],
@@ -37,7 +37,7 @@ const dreamTypes: DreamTypeItem[] = [
   {
     type: "group",
     title: "Team Dreams",
-   // subtitle: "TEAM REALDREAM",
+    subtitle: "TEAM REALDREAM",
     description: "Collaborate with your team to achieve shared goals. Work together for success.",
     icon: "users",
     gradient: ["#8B5CF6", "#A855F7"],
@@ -46,7 +46,7 @@ const dreamTypes: DreamTypeItem[] = [
   {
     type: "challenge",
     title: "Challenge Dreams",
-    //subtitle: "REALDREAM CHALLENGE",
+    subtitle: "REALDREAM CHALLENGE",
     description: "Compete with others and push your limits. Join challenges or create your own.",
     icon: "award",
     gradient: ["#EAB308", "#FCD34D"],

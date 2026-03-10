@@ -741,7 +741,13 @@ class DatabaseStorage implements IStorage {
     const [member] = await db.select().from(dreamMembers).where(
       and(eq(dreamMembers.dreamId, dreamId), eq(dreamMembers.userId, userId))
     );
-    return !!member;
+    return !!member && member.role !== 'pending';
+  }
+
+  async updateDreamMemberRole(dreamId: string, userId: string, role: string): Promise<void> {
+    await db.update(dreamMembers).set({ role }).where(
+      and(eq(dreamMembers.dreamId, dreamId), eq(dreamMembers.userId, userId))
+    );
   }
 
   async getDreamTasks(dreamId: string): Promise<DreamTask[]> {

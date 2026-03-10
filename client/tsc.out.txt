@@ -1,0 +1,5 @@
+screens/ChallengeDreamsScreen.tsx(42,60): error TS2322: Type '{ children: Element; style: { padding: number; marginBottom: number; backgroundColor: string; }; onPress: () => void; testID: string; }' is not assignable to type 'IntrinsicAttributes & CardProps'.
+  Property 'testID' does not exist on type 'IntrinsicAttributes & CardProps'.
+screens/GroupDreamsScreen.tsx(43,60): error TS2322: Type '{ children: Element; style: { padding: number; marginBottom: number; backgroundColor: string; }; onPress: () => void; testID: string; }' is not assignable to type 'IntrinsicAttributes & CardProps'.
+  Property 'testID' does not exist on type 'IntrinsicAttributes & CardProps'.
+screens/MyRealDreamScreen.tsx(77,67): error TS2339: Property 'subtitle' does not exist on type 'DreamTypeItem'.

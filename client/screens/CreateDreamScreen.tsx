@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Platform, Modal } from "react-native";
+import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Platform, Modal, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -66,6 +66,13 @@ function normalizeToLocalMidnight(date: Date): Date {
   const normalized = new Date(date);
   normalized.setHours(0, 0, 0, 0);
   return normalized;
+}
+
+interface ChatableUser {
+  id: string;
+  username: string;
+  fullName: string | null;
+  profileImage: string | null;
 }
 
 function getLastDayOfMonth(year: number, month: number): number {
@@ -215,6 +222,11 @@ export default function CreateDreamScreen() {
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
 
+  // Friend Selection
+  const [chatableUsers, setChatableUsers] = useState<ChatableUser[]>([]);
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   const isEditing = !!route.params?.editDreamId;
   const editDreamId = route.params?.editDreamId;
 
@@ -243,6 +255,32 @@ export default function CreateDreamScreen() {
       setShowAllTasks(false);
     }
   }, [startDate, duration, durationUnit, recurrence]);
+
+  useEffect(() => {
+    if (selectedType !== "challenge" || isEditing) return;
+    const fetchChatableUsers = async () => {
+      if (!token) return;
+      setIsLoadingUsers(true);
+      try {
+        const response = await fetch(new URL('/api/connections', getApiUrl()).toString(), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const followers: ChatableUser[] = Array.isArray(data.followers) ? data.followers : [];
+          const following: ChatableUser[] = Array.isArray(data.following) ? data.following : [];
+          const merged = [...followers, ...following];
+          const unique = Array.from(new Map(merged.map(u => [u.id, u])).values());
+          setChatableUsers(unique);
+        }
+      } catch (error) {
+        console.error("Failed to fetch friends:", error);
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+    fetchChatableUsers();
+  }, [token, selectedType, isEditing]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -366,6 +404,7 @@ export default function CreateDreamScreen() {
           durationUnit: durationUnit,
           recurrence: recurrence,
           tasks: generatedTasks.map(t => t.text),
+          invitedUserIds: selectedType === "challenge" ? selectedFriends : undefined,
         }),
       });
 
@@ -467,6 +506,54 @@ export default function CreateDreamScreen() {
             testID="input-dream-description"
           />
         </Animated.View>
+
+        {!isEditing && selectedType === "challenge" && (
+          <Animated.View entering={FadeInDown.delay(175).springify()}>
+            <View style={styles.labelRow}>
+              <ThemedText type="small" style={styles.label}>INVITE FRIENDS</ThemedText>
+              <ThemedText type="small" style={styles.charCount}>{selectedFriends.length} selected</ThemedText>
+            </View>
+            {isLoadingUsers ? (
+              <ActivityIndicator color="#A78BFA" />
+            ) : chatableUsers.length === 0 ? (
+              <ThemedText style={{ color: "#8B7FC7", fontStyle: "italic" }}>No friends found to invite.</ThemedText>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.md }}>
+                {chatableUsers.map(user => {
+                  const isSelected = selectedFriends.includes(user.id);
+                  return (
+                    <Pressable
+                      key={user.id}
+                      style={[styles.friendCard, isSelected && styles.friendCardSelected]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setSelectedFriends(prev =>
+                          isSelected ? prev.filter(id => id !== user.id) : [...prev, user.id]
+                        );
+                      }}
+                    >
+                      {user.profileImage ? (
+                        <Image source={{ uri: user.profileImage }} style={styles.friendImage} />
+                      ) : (
+                        <View style={styles.friendImagePlaceholder}>
+                          <Feather name="user" size={20} color="#FFFFFF" />
+                        </View>
+                      )}
+                      <ThemedText type="small" style={styles.friendName} numberOfLines={1}>
+                        {user.username}
+                      </ThemedText>
+                      {isSelected && (
+                        <View style={styles.friendCheckBadge}>
+                          <Feather name="check" size={10} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </Animated.View>
+        )}
 
         {!isEditing && (
           <>
@@ -937,11 +1024,51 @@ const styles = StyleSheet.create({
     color: "#8B7FC7",
     fontSize: 11,
   },
+  friendCard: {
+    width: 64,
+    alignItems: 'center',
+    opacity: 0.6,
+  },
+  friendCardSelected: {
+    opacity: 1,
+  },
+  friendImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 4,
+  },
+  friendImagePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(139, 127, 199, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  friendName: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    width: "100%",
+  },
+  friendCheckBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 4,
+    backgroundColor: '#8B5CF6',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1A1137',
+  },
   moreTasksButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.xs,
     paddingVertical: Spacing.md,
     backgroundColor: "rgba(139, 127, 199, 0.15)",
     borderRadius: BorderRadius.sm,

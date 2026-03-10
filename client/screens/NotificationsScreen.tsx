@@ -168,6 +168,53 @@ export default function NotificationsScreen() {
     }
   };
 
+  const handleAcceptChallenge = async (notification: Notification) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!notification.actionData?.dreamId) return;
+
+    try {
+      const response = await fetch(new URL(`/api/dreams/${notification.actionData.dreamId}/join`, getApiUrl()).toString(), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        await fetch(new URL(`/api/notifications/${notification.id}`, getApiUrl()).toString(), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+        setModalVisible(false);
+        setSelectedNotification(null);
+        (navigation as any).navigate("DreamDetail", { dreamId: notification.actionData.dreamId });
+      }
+    } catch (error) {
+      console.error("Failed to accept challenge:", error);
+    }
+  };
+
+  const handleDeclineChallenge = async (notification: Notification) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!notification.actionData?.dreamId) return;
+
+    try {
+      const response = await fetch(new URL(`/api/dreams/${notification.actionData.dreamId}/decline`, getApiUrl()).toString(), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        await fetch(new URL(`/api/notifications/${notification.id}`, getApiUrl()).toString(), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+        setModalVisible(false);
+        setSelectedNotification(null);
+      }
+    } catch (error) {
+      console.error("Failed to decline challenge:", error);
+    }
+  };
+
   const handleModalAction = () => {
     setModalVisible(false);
     if (selectedNotification) {
@@ -348,19 +395,39 @@ export default function NotificationsScreen() {
                   {selectedNotification.time}
                 </ThemedText>
                 <View style={styles.modalButtons}>
-                  <Button
-                    variant="outline"
-                    onPress={() => handleDeleteNotification(selectedNotification.id)}
-                    style={[styles.modalButton, { borderColor: "#EF4444" }]}
-                  >
-                    Delete
-                  </Button>
-                  <Button
-                    onPress={handleModalAction}
-                    style={styles.modalButton}
-                  >
-                    Close
-                  </Button>
+                  {selectedNotification.actionType === "challenge_invite" ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        onPress={() => handleDeclineChallenge(selectedNotification)}
+                        style={[styles.modalButton, { borderColor: "#EF4444" }]}
+                      >
+                        Decline
+                      </Button>
+                      <Button
+                        onPress={() => handleAcceptChallenge(selectedNotification)}
+                        style={styles.modalButton}
+                      >
+                        Accept
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        onPress={() => handleDeleteNotification(selectedNotification.id)}
+                        style={[styles.modalButton, { borderColor: "#EF4444" }]}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        onPress={handleModalAction}
+                        style={styles.modalButton}
+                      >
+                        Close
+                      </Button>
+                    </>
+                  )}
                 </View>
               </>
             ) : null}

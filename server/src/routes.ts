@@ -772,6 +772,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Handle friend invitations for challenge dreams
+      const invitedUserIds = req.body.invitedUserIds;
+      if (Array.isArray(invitedUserIds) && type === "challenge") {
+        const inviter = await storage.getUser(req.user!.id);
+
+        for (const invitedUserId of invitedUserIds) {
+          // Initialize as pending
+          await storage.addDreamMember(dream.id, invitedUserId, "pending");
+
+          // Send notification
+          await storage.createNotification({
+            userId: invitedUserId,
+            title: "Challenge Invite",
+            description: `${inviter?.fullName || inviter?.username} challenged you to "${dream.title}"!`,
+            type: "social",
+            actionType: "challenge_invite",
+            actionData: { dreamId: dream.id }
+          });
+        }
+      }
+
       res.status(201).json(dream);
     } catch (error) {
       console.error("Create dream error:", error);
@@ -895,18 +916,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Dream not found" });
       }
 
-      // Add user as member (check if already member first)
-      const isMember = await storage.isDreamMember(dreamId, req.user!.id);
-      if (isMember) {
-        return res.status(400).json({ error: "You are already a member of this dream" });
-      }
+      // Check existing member status manually since isDreamMember ignores pending
+      const members = await storage.getDreamMembers(dreamId);
+      const existingMember = members.find(m => m.userId === req.user!.id);
 
-      await storage.addDreamMember(dreamId, req.user!.id, "member");
+      if (existingMember) {
+        if (existingMember.role !== "pending") {
+          return res.status(400).json({ error: "You are already a member of this dream" });
+        }
+        // They are pending! Accept the invite
+        await storage.updateDreamMemberRole(dreamId, req.user!.id, "member");
+      } else {
+        // Not a member at all; standard join
+        await storage.addDreamMember(dreamId, req.user!.id, "member");
+      }
 
       res.json({ success: true });
     } catch (error) {
       console.error("Join dream error:", error);
       res.status(500).json({ error: "Failed to join dream" });
+    }
+  });
+
+  // Decline dream invite
+  app.delete("/api/dreams/:dreamId/decline", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const dreamId = req.params.dreamId as string;
+
+      const members = await storage.getDreamMembers(dreamId);
+      const existingMember = members.find(m => m.userId === req.user!.id);
+
+      if (!existingMember || existingMember.role !== "pending") {
+        return res.status(400).json({ error: "No pending invite found" });
+      }
+
+      await storage.removeDreamMember(dreamId, req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Decline dream error:", error);
+      res.status(500).json({ error: "Failed to decline dream" });
     }
   });
 
