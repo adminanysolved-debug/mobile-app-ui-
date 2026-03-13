@@ -578,143 +578,139 @@ export default function CreateDreamScreen() {
           </Animated.View>
         )}
 
-        {/* The Invite Friends picker defaults to hidden when editing because we assume you can't invite mid-flight via this UI, but we'll show all other fields! */}
-        {!isEditing && selectedType === "challenge" && (
-          <>
-            <Animated.View entering={FadeInDown.delay(200).springify()}>
-              <ThemedText type="small" style={styles.label}>DURATION</ThemedText>
-              <View style={styles.durationRow}>
-                <TextInput
-                  style={[styles.input, styles.durationInput]}
-                  value={duration}
-                  onChangeText={handleDurationChange}
-                  placeholder="4"
-                  placeholderTextColor="#8B7FC7"
-                  keyboardType="number-pad"
-                  testID="input-duration"
-                />
+        {/* Duration, Occurrence, Start Date, Tasks — always shown for ALL dream types in BOTH create and edit mode */}
+        <Animated.View entering={FadeInDown.delay(200).springify()}>
+          <ThemedText type="small" style={styles.label}>DURATION</ThemedText>
+          <View style={styles.durationRow}>
+            <TextInput
+              style={[styles.input, styles.durationInput]}
+              value={duration}
+              onChangeText={handleDurationChange}
+              placeholder="4"
+              placeholderTextColor="#8B7FC7"
+              keyboardType="number-pad"
+              testID="input-duration"
+            />
+            <Pressable
+              style={styles.dropdownButton}
+              onPress={() => setShowDurationUnitPicker(true)}
+              testID="button-duration-unit"
+            >
+              <ThemedText style={styles.dropdownText}>
+                {durationUnitOptions.find(o => o.value === durationUnit)?.label}
+              </ThemedText>
+              <Feather name="chevron-down" size={16} color="#A78BFA" />
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(250).springify()}>
+          <ThemedText type="small" style={styles.label}>OCCURRENCE</ThemedText>
+          <Pressable
+            style={styles.dropdownButtonFull}
+            onPress={() => setShowRecurrencePicker(true)}
+            testID="button-recurrence"
+          >
+            <ThemedText style={styles.dropdownText}>
+              {recurrenceOptions.find(o => o.value === recurrence)?.label}
+            </ThemedText>
+            <Feather name="chevron-down" size={16} color="#A78BFA" />
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(300).springify()}>
+          <ThemedText type="small" style={styles.label}>START DATE</ThemedText>
+          <Pressable
+            style={styles.dateButtonFull}
+            onPress={handleDateButtonPress}
+            testID="button-start-date"
+          >
+            <Feather name="calendar" size={18} color="#A78BFA" />
+            <ThemedText style={styles.dateValue}>{formatDate(startDate)}</ThemedText>
+          </Pressable>
+          {targetDate ? (
+            <View style={styles.targetDateInfo}>
+              <Feather name="flag" size={14} color="#22C55E" />
+              <ThemedText type="small" style={styles.targetDateText}>
+                Target completion: {formatDate(targetDate)}
+              </ThemedText>
+            </View>
+          ) : null}
+        </Animated.View>
+
+        {Platform.OS !== 'web' && showStartPicker && DateTimePicker ? (
+          <DateTimePicker
+            value={startDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onStartDateChange}
+            minimumDate={new Date()}
+          />
+        ) : null}
+
+        {generatedTasks.length > 0 ? (
+          <Animated.View entering={FadeInDown.delay(350).springify()}>
+            <View style={styles.tasksHeader}>
+              <ThemedText type="small" style={styles.label}>
+                {isEditing ? `TASKS (${generatedTasks.length})` : `GENERATED TASKS (${generatedTasks.length})`}
+              </ThemedText>
+              {generatedTasks[0]?.text.trim() ? (
                 <Pressable
-                  style={styles.dropdownButton}
-                  onPress={() => setShowDurationUnitPicker(true)}
-                  testID="button-duration-unit"
+                  onPress={applyFirstTaskToAll}
+                  style={styles.applyAllButton}
+                  testID="button-apply-all"
                 >
-                  <ThemedText style={styles.dropdownText}>
-                    {durationUnitOptions.find(o => o.value === durationUnit)?.label}
+                  <Feather name="copy" size={14} color="#A78BFA" />
+                  <ThemedText type="small" style={styles.applyAllText}>
+                    Apply to all
                   </ThemedText>
-                  <Feather name="chevron-down" size={16} color="#A78BFA" />
                 </Pressable>
-              </View>
-            </Animated.View>
-
-            <Animated.View entering={FadeInDown.delay(250).springify()}>
-              <ThemedText type="small" style={styles.label}>OCCURRENCE</ThemedText>
-              <Pressable
-                style={styles.dropdownButtonFull}
-                onPress={() => setShowRecurrencePicker(true)}
-                testID="button-recurrence"
-              >
-                <ThemedText style={styles.dropdownText}>
-                  {recurrenceOptions.find(o => o.value === recurrence)?.label}
-                </ThemedText>
-                <Feather name="chevron-down" size={16} color="#A78BFA" />
-              </Pressable>
-            </Animated.View>
-
-            <Animated.View entering={FadeInDown.delay(300).springify()}>
-              <ThemedText type="small" style={styles.label}>START DATE</ThemedText>
-              <Pressable
-                style={styles.dateButtonFull}
-                onPress={handleDateButtonPress}
-                testID="button-start-date"
-              >
-                <Feather name="calendar" size={18} color="#A78BFA" />
-                <ThemedText style={styles.dateValue}>{formatDate(startDate)}</ThemedText>
-              </Pressable>
-              {targetDate ? (
-                <View style={styles.targetDateInfo}>
-                  <Feather name="flag" size={14} color="#22C55E" />
-                  <ThemedText type="small" style={styles.targetDateText}>
-                    Target completion: {formatDate(targetDate)}
-                  </ThemedText>
-                </View>
               ) : null}
-            </Animated.View>
+            </View>
+            <ThemedText type="small" style={styles.helperText}>
+              {isEditing ? "Edit task names below" : `Fill in the first task, then tap "Apply to all" to copy it`}
+            </ThemedText>
 
-            {Platform.OS !== 'web' && showStartPicker && DateTimePicker ? (
-              <DateTimePicker
-                value={startDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onStartDateChange}
-                minimumDate={new Date()}
-              />
-            ) : null}
-
-            {generatedTasks.length > 0 ? (
-              <Animated.View entering={FadeInDown.delay(350).springify()}>
-                <View style={styles.tasksHeader}>
-                  <ThemedText type="small" style={styles.label}>
-                    GENERATED TASKS ({generatedTasks.length})
+            <View style={styles.tasksList}>
+              {(showAllTasks ? generatedTasks : generatedTasks.slice(0, 10)).map((task, index) => (
+                <View key={index} style={styles.taskItem}>
+                  <View style={styles.taskNumber}>
+                    <ThemedText style={styles.taskNumberText}>{index + 1}</ThemedText>
+                  </View>
+                  <View style={styles.taskContent}>
+                    <TextInput
+                      style={styles.taskInput}
+                      value={task.text}
+                      onChangeText={(text) => updateTaskText(index, text)}
+                      placeholder="Enter task description..."
+                      placeholderTextColor="#8B7FC7"
+                      testID={`input-task-${index}`}
+                    />
+                    <ThemedText type="small" style={styles.taskDate}>
+                      {formatDate(task.date)}
+                    </ThemedText>
+                  </View>
+                </View>
+              ))}
+              {generatedTasks.length > 10 ? (
+                <Pressable
+                  onPress={() => setShowAllTasks(!showAllTasks)}
+                  style={styles.moreTasksButton}
+                  testID="button-toggle-tasks"
+                >
+                  <Feather
+                    name={showAllTasks ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color="#A78BFA"
+                  />
+                  <ThemedText type="small" style={styles.moreTasksText}>
+                    {showAllTasks ? "Show less" : `+${generatedTasks.length - 10} more tasks...`}
                   </ThemedText>
-                  {generatedTasks[0]?.text.trim() ? (
-                    <Pressable
-                      onPress={applyFirstTaskToAll}
-                      style={styles.applyAllButton}
-                      testID="button-apply-all"
-                    >
-                      <Feather name="copy" size={14} color="#A78BFA" />
-                      <ThemedText type="small" style={styles.applyAllText}>
-                        Apply to all
-                      </ThemedText>
-                    </Pressable>
-                  ) : null}
-                </View>
-                <ThemedText type="small" style={styles.helperText}>
-                  Fill in the first task, then tap "Apply to all" to copy it
-                </ThemedText>
-
-                <View style={styles.tasksList}>
-                  {(showAllTasks ? generatedTasks : generatedTasks.slice(0, 10)).map((task, index) => (
-                    <View key={index} style={styles.taskItem}>
-                      <View style={styles.taskNumber}>
-                        <ThemedText style={styles.taskNumberText}>{index + 1}</ThemedText>
-                      </View>
-                      <View style={styles.taskContent}>
-                        <TextInput
-                          style={styles.taskInput}
-                          value={task.text}
-                          onChangeText={(text) => updateTaskText(index, text)}
-                          placeholder="Enter task description..."
-                          placeholderTextColor="#8B7FC7"
-                          testID={`input-task-${index}`}
-                        />
-                        <ThemedText type="small" style={styles.taskDate}>
-                          {formatDate(task.date)}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  ))}
-                  {generatedTasks.length > 10 ? (
-                    <Pressable
-                      onPress={() => setShowAllTasks(!showAllTasks)}
-                      style={styles.moreTasksButton}
-                      testID="button-toggle-tasks"
-                    >
-                      <Feather
-                        name={showAllTasks ? "chevron-up" : "chevron-down"}
-                        size={16}
-                        color="#A78BFA"
-                      />
-                      <ThemedText type="small" style={styles.moreTasksText}>
-                        {showAllTasks ? "Show less" : `+${generatedTasks.length - 10} more tasks...`}
-                      </ThemedText>
-                    </Pressable>
-                  ) : null}
-                </View>
-              </Animated.View>
-            ) : null}
-          </>
-        )}
+                </Pressable>
+              ) : null}
+            </View>
+          </Animated.View>
+        ) : null}
 
         {error ? (
           <ThemedText type="small" style={styles.errorText}>{error}</ThemedText>
