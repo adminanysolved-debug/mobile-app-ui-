@@ -20,6 +20,7 @@ import { getApiUrl } from "@/lib/query-client";
 
 interface Dream {
   id: string;
+  userId: string;
   title: string;
   description: string | null;
   type: string;
@@ -49,7 +50,7 @@ export default function DreamDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme } = useTheme();
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
 
   const dreamId = route.params?.dreamId;
 
@@ -238,6 +239,8 @@ export default function DreamDetailScreen() {
   const daysRemaining = getDaysRemaining();
   const completedTasks = tasks.filter(t => t.isCompleted).length;
   const totalTasks = tasks.length;
+  // Only the dream creator can edit or invite
+  const isOwner = !!currentUser && !!dream && currentUser.id === dream.userId;
 
   if (isLoading) {
     return (
@@ -282,16 +285,18 @@ export default function DreamDetailScreen() {
         <Animated.View entering={FadeInDown.springify()}>
           <View style={[styles.header, { justifyContent: 'flex-end' }]}>
             <View style={styles.actionButtons}>
-              <Pressable
-                style={[styles.actionButton, { flexDirection: 'row', gap: 6, paddingHorizontal: 16 }]}
-                onPress={handleEdit}
-                testID="button-edit-dream"
-              >
-                <Feather name="edit-2" size={14} color="#60A5FA" />
-                <ThemedText type="small" style={{ color: "#60A5FA", fontWeight: "600" }}>Edit</ThemedText>
-              </Pressable>
+              {isOwner && (
+                <Pressable
+                  style={[styles.actionButton, { flexDirection: 'row', gap: 6, paddingHorizontal: 16 }]}
+                  onPress={handleEdit}
+                  testID="button-edit-dream"
+                >
+                  <Feather name="edit-2" size={14} color="#60A5FA" />
+                  <ThemedText type="small" style={{ color: "#60A5FA", fontWeight: "600" }}>Edit</ThemedText>
+                </Pressable>
+              )}
 
-              {(dream.type === "group" || dream.type === "challenge") && (
+              {isOwner && (dream.type === "group" || dream.type === "challenge") && (
                 <Pressable
                   style={[styles.actionButton, styles.inviteButton, { flexDirection: 'row', gap: 6, paddingHorizontal: 16 }]}
                   onPress={handleInvite}

@@ -49,6 +49,7 @@ export default function HomeStackNavigator() {
         component={MainMenuScreen}
         options={{
           headerTitle: () => <HeaderTitle title="Real Dream" />,
+          headerRight: () => <HeaderIcons />,
         }}
       />
       <Stack.Screen
