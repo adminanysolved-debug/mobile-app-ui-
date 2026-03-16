@@ -136,7 +136,7 @@ export default function ProfileScreen() {
   //const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme, currentTheme } = useTheme();
-  const { user, logout, token, updateUser } = useAuth();
+  const { user, logout, token, updateUser, refreshUser } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPhotoOptionsModal, setShowPhotoOptionsModal] = useState(false);
@@ -381,10 +381,8 @@ export default function ProfileScreen() {
         }),
       });
       if (response.ok) {
-        const updatedUser = await response.json();
-        // Update global auth context — profile card reads from user context directly
-        updateUser(updatedUser);
-        // Close modal
+        // Fetch fresh user data from backend so the profile card updates immediately
+        await refreshUser();
         setShowEditModal(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
