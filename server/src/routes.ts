@@ -558,13 +558,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // SECURITY FIX: Whitelist only fields users are allowed to change
       const allowedUpdates: any = {};
-      const { fullName, profileImage, username, bio, settings } = req.body;
+      const { fullName, profileImage, username, bio, settings, age, gender } = req.body;
 
       if (fullName !== undefined) allowedUpdates.fullName = fullName;
       if (profileImage !== undefined) allowedUpdates.profileImage = profileImage;
       if (username !== undefined) allowedUpdates.username = username;
       if (bio !== undefined) allowedUpdates.bio = bio;
       if (settings !== undefined) allowedUpdates.settings = settings;
+      if (age !== undefined) allowedUpdates.age = age !== null ? parseInt(String(age)) : null;
+      if (gender !== undefined) allowedUpdates.gender = gender || null;
 
       const user = await storage.updateUser(req.user!.id, allowedUpdates);
       if (!user) {
