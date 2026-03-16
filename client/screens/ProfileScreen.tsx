@@ -148,6 +148,11 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
+  // Sync profilePhoto local state whenever the user context changes (e.g., after upload or edit)
+  useEffect(() => {
+    setProfilePhoto(user?.profilePhoto || null);
+  }, [user?.profilePhoto]);
+
   // 3D Animated Avatar logic
   const avatarTranslateY = useSharedValue(-150);
   const avatarTranslateX = useSharedValue(-60);
@@ -377,7 +382,9 @@ export default function ProfileScreen() {
       });
       if (response.ok) {
         const updatedUser = await response.json();
+        // Update global auth context — profile card reads from user context directly
         updateUser(updatedUser);
+        // Close modal
         setShowEditModal(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }

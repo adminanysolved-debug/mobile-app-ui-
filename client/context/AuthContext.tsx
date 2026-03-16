@@ -178,23 +178,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const input = emailOrUsername.trim().toLowerCase();
       let email = input;
 
+      // If username (no @), resolve to email. We start resolving IMMEDIATELY
+      // and await only when we actually need the email (just before Firebase call).
+      let emailResolutionPromise: Promise<string | null> | null = null;
       if (!input.includes('@')) {
-        try {
-          const response = await fetch(new URL('/api/auth/resolve-username', apiUrl).toString(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: input }),
-          });
+        emailResolutionPromise = fetch(new URL('/api/auth/resolve-username', apiUrl).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: input }),
+        })
+          .then(res => res.ok ? res.json().then((d: any) => d.email as string) : null)
+          .catch(() => null);
+      }
 
-          if (!response.ok) {
-            return { success: false, error: 'No account found with this username' };
-          }
-
-          const data = await response.json();
-          email = data.email;
-        } catch {
-          return { success: false, error: 'Failed to resolve username' };
+      // Await resolution only when needed
+      if (emailResolutionPromise) {
+        const resolvedEmail = await emailResolutionPromise;
+        if (!resolvedEmail) {
+          return { success: false, error: 'No account found with this username' };
         }
+        email = resolvedEmail;
       }
 
       const userCredential = await signInWithEmail(email, password);
