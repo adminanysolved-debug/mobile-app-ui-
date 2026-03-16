@@ -241,7 +241,7 @@ export default function ProfileScreen() {
 
       // Pick image
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -273,11 +273,17 @@ export default function ProfileScreen() {
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-      formData.append('profilePhoto', {
-        uri,
-        name: filename,
-        type,
-      } as any);
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append('profilePhoto', blob, filename);
+      } else {
+        formData.append('profilePhoto', {
+          uri,
+          name: filename,
+          type,
+        } as any);
+      }
 
       // Upload to server with fresh token
       const response = await fetch(new URL('/api/profile/photo', getApiUrl()).toString(), {
