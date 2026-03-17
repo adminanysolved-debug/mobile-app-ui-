@@ -28,6 +28,8 @@ export default function Users() {
     const [editRole, setEditRole] = useState(false);
     const [newIsVendor, setNewIsVendor] = useState(false);
     const [newVendorTier, setNewVendorTier] = useState('basic');
+    const [newSubscriptionTier, setNewSubscriptionTier] = useState('free');
+    const [editSubscription, setEditSubscription] = useState(false);
     
     const [adjustingCoins, setAdjustingCoins] = useState(false);
     const [coinAmount, setCoinAmount] = useState('50');
@@ -107,6 +109,34 @@ export default function Users() {
         }
     };
 
+    const handleUpdateSubscription = async () => {
+        if (!selectedUser) return;
+        try {
+            const res = await fetch(`http://localhost:5001/api/admin/users/${selectedUser.id}/subscription`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ subscription_tier: newSubscriptionTier })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message);
+                fetchUsers();
+                setSelectedUser({ ...selectedUser, subscription_tier: newSubscriptionTier });
+                setEditSubscription(false);
+            } else {
+                const data = await res.json();
+                alert(`Failed to update subscription: ${data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating subscription:', error);
+            alert('An error occurred while updating the subscription.');
+        }
+    };
+
     const handleAdjustCoins = async () => {
         if (!selectedUser) return;
         const amount = parseInt(coinAmount);
@@ -141,7 +171,9 @@ export default function Users() {
         setSelectedUser(user);
         setNewIsVendor(user.is_vendor);
         setNewVendorTier(user.vendor_tier || 'basic');
+        setNewSubscriptionTier(user.subscription_tier || 'free');
         setEditRole(false);
+        setEditSubscription(false);
         setAdjustingCoins(false);
     };
 
@@ -526,6 +558,51 @@ export default function Users() {
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
+
+                                                <div className="pt-4 border-t border-white/5">
+                                                    <div className="flex justify-between items-center">
+                                                        <div>
+                                                            <span className="text-slate-100 text-xs font-black uppercase tracking-wider">Subscription Tier</span>
+                                                            <p className="text-[9px] text-slate-600 mt-1 font-bold uppercase">Modify subject service level.</p>
+                                                        </div>
+                                                        <button onClick={() => setEditSubscription(!editSubscription)} className="bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 p-2 rounded-xl border border-white/5 transition-all">
+                                                            <Settings2 size={16} className="text-slate-500" />
+                                                        </button>
+                                                    </div>
+
+                                                    <AnimatePresence>
+                                                        {editSubscription && (
+                                                            <motion.div 
+                                                                initial={{ height: 0, opacity: 0 }}
+                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                exit={{ height: 0, opacity: 0 }}
+                                                                className="space-y-4 pt-4 overflow-hidden"
+                                                            >
+                                                                <div className="space-y-2.5">
+                                                                    <span className="text-slate-600 text-[9px] font-black uppercase ml-1">Subscription Level</span>
+                                                                    <select
+                                                                        value={newSubscriptionTier}
+                                                                        onChange={(e) => setNewSubscriptionTier(e.target.value)}
+                                                                        className="bg-slate-900 border border-white/10 rounded-2xl p-3.5 text-slate-200 text-xs font-bold outline-none w-full appearance-none hover:border-indigo-500 transition-colors cursor-pointer shadow-inner"
+                                                                    >
+                                                                        <option value="free">FREE (Standard)</option>
+                                                                        <option value="bronze">BRONZE (Basic+)</option>
+                                                                        <option value="silver">SILVER (Advantage)</option>
+                                                                        <option value="gold">GOLD (Elite)</option>
+                                                                        <option value="platinum">PLATINUM (Infinite)</option>
+                                                                    </select>
+                                                                </div>
+                                                                
+                                                                <button 
+                                                                    onClick={handleUpdateSubscription}
+                                                                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[10px] py-3 rounded-2xl transition-all shadow-xl active:scale-95 uppercase tracking-widest"
+                                                                >
+                                                                    Re-Synchronize Tier
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

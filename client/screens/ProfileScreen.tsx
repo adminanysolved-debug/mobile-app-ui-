@@ -54,6 +54,14 @@ const themeItem: MenuItem = {
   iconColor: "#A78BFA",
 };
 
+const subscriptionItem: MenuItem = {
+  icon: "award",
+  label: "Subscription Plan",
+  route: "Subscription",
+  iconBg: "rgba(99, 102, 241, 0.2)",
+  iconColor: "#818cf8",
+};
+
 const ordersItems: MenuItem[] = [
   {
     icon: "shopping-bag",
@@ -600,6 +608,29 @@ export default function ProfileScreen() {
                 style={{ color: theme.textSecondary }}
               >
                 View your badges and awards
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={theme.textMuted} />
+          </Card>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(160).springify()}>
+          <Card
+            onPress={() => handleNavigate(subscriptionItem.route)}
+            style={styles.linkCard}
+          >
+            <View style={[styles.linkIcon, { backgroundColor: subscriptionItem.iconBg }]}>
+              <Feather name={subscriptionItem.icon} size={24} color={subscriptionItem.iconColor} />
+            </View>
+            <View style={styles.linkContent}>
+              <ThemedText type="body" style={styles.linkTitle}>
+                {subscriptionItem.label}
+              </ThemedText>
+              <ThemedText
+                type="small"
+                style={{ color: theme.textSecondary }}
+              >
+                Upgraded: {user?.subscriptionTier || 'Silver'}
               </ThemedText>
             </View>
             <Feather name="chevron-right" size={20} color={theme.textMuted} />

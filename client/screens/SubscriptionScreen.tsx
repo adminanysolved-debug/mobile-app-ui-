@@ -1,492 +1,320 @@
-import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, ActivityIndicator } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
+import React from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, SafeAreaView, Dimensions } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { useAuth } from '../context/AuthContext';
 
-import { ThemedText } from "@/components/ThemedText";
-import { GalaxyBackground } from "@/components/GalaxyBackground";
-import { Card } from "@/components/Card";
-import { Button } from "@/components/Button";
-import { AdBanner } from "@/components/AdBanner";
-import { useTheme } from "@/hooks/useTheme";
-import { useAuth } from "@/context/AuthContext";
-import { Spacing, BorderRadius } from "@/constants/theme";
-import { getApiUrl } from "@/lib/query-client";
-import { useSafeBottomPadding } from "@/hooks/useSafeBottomPadding";
+const { width } = Dimensions.get('window');
 
-type SubscriptionTier = "free" | "bronze" | "silver" | "gold" | "platinum" | "basic" | "pro" | "enterprise";
-
-type SubscriptionPackage = {
-  id: SubscriptionTier;
-  name: string;
-  colors: [string, string];
-  price: number;
-  period: string;
-  features: string[];
-  iconName: keyof typeof Feather.glyphMap;
-};
-
-const userPackages: SubscriptionPackage[] = [
+const PLANS = [
   {
-    id: "silver",
-    name: "SILVER",
-    colors: ["#6B7280", "#9CA3AF"],
-    price: 0,
-    period: "/year",
-    features: ["10 Personal Dreams", "1 Team Dream", "3 Challenge Dreams", "Standard Support"],
-    iconName: "star",
+    id: 'silver',
+    name: 'Silver',
+    price: 'GBP 0',
+    subtitle: 'Free Forever',
+    colors: ['#94a3b8', '#475569'],
+    features: [
+      'Up to 10 Personal Dreams',
+      '1 Team Dream Participation',
+      '3 Friend Challenges',
+      'Standard Support'
+    ],
+    buttonText: 'Current Plan'
   },
   {
-    id: "gold",
-    name: "GOLD",
-    colors: ["#EAB308", "#FCD34D"],
-    price: 3.99,
-    period: "/year",
-    features: ["14 Personal Dreams", "3 Team Dreams", "5 Challenge Dreams", "Ad-Free Experience", "Premium Themes"],
-    iconName: "zap",
+    id: 'gold',
+    name: 'Gold',
+    price: 'GBP 3.99',
+    subtitle: 'per month',
+    popular: true,
+    colors: ['#fbbf24', '#b45309'],
+    features: [
+      'Up to 14 Personal Dreams',
+      '3 Team Dream Participation',
+      '5 Friend Challenges',
+      'Priority Support',
+      'Exclusive Badges'
+    ],
+    buttonText: 'Upgrade to Gold'
   },
   {
-    id: "platinum",
-    name: "PLATINUM",
-    colors: ["#8B5CF6", "#A855F7"],
-    price: 5.99,
-    period: "/year",
-    features: ["20 Personal Dreams", "5 Team Dreams", "10 Challenge Dreams", "Priority Support", "All Themes Unlocked"],
-    iconName: "diamond" as any,
-  },
-];
-
-const vendorPackages: SubscriptionPackage[] = [
-  {
-    id: "basic",
-    name: "BASIC VENDOR",
-    colors: ["#EA580C", "#FB923C"],
-    price: 9.99,
-    period: "/year",
-    features: ["Max 3 Marketplace Dreams", "20% Sales Commission", "Standard Vendor Dashboard"],
-    iconName: "shopping-bag" as any,
-  },
-  {
-    id: "pro",
-    name: "PRO VENDOR",
-    colors: ["#10B981", "#34D399"],
-    price: 19.99,
-    period: "/year",
-    features: ["Max 8 Marketplace Dreams", "15% Sales Commission", "Advanced Analytics", "Featured Listings"],
-    iconName: "briefcase" as any,
-  },
-  {
-    id: "enterprise",
-    name: "ENTERPRISE VENDOR",
-    colors: ["#3B82F6", "#60A5FA"],
-    price: 29.99,
-    period: "/year",
-    features: ["Max 15 Marketplace Dreams", "10% Sales Commission", "VIP Vendor Status", "Custom Support"],
-    iconName: "globe" as any,
-  },
+    id: 'platinum',
+    name: 'Platinum',
+    price: 'GBP 5.99',
+    subtitle: 'per month',
+    colors: ['#6366f1', '#4338ca'],
+    features: [
+      'Up to 20 Personal Dreams',
+      '5 Team Dream Participation',
+      '10 Friend Challenges',
+      '24/7 Premium Support',
+      'Elite Wall of Fame Status',
+      'Early access to V3 features'
+    ],
+    buttonText: 'Upgrade to Platinum'
+  }
 ];
 
 export default function SubscriptionScreen() {
-  const bottomPadding = useSafeBottomPadding();
-  const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const { theme } = useTheme();
-  const { token, user, refreshUser } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [confirmPackage, setConfirmPackage] = useState<SubscriptionPackage | null>(null);
+  const navigation = useNavigation<any>();
+  const { user } = useAuth();
 
-  const currentTier = user?.subscriptionTier || "silver";
-  const [activeTab, setActiveTab] = useState<"user" | "vendor">("user");
-
-  const packages = activeTab === "user" ? userPackages : vendorPackages;
-
-  const handleSelectPlan = (pkg: SubscriptionPackage) => {
-    if (pkg.id === currentTier) return;
+  const handleSelectPlan = (plan: typeof PLANS[0]) => {
+    if (user?.subscriptionTier === plan.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setConfirmPackage(pkg);
-    setModalVisible(true);
-  };
-
-  const handleConfirmSubscription = async () => {
-    if (!confirmPackage || !token) return;
-    setIsLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-    try {
-      const response = await fetch(new URL('/api/subscriptions/upgrade', getApiUrl()).toString(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          tier: confirmPackage.id,
-          type: activeTab,
-        }),
-      });
-
-      if (response.ok) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setSelectedPlan(confirmPackage.id);
-        if (refreshUser) {
-          refreshUser();
-        }
-        setModalVisible(false);
-      } else {
-        const data = await response.json();
-        alert(data.error || "Failed to subscribe");
-      }
-    } catch (error) {
-      alert("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-    setConfirmPackage(null);
+    navigation.navigate('Payment', { plan });
   };
 
   return (
-    <GalaxyBackground>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: insets.top + Spacing.xl,
-            paddingBottom: bottomPadding,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View entering={FadeInDown.springify()}>
-          <ThemedText type="h2" style={styles.title}>RealDream Plans</ThemedText>
-          <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Choose a plan that fits your ambition
-          </ThemedText>
-        </Animated.View>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#0f172a', '#1e293b']} style={styles.background} />
+      
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Subscription Plans</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-        <View style={styles.tabsContainer}>
-          <Pressable
-            onPress={() => { setActiveTab("user"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-            style={[styles.tab, activeTab === "user" && { backgroundColor: theme.link }]}
-          >
-            <ThemedText style={[styles.tabText, activeTab === "user" && { color: "#FFF" }]}>User Plans</ThemedText>
-          </Pressable>
-          <Pressable
-            onPress={() => { setActiveTab("vendor"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-            style={[styles.tab, activeTab === "vendor" && { backgroundColor: theme.link }]}
-          >
-            <ThemedText style={[styles.tabText, activeTab === "vendor" && { color: "#FFF" }]}>Vendor Plans</ThemedText>
-          </Pressable>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.introContainer}>
+          <Text style={styles.introTitle}>Elevate Your Dreams</Text>
+          <Text style={styles.introSubtitle}>Choose the plan that fits your ambition</Text>
+          
+          <View style={styles.offerBadge}>
+              <Text style={styles.offerText}>6 MONTHS FREE Introductory Offer on Gold/Platinum</Text>
+          </View>
         </View>
 
-        <View style={styles.introOfferBox}>
-          <Feather name="gift" size={20} color={theme.link} />
-          <ThemedText type="bodyMedium" style={{ color: theme.link }}>
-            Introductory Offer: First 6 Months FREE
-          </ThemedText>
-        </View>
-
-        {currentTier !== "free" ? (
-          <Animated.View entering={FadeInDown.delay(50).springify()}>
-            <Card style={{ ...styles.currentPlanCard, backgroundColor: theme.backgroundSecondary }}>
-              <Feather name="check-circle" size={24} color={theme.green} />
-              <View style={styles.currentPlanInfo}>
-                <ThemedText type="bodyMedium">Current Plan</ThemedText>
-                <ThemedText type="h3" style={{ color: theme.link }}>
-                  {currentTier.toUpperCase()}
-                </ThemedText>
+        {PLANS.map((plan) => (
+          <View key={plan.id} style={[styles.planCard, plan.popular && styles.popularCard]}>
+            {plan.popular && (
+              <View style={styles.popularBadge}>
+                <Text style={styles.popularText}>MOST POPULAR</Text>
               </View>
-            </Card>
-          </Animated.View>
-        ) : null}
+            )}
 
-        {packages.map((pkg, index) => (
-          <Animated.View key={pkg.id} entering={FadeInDown.delay(100 + index * 50).springify()}>
-            <Pressable onPress={() => handleSelectPlan(pkg)}>
-              <Card
-                style={{
-                  ...styles.packageCard,
-                  ...(currentTier === pkg.id ? { borderWidth: 2, borderColor: theme.link } : {}),
-                }}
-              >
-                <View style={styles.packageHeader}>
-                  <LinearGradient
-                    colors={pkg.colors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.packageIcon}
-                  >
-                    <Feather name={pkg.iconName} size={28} color="#FFFFFF" />
-                  </LinearGradient>
-                  <View style={styles.packageInfo}>
-                    <ThemedText type="h3">{pkg.name}</ThemedText>
-                    <View style={styles.priceRow}>
-                      <ThemedText type="h2" style={{ color: theme.link }}>
-                        GBP {pkg.price.toFixed(2)}
-                      </ThemedText>
-                      <ThemedText type="body" style={{ color: theme.textSecondary }}>
-                        {pkg.period}
-                      </ThemedText>
-                    </View>
-                    <ThemedText type="xs" style={{ color: theme.green, fontWeight: '700' }}>
-                      6 MONTHS FREE STARTING NOW
-                    </ThemedText>
-                  </View>
-                  {currentTier === pkg.id ? (
-                    <View style={[styles.currentBadge, { backgroundColor: theme.green }]}>
-                      <ThemedText style={styles.currentBadgeText}>Current</ThemedText>
-                    </View>
-                  ) : null}
+            <LinearGradient 
+              colors={plan.colors as [string, string, ...string[]]} 
+              start={{ x: 0, y: 0 }} 
+              end={{ x: 1, y: 1 }}
+              style={styles.planHeader}
+            >
+              <View>
+                <Text style={styles.planName}>{plan.name}</Text>
+                <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+              </View>
+              <View style={styles.priceContainer}>
+                <Text style={styles.planPrice}>{plan.price}</Text>
+              </View>
+            </LinearGradient>
+
+            <View style={styles.featuresContainer}>
+              {plan.features.map((feature, idx) => (
+                <View key={idx} style={styles.featureRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={plan.colors[0]} />
+                  <Text style={styles.featureText}>{feature}</Text>
                 </View>
+              ))}
+            </View>
 
-                <View style={styles.featuresContainer}>
-                  {pkg.features.map((feature, fIndex) => (
-                    <View key={fIndex} style={styles.featureRow}>
-                      <Feather name="check" size={18} color={theme.green} />
-                      <ThemedText type="body" style={{ color: theme.text, flex: 1 }}>
-                        {feature}
-                      </ThemedText>
-                    </View>
-                  ))}
-                </View>
-
-                {currentTier !== pkg.id ? (
-                  <Button
-                    onPress={() => handleSelectPlan(pkg)}
-                    style={styles.selectButton}
-                    variant="primary"
-                  >
-                    Choose Plan
-                  </Button>
-                ) : null}
-              </Card>
-            </Pressable>
-          </Animated.View>
+            <TouchableOpacity
+              style={[
+                styles.selectButton, 
+                user?.subscriptionTier === plan.id && styles.currentPlanButton,
+                { backgroundColor: user?.subscriptionTier === plan.id ? '#334155' : plan.colors[0] }
+              ]}
+              onPress={() => handleSelectPlan(plan)}
+              disabled={user?.subscriptionTier === plan.id}
+            >
+              <Text style={styles.selectButtonText}>
+                {user?.subscriptionTier === plan.id ? 'Current Plan' : plan.buttonText}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ))}
 
-        <AdBanner variant="compact" />
-      </ScrollView>
-
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCloseModal}
-      >
-        <View style={styles.modalOverlay}>
-          {confirmPackage ? (
-            <Animated.View
-              entering={FadeIn}
-              style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}
-            >
-              <LinearGradient
-                colors={confirmPackage.colors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.modalHeader}
-              >
-                <Feather name={confirmPackage.iconName} size={48} color="#FFFFFF" />
-                <ThemedText style={styles.modalPlanName}>{confirmPackage.name}</ThemedText>
-              </LinearGradient>
-
-              <View style={styles.modalBody}>
-                <ThemedText type="h3" style={styles.confirmTitle}>
-                  Confirm Subscription
-                </ThemedText>
-                <ThemedText type="body" style={[styles.confirmText, { color: theme.textSecondary }]}>
-                  Subscribe to {confirmPackage.name}? The first 6 months are free, then GBP {confirmPackage.price.toFixed(2)}/year will apply.
-                </ThemedText>
-
-                <View style={styles.dummyCardInfo}>
-                   <ThemedText type="xs" style={{ color: theme.textSecondary }}>Using dummy card 4242 ... 123 for verification</ThemedText>
-                </View>
-
-                <View style={styles.modalButtons}>
-                  <Button
-                    onPress={handleCloseModal}
-                    variant="secondary"
-                    style={styles.modalButton}
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onPress={handleConfirmSubscription}
-                    style={styles.modalButton}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      "Subscribe"
-                    )}
-                  </Button>
-                </View>
-              </View>
-            </Animated.View>
-          ) : null}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Payments are processed securely. You can cancel your subscription anytime from your profile settings.
+          </Text>
         </View>
-      </Modal>
-    </GalaxyBackground>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0f172a',
   },
-  scrollView: {
-    flex: 1,
+  background: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  title: {
-    textAlign: "center",
-    marginBottom: Spacing.xs,
+  introContainer: {
+    alignItems: 'center',
+    marginVertical: 30,
   },
-  subtitle: {
-    textAlign: "center",
-    marginBottom: Spacing.md,
+  introTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: -0.5,
   },
-  currentPlanCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.lg,
-    gap: Spacing.md,
+  introSubtitle: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
-  currentPlanInfo: {
-    flex: 1,
+  offerBadge: {
+      backgroundColor: 'rgba(99, 102, 241, 0.15)',
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(99, 102, 241, 0.3)',
+      marginTop: 20,
   },
-  packageCard: {
-    padding: Spacing.lg,
+  offerText: {
+      color: '#818cf8',
+      fontSize: 10,
+      fontWeight: 'bold',
+      letterSpacing: 1,
+      textAlign: 'center',
   },
-  packageHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.lg,
+  planCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 24,
+    marginBottom: 25,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
   },
-  packageIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: BorderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.lg,
+  popularCard: {
+    borderColor: '#fbbf24',
+    borderWidth: 2,
+    transform: [{ scale: 1.02 }],
   },
-  packageInfo: {
-    flex: 1,
+  popularBadge: {
+    backgroundColor: '#fbbf24',
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderBottomLeftRadius: 15,
+    zIndex: 10,
   },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: Spacing.xs,
+  popularText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
-  currentBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-  },
-  currentBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  featuresContainer: {
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-  },
-  selectButton: {
-    marginTop: Spacing.sm,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.xl,
-  },
-  modalContent: {
-    width: "100%",
-    borderRadius: BorderRadius.md,
-    overflow: "hidden",
-  },
-  modalHeader: {
-    alignItems: "center",
-    paddingVertical: Spacing["3xl"],
-  },
-  modalPlanName: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "700",
-    marginTop: Spacing.md,
-  },
-  modalBody: {
-    padding: Spacing.xl,
-  },
-  confirmTitle: {
-    textAlign: "center",
-    marginBottom: Spacing.sm,
-  },
-  confirmText: {
-    textAlign: "center",
-    marginBottom: Spacing.xl,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: Spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-  },
-  tabsContainer: {
+  planHeader: {
+    padding: 25,
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: BorderRadius.md,
-    padding: 4,
-    marginBottom: Spacing.sm,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.sm,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  tabText: {
+  planName: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  planSubtitle: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
     fontWeight: '600',
   },
-  introOfferBox: {
+  priceContainer: {
+    alignItems: 'flex-end',
+  },
+  planPrice: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  featuresContainer: {
+    padding: 25,
+  },
+  featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    marginBottom: 12,
   },
-  dummyCardInfo: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.lg,
+  featureText: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  selectButton: {
+    margin: 25,
+    marginTop: 0,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  selectButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  currentPlanButton: {
+    opacity: 0.8,
+  },
+  footer: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+  },
+  footerText: {
+    color: '#475569',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+    fontWeight: '500',
   }
 });

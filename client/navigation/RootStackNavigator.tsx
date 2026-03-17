@@ -11,6 +11,7 @@ import WallOfFameScreen from "@/screens/WallOfFameScreen";
 import WalletScreen from "@/screens/WalletScreen";
 import ChatScreen from "@/screens/ChatScreen";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
+import PaymentScreen from "@/screens/PaymentScreen";
 import VendorHubScreen from "@/screens/VendorHubScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/context/AuthContext";
@@ -36,6 +37,7 @@ export type RootStackParamList = {
   VendorProfile: undefined;
   VendorHub: undefined;
   Subscription: undefined;
+  Payment: { plan: any };
   Notifications: undefined;
   LuckySpin: undefined; // 👈 Ye line add karo
   Chat: { otherUserId: string; otherUserName: string };
@@ -96,6 +98,11 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="Subscription"
             component={SubscriptionScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Payment"
+            component={PaymentScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

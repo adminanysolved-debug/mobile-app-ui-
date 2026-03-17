@@ -8,6 +8,7 @@ interface MarketItem {
     price: number;
     is_premium: boolean;
     is_active: boolean;
+    how_to_achieve?: string;
     created_at: string;
     vendor_name: string;
     vendor_tier: string;
@@ -233,6 +234,17 @@ export default function Marketplace() {
                                         <div className="text-slate-500 text-xs mb-1">Created At</div>
                                         <div className="text-slate-200">{new Date(selectedItem.created_at).toLocaleString()}</div>
                                     </div>
+                                    {selectedItem.how_to_achieve && (
+                                        <div className="bg-indigo-500/5 p-4 rounded-xl border border-indigo-500/20 col-span-2">
+                                            <div className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                                Dream Achievement Protocol
+                                            </div>
+                                            <div className="text-slate-200 text-sm leading-relaxed italic">
+                                                "{selectedItem.how_to_achieve}"
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-2">

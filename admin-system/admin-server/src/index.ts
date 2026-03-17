@@ -348,7 +348,7 @@ app.get('/api/newsfeed', authenticateAdmin, async (req, res) => {
 app.get('/api/market-items', authenticateAdmin, async (req, res) => {
     try {
         const itemsRes = await pool.query(`
-            SELECT m.id, m.title, m.category, m.price, m.is_premium, m.is_active, m.created_at, u.username as vendor_name, u.vendor_tier
+            SELECT m.id, m.title, m.category, m.price, m.is_premium, m.is_active, m.created_at, m.how_to_achieve, u.username as vendor_name, u.vendor_tier
             FROM market_items m
             LEFT JOIN users u ON m.user_id = u.id
             ORDER BY m.created_at DESC
@@ -400,6 +400,18 @@ app.put('/api/admin/users/:id/vendor', async (req, res) => {
     } catch (error: any) {
         console.error("Failed to update vendor status", error);
         res.status(500).json({ error: "Failed to update vendor status" });
+    }
+});
+
+app.put('/api/admin/users/:id/subscription', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { subscription_tier } = req.body;
+        await pool.query('UPDATE users SET subscription_tier = $1 WHERE id = $2', [subscription_tier, id]);
+        res.json({ success: true, message: 'Subscription tier updated successfully' });
+    } catch (error: any) {
+        console.error("Failed to update subscription tier", error);
+        res.status(500).json({ error: "Failed to update subscription tier" });
     }
 });
 
