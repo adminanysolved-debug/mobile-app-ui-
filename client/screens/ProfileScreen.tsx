@@ -144,14 +144,14 @@ export default function ProfileScreen() {
   const [editBio, setEditBio] = useState(user?.bio || "");
   const [editAge, setEditAge] = useState(user?.age?.toString() || "");
   const [editGender, setEditGender] = useState(user?.gender || "");
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profilePhoto || null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profilePhoto || user?.profileImage || null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Sync profilePhoto local state whenever the user context changes (e.g., after upload or edit)
   useEffect(() => {
-    setProfilePhoto(user?.profilePhoto || null);
-  }, [user?.profilePhoto]);
+    setProfilePhoto(user?.profilePhoto || user?.profileImage || null);
+  }, [user?.profilePhoto, user?.profileImage]);
 
   // 3D Animated Avatar logic
   const avatarTranslateY = useSharedValue(-150);
@@ -297,7 +297,7 @@ export default function ProfileScreen() {
       if (response.ok) {
         const data = await response.json();
         setProfilePhoto(data.profilePhotoUrl);
-        updateUser({ ...user, profilePhoto: data.profilePhotoUrl });
+        updateUser({ ...user, profilePhoto: data.profilePhotoUrl, profileImage: data.profilePhotoUrl });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         const errorData = await response.json();

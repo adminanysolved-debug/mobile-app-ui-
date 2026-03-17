@@ -23,6 +23,7 @@ export interface User {
   fullName: string;
   avatar?: string;
   profilePhoto?: string;
+  profileImage?: string;
   coins: number;
   trophies: number;
   awards: number;

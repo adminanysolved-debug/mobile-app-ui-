@@ -608,6 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update user in database
         const updatedUser = await storage.updateUser(userId, {
           profilePhoto: photoUrl,
+          profileImage: photoUrl,
         });
 
         if (!updatedUser) {
@@ -618,9 +619,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profilePhotoUrl: photoUrl,
           message: "Profile photo uploaded successfully",
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error uploading profile photo:", error);
-        res.status(500).json({ error: "Failed to upload profile photo" });
+        res.status(500).json({ 
+          error: "Failed to upload profile photo",
+          details: error.message
+        });
       }
     }
   );

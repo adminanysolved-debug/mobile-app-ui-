@@ -21,7 +21,7 @@ export function getApiUrl(): string {
 
   // DEV fallback (web / emulator only)
   if (__DEV__) {
-    return "http://localhost:5000";
+    return "http://localhost:3000";
   }
 
   throw new Error(

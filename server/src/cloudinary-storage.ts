@@ -1,11 +1,20 @@
 import { v2 as cloudinary } from 'cloudinary';
+import { Readable } from 'stream';
 
 // Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Calling config() with no arguments or with secure: true 
+// will cause the SDK to automatically use the CLOUDINARY_URL from process.env 
+// if it is present. We fallback to individual keys if not.
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config({ secure: true }); 
+} else {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true
+  });
+}
 
 /**
  * Upload a file buffer to Cloudinary
@@ -38,7 +47,6 @@ export async function uploadToCloudinary(
       );
 
       // Convert buffer to stream and pipe to Cloudinary
-      const { Readable } = require('stream');
       const stream = Readable.from(fileBuffer);
       stream.pipe(uploadStream);
     });
