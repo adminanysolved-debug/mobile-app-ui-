@@ -40,6 +40,7 @@ export default function VendorHubScreen() {
     const [price, setPrice] = useState("");
     const [category, setCategory] = useState("Themes");
     const [isPremium, setIsPremium] = useState(false);
+    const [howToAchieve, setHowToAchieve] = useState("");
 
     useEffect(() => {
         fetchVendorItems();
@@ -120,6 +121,7 @@ export default function VendorHubScreen() {
                     price: Number(price),
                     category,
                     isPremium,
+                    howToAchieve,
                     imageUrl: "" // Optional placeholder
                 })
             });
@@ -130,6 +132,7 @@ export default function VendorHubScreen() {
                 setTitle("");
                 setDescription("");
                 setPrice("");
+                setHowToAchieve("");
                 fetchVendorItems();
             } else {
                 const data = await response.json();
@@ -176,7 +179,7 @@ export default function VendorHubScreen() {
 
                         <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: Spacing.sm }}>Category</ThemedText>
                         <View style={styles.categoryRow}>
-                            {["Themes", "Badges", "Customization"].map(cat => (
+                            {["Themes", "Badges", "Customization", "Dream"].map(cat => (
                                 <Pressable
                                     key={cat}
                                     onPress={() => setCategory(cat)}
@@ -189,6 +192,21 @@ export default function VendorHubScreen() {
                                 </Pressable>
                             ))}
                         </View>
+
+                        {category === "Dream" && (
+                            <Animated.View entering={FadeInDown.springify()} style={{ marginTop: Spacing.md }}>
+                                <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 4 }}>Achievement Steps (Protocol) *</ThemedText>
+                                <TextInput
+                                    style={[styles.input, styles.textArea, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                                    value={howToAchieve}
+                                    onChangeText={setHowToAchieve}
+                                    placeholder="e.g. 1. Clean room\n2. Do homework..."
+                                    placeholderTextColor={theme.textMuted}
+                                    multiline
+                                    numberOfLines={4}
+                                />
+                            </Animated.View>
+                        )}
 
                         <View style={[styles.premiumRow, { marginTop: Spacing.md }]}>
                             <ThemedText type="body">Premium Lock Item?</ThemedText>
@@ -281,6 +299,11 @@ const styles = StyleSheet.create({
         height: 48,
         borderRadius: BorderRadius.md,
         paddingHorizontal: Spacing.md,
+    },
+    textArea: {
+        height: 100,
+        paddingTop: Spacing.md,
+        textAlignVertical: "top",
     },
     categoryRow: {
         flexDirection: "row",

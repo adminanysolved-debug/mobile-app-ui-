@@ -1621,7 +1621,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { category } = req.query;
       const items = await storage.getMarketItems(category as string | undefined);
-      res.json(items);
+      // Strip sensitive field howToAchieve until purchased
+      const publicItems = items.map(({ howToAchieve, ...rest }) => rest);
+      res.json(publicItems);
     } catch (error) {
       res.status(500).json({ error: "Failed to get market items" });
     }
@@ -1645,22 +1647,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
+
+      const alreadyPurchased = await storage.hasPurchasedMarketItem(user.id, itemId);
+      if (alreadyPurchased) {
+        return res.status(400).json({ error: "You have already purchased this item" });
+      }
+
       if ((user.coins || 0) < item.price) {
         return res.status(400).json({ error: "Insufficient coins" });
       }
 
-      await storage.updateUser(userId, {
-        coins: (user.coins || 0) - item.price,
-      });
-
-      await storage.createTransaction({
-        userId,
-        amount: -item.price,
-        type: "purchase",
-        description: `Purchased ${item.title}`,
-      });
-
-      res.json({ success: true, newBalance: (user.coins || 0) - item.price });
+      const success = await storage.purchaseMarketItem(userId, itemId, item.price, item.userId);
+      if (success) {
+        res.json({ success: true, newBalance: (user.coins || 0) - item.price });
+      } else {
+        res.status(500).json({ error: "Transaction failed" });
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to purchase item" });
     }
@@ -1866,7 +1868,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const category = req.query.category as string | undefined;
       const items = await storage.getMarketItems(category);
-      res.json(items);
+      // Strip sensitive field howToAchieve until purchased
+      const publicItems = items.map(({ howToAchieve, ...rest }) => rest);
+      res.json(publicItems);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch market items" });
     }
@@ -1888,7 +1892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: `Upload limit reached for ${user.vendorTier} tier (${limit} items). Please upgrade your tier.` });
       }
 
-      const { title, description, category, imageUrl, price, isPremium, dreamId } = req.body;
+      const { title, description, category, imageUrl, price, isPremium, dreamId, howToAchieve } = req.body;
 
       if (!title || price === undefined) {
         return res.status(400).json({ error: "Title and price are required" });
@@ -1902,7 +1906,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageUrl,
         price,
         isPremium: isPremium || price > 0,
-        dreamId
+        dreamId,
+        howToAchieve
       });
 
       res.status(201).json(item);
@@ -1911,43 +1916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/market/purchase/:id", authMiddleware, async (req: AuthRequest, res) => {
-    try {
-      const itemId = req.params.id as string;
-      const user = await storage.getUser(req.user!.id);
 
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      const item = await storage.getMarketItem(itemId);
-      if (!item || !item.isActive) {
-        return res.status(404).json({ error: "Market item not found or inactive" });
-      }
-
-      if (item.userId === user.id) {
-        return res.status(400).json({ error: "You cannot purchase your own item" });
-      }
-
-      const alreadyPurchased = await storage.hasPurchasedMarketItem(user.id, itemId);
-      if (alreadyPurchased) {
-        return res.status(400).json({ error: "You have already purchased this item" });
-      }
-
-      if ((user.coins || 0) < item.price) {
-        return res.status(400).json({ error: "Insufficient coins" });
-      }
-
-      const success = await storage.purchaseMarketItem(user.id, itemId, item.price, item.userId);
-      if (success) {
-        res.json({ success: true, message: "Purchase successful" });
-      } else {
-        res.status(500).json({ error: "Transaction failed" });
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Failed to process purchase" });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;

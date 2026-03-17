@@ -654,7 +654,7 @@ class DatabaseStorage implements IStorage {
 
         // If it's a dream guide, create it as a personal dream for the user
         const [item] = await tx.select().from(marketItems).where(eq(marketItems.id, marketItemId));
-        if (item && item.category === "dream") {
+        if (item && item.category?.toLowerCase() === "dream") {
           await tx.insert(dreams).values({
             userId,
             title: item.title,
