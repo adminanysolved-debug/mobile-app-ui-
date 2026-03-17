@@ -26,11 +26,11 @@ export interface User {
   profileImage?: string;
   coins: number;
   trophies: number;
-  awards: number;
+  awards: any[];
   subscriptionTier: string;
   bio?: string;
-  age?: number;    // YE ADD KARO
-  gender?: string; // YE ADD KARO
+  age?: number;
+  gender?: string;
   location?: string;
   isVendor: boolean;
   createdAt: string;
@@ -38,6 +38,8 @@ export interface User {
   lastSpinDate?: string;
   authProvider?: string;
   firebaseUid?: string;
+  totalPoints?: number;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -220,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fullName: userCredential.user.displayName || '',
         coins: 0,
         trophies: 0,
-        awards: 0,
+        awards: [],
         subscriptionTier: 'free',
         isVendor: false,
         createdAt: new Date().toISOString(),
@@ -273,7 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         username: '',
         coins: 0,
         trophies: 0,
-        awards: 0,
+        awards: [],
         subscriptionTier: 'free',
         isVendor: false,
         createdAt: new Date().toISOString(),

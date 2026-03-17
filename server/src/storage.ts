@@ -83,6 +83,7 @@ export interface IStorage {
 
   getPostComments(postId: string): Promise<any[]>;
   createPostComment(comment: Partial<typeof postComments.$inferInsert>): Promise<any>;
+  deletePostComment(commentId: string, userId: string): Promise<boolean>;
 
   getMarketItems(category?: string): Promise<any[]>;
   getMarketItem(id: string): Promise<any | null>;
@@ -91,6 +92,7 @@ export interface IStorage {
   purchaseMarketItem(userId: string, marketItemId: string, price: number, vendorId: string): Promise<boolean>;
   getVendorMarketItemsCount(vendorId: string): Promise<number>;
   hasPurchasedMarketItem(userId: string, marketItemId: string): Promise<boolean>;
+  getDreamCounts(userId: string): Promise<{ personal: number; challenge: number; group: number }>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -157,6 +159,15 @@ class DatabaseStorage implements IStorage {
 
   async getDreams(userId: string): Promise<Dream[]> {
     return db.select().from(dreams).where(eq(dreams.userId, userId)).orderBy(desc(dreams.createdAt));
+  }
+
+  async getDreamCounts(userId: string): Promise<{ personal: number; challenge: number; group: number }> {
+    const userDreams = await db.select().from(dreams).where(eq(dreams.userId, userId));
+    return {
+      personal: userDreams.filter(d => d.type === "personal").length,
+      challenge: userDreams.filter(d => d.type === "challenge").length,
+      group: userDreams.filter(d => d.type === "group").length,
+    };
   }
 
   async getDream(id: string): Promise<Dream | undefined> {
@@ -456,7 +467,15 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteNewsFeedPost(postId: string, userId: string): Promise<boolean> {
-    // Only author can delete
+    const user = await this.getUser(userId);
+    const isAdmin = user?.isAdmin || false;
+
+    if (isAdmin) {
+      await db.delete(newsFeedPosts).where(eq(newsFeedPosts.id, postId));
+      return true;
+    }
+
+    // Only author can delete if not admin
     const [existing] = await db.select().from(newsFeedPosts).where(and(eq(newsFeedPosts.id, postId), eq(newsFeedPosts.userId, userId)));
     if (!existing) return false;
 
@@ -531,6 +550,29 @@ class DatabaseStorage implements IStorage {
     return comment;
   }
 
+  async deletePostComment(commentId: string, userId: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    const isAdmin = user?.isAdmin || false;
+
+    let existingComment;
+    if (isAdmin) {
+      [existingComment] = await db.select().from(postComments).where(eq(postComments.id, commentId));
+    } else {
+      [existingComment] = await db.select().from(postComments).where(and(eq(postComments.id, commentId), eq(postComments.userId, userId)));
+    }
+
+    if (!existingComment) return false;
+
+    // Decrement counter
+    await db
+      .update(newsFeedPosts)
+      .set({ comments: sql`GREATEST(${newsFeedPosts.comments} - 1, 0)` })
+      .where(eq(newsFeedPosts.id, existingComment.postId as string));
+
+    await db.delete(postComments).where(eq(postComments.id, commentId));
+    return true;
+  }
+
   async getMarketItems(category?: string): Promise<any[]> {
     if (category) {
       return db
@@ -603,12 +645,25 @@ class DatabaseStorage implements IStorage {
         });
 
         // Create market purchase record
-        await tx.insert(marketPurchases).values({
+        const [purchase] = await tx.insert(marketPurchases).values({
           userId,
           marketItemId,
           vendorId,
           amount: price
-        });
+        }).returning();
+
+        // If it's a dream guide, create it as a personal dream for the user
+        const [item] = await tx.select().from(marketItems).where(eq(marketItems.id, marketItemId));
+        if (item && item.category === "dream") {
+          await tx.insert(dreams).values({
+            userId,
+            title: item.title,
+            description: item.description,
+            type: "personal",
+            routineDescription: item.howToAchieve, // Store the guide here
+            designNotes: "Created from Marketplace purchase",
+          } as any);
+        }
       });
       return true;
     } catch (e) {

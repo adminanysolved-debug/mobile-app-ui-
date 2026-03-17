@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -69,6 +70,7 @@ export default function NewsFeedScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
+  const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { token, user } = useAuth();
   const [feedPosts, setFeedPosts] = useState<NewsFeedPost[]>([]);
@@ -98,6 +100,16 @@ export default function NewsFeedScreen() {
     } finally {
       setIsLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const navigateToProfile = (userId: string) => {
+    if (!userId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (userId === user?.id) {
+       navigation.navigate("Profile");
+    } else {
+       navigation.navigate("PublicProfile", { userId });
     }
   };
 
@@ -216,6 +228,25 @@ export default function NewsFeedScreen() {
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    if (!activePostId) return;
+    Alert.alert("Delete Comment", "Are you sure?", [
+        { text: "Cancel" },
+        { text: "Delete", style: "destructive", onPress: async () => {
+            try {
+                const res = await fetch(new URL(`/api/news-feed/${activePostId}/comments/${commentId}`, getApiUrl()).toString(), {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    setComments(prev => prev.filter(c => c.id !== commentId));
+                    setFeedPosts(prev => prev.map(p => p.id === activePostId ? { ...p, comments: p.comments - 1 } : p));
+                }
+            } catch (err) { console.error(err); }
+        }}
+    ]);
+  };
+
   const handlePostComment = async () => {
     if (!newComment.trim() || !activePostId) return;
     setIsCommenting(true);
@@ -291,23 +322,31 @@ export default function NewsFeedScreen() {
             >
               <Card style={styles.postCard}>
                 <View style={styles.postHeader}>
-                  <LinearGradient
-                    colors={getGradient(post.dream?.type)}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.avatar}
-                  >
-                    <Feather name="user" size={20} color="#FFFFFF" />
-                  </LinearGradient>
+                  <Pressable onPress={() => navigateToProfile(post.userId)}>
+                    <LinearGradient
+                      colors={getGradient(post.dream?.type)}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.avatar}
+                    >
+                      {post.user?.profileImage ? (
+                        <Image source={{ uri: post.user.profileImage }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+                      ) : (
+                        <Feather name="user" size={20} color="#FFFFFF" />
+                      )}
+                    </LinearGradient>
+                  </Pressable>
                   <View style={styles.userInfo}>
-                    <ThemedText type="body" style={styles.userName}>
-                      {post.user?.fullName || post.user?.username || "Anonymous"}
-                    </ThemedText>
+                    <Pressable onPress={() => navigateToProfile(post.userId)}>
+                      <ThemedText type="body" style={styles.userName}>
+                        {post.user?.fullName || post.user?.username || "Anonymous"}
+                      </ThemedText>
+                    </Pressable>
                     <ThemedText type="xs" style={{ color: theme.textMuted }}>
                       {formatTimeAgo(post.createdAt)}
                     </ThemedText>
                   </View>
-                  {user?.id === post.userId && (
+                  {(user?.id === post.userId || user?.isAdmin) && (
                     <Pressable onPress={() => handleDeletePost(post.id)} hitSlop={10}>
                       <Feather name="trash-2" size={16} color={theme.textMuted} />
                     </Pressable>
@@ -515,9 +554,16 @@ export default function NewsFeedScreen() {
                     <Feather name="user" size={16} color="#FFFFFF" />
                   </LinearGradient>
                   <View style={{ flex: 1, backgroundColor: "rgba(139, 127, 199, 0.1)", padding: Spacing.sm, borderRadius: BorderRadius.md }}>
-                    <ThemedText type="small" style={{ fontWeight: "600", marginBottom: 2 }}>
-                      {comment.user?.fullName || comment.user?.username || "Anonymous"}
-                    </ThemedText>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <ThemedText type="small" style={{ fontWeight: "600", marginBottom: 2 }}>
+                        {comment.user?.fullName || comment.user?.username || "Anonymous"}
+                      </ThemedText>
+                      {(user?.id === comment.userId || user?.isAdmin) && (
+                        <Pressable onPress={() => handleDeleteComment(comment.id)}>
+                          <Feather name="trash-2" size={14} color={theme.textMuted} />
+                        </Pressable>
+                      )}
+                    </View>
                     <ThemedText type="body" style={{ color: theme.text }}>
                       {comment.content}
                     </ThemedText>

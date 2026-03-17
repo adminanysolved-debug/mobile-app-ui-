@@ -34,6 +34,7 @@ const categoryGradients: { [key: string]: [string, string] } = {
   Boosters: ["#22C55E", "#10B981"],
   Themes: ["#EC4899", "#F472B6"],
   Stickers: ["#3B82F6", "#60A5FA"],
+  Dream: ["#F97316", "#FB923C"],
 };
 
 const categoryIcons: { [key: string]: keyof typeof Feather.glyphMap } = {
@@ -42,9 +43,10 @@ const categoryIcons: { [key: string]: keyof typeof Feather.glyphMap } = {
   Boosters: "zap",
   Themes: "layers",
   Stickers: "star",
+  Dream: "target",
 };
 
-const categories = ["All", "Badges", "Customization", "Boosters", "Themes", "Stickers"];
+const categories = ["All", "Dream", "Badges", "Customization", "Boosters", "Themes", "Stickers"];
 
 export default function MarketScreen() {
   const insets = useSafeAreaInsets();
@@ -86,9 +88,9 @@ export default function MarketScreen() {
   const resetForm = () => {
     setPurchaseModalVisible(false);
     setSelectedItem(null);
-    setCardNumber("");
-    setExpiry("");
-    setCvc("");
+    setCardNumber("4242 4242 4242 4242");
+    setExpiry("12/28");
+    setCvc("123");
   };
 
   useEffect(() => {
@@ -141,7 +143,10 @@ export default function MarketScreen() {
 
       if (response.ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Success", `You purchased ${selectedItem.title}!`);
+        const successMsg = selectedItem.category === "Dream" 
+          ? `Purchased! This dream has been added to your MyRealDreams list with full achievement steps.`
+          : `You purchased ${selectedItem.title}!`;
+        Alert.alert("Success", successMsg);
         resetForm();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

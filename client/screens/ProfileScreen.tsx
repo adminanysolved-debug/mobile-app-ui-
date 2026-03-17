@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image, Alert, ActionSheetIOS, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image, Alert, ActionSheetIOS, Platform, ActivityIndicator } from "react-native";
 //import { useSafeAreaInsets } from "react-native-safe-area-context";
 //import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -471,7 +471,7 @@ export default function ProfileScreen() {
                       style={styles.cameraIcon}
                     >
                       {isUploadingPhoto ? (
-                        <ThemedText type="small" style={{ color: "#FFF" }}>...</ThemedText>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <Feather name="camera" size={16} color="#FFFFFF" />
                       )}
@@ -527,14 +527,32 @@ export default function ProfileScreen() {
                     </ThemedText>
                   </View>
                 ) : null}
+              </View>
+            </View>
 
-                {user?.bio ? (
-                  <View style={[styles.infoRow, { marginTop: Spacing.sm }]}>
-                    <ThemedText type="small" style={{ color: theme.textSecondary, fontStyle: "italic" }}>
-                      {user.bio}
-                    </ThemedText>
-                  </View>
-                ) : null}
+            {user?.bio ? (
+              <View style={[styles.bioSection, { borderTopWidth: 1, borderTopColor: theme.border }]}>
+                <ThemedText type="body" style={{ color: theme.textSecondary, fontStyle: "italic" }}>
+                  {user.bio}
+                </ThemedText>
+              </View>
+            ) : null}
+
+            {/* Wallet Stats Section */}
+            <View style={[styles.statsSection, { borderTopWidth: 1, borderTopColor: theme.border }]}>
+              <View style={styles.statBox}>
+                <ThemedText type="h3" style={{ color: theme.yellow }}>{user?.coins || 0}</ThemedText>
+                <ThemedText type="xs" style={{ color: theme.textSecondary }}>COINS</ThemedText>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+              <View style={styles.statBox}>
+                <ThemedText type="h3" style={{ color: theme.link }}>{Array.isArray(user?.awards) ? user.awards.length : 0}</ThemedText>
+                <ThemedText type="xs" style={{ color: theme.textSecondary }}>TROPHIES</ThemedText>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+              <View style={styles.statBox}>
+                <ThemedText type="h3" style={{ color: theme.accent }}>{user?.totalPoints || 0}</ThemedText>
+                <ThemedText type="xs" style={{ color: theme.textSecondary }}>XP POINTS</ThemedText>
               </View>
             </View>
           </Card>
@@ -897,11 +915,37 @@ const styles = StyleSheet.create({
   inputLabel: {
     marginBottom: Spacing.xs,
   },
+  input: {
+    height: 48,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+  },
   textInput: {
     borderRadius: BorderRadius.xs,
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
     fontSize: 16,
+  },
+  bioSection: {
+    marginTop: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  statsSection: {
+    flexDirection: 'row',
+    marginTop: Spacing.lg,
+    paddingTop: Spacing.md,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    opacity: 0.2,
   },
   bioInput: {
     height: 100,

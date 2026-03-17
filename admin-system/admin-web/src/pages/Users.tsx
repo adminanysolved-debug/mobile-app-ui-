@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Mail, Search, Shield, ShieldCheck, X } from 'lucide-react';
+import { Mail, Search, Shield, ShieldCheck, X, Coins, Trash2, Settings2, ExternalLink, Activity } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface User {
     id: string;
@@ -11,6 +12,11 @@ interface User {
     vendor_tier: string;
     vendor_business_name: string | null;
     subscription_tier: string;
+    profile_photo?: string;
+    profile_image?: string;
+    coins: number;
+    age?: number;
+    gender?: string;
     created_at: string;
 }
 
@@ -22,6 +28,9 @@ export default function Users() {
     const [editRole, setEditRole] = useState(false);
     const [newIsVendor, setNewIsVendor] = useState(false);
     const [newVendorTier, setNewVendorTier] = useState('basic');
+    
+    const [adjustingCoins, setAdjustingCoins] = useState(false);
+    const [coinAmount, setCoinAmount] = useState('50');
 
     useEffect(() => {
         fetchUsers();
@@ -36,7 +45,9 @@ export default function Users() {
         })
             .then(res => res.json())
             .then(data => {
-                setUsers(data);
+                if (Array.isArray(data)) {
+                    setUsers(data);
+                }
                 setLoading(false);
             })
             .catch(err => {
@@ -57,11 +68,10 @@ export default function Users() {
             });
 
             if (res.ok) {
-                // Refresh the list after successful deletion
                 fetchUsers();
             } else {
                 const data = await res.json();
-                alert(`Failed to delete user: ${data.message || 'Unknown error'}`);
+                alert(`Failed to delete user: ${data.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Error deleting user:', error);
@@ -97,240 +107,440 @@ export default function Users() {
         }
     };
 
+    const handleAdjustCoins = async () => {
+        if (!selectedUser) return;
+        const amount = parseInt(coinAmount);
+        if (isNaN(amount)) return alert('Please enter a valid number');
+
+        try {
+            const res = await fetch(`http://localhost:5001/api/admin/users/${selectedUser.id}/coins`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ amount, description: 'Admin adjustment from dashboard' })
+            });
+
+            if (res.ok) {
+                alert(`Successfully adjusted coins by ${amount}`);
+                fetchUsers();
+                setSelectedUser({ ...selectedUser, coins: selectedUser.coins + amount });
+                setAdjustingCoins(false);
+            } else {
+                const data = await res.json();
+                alert(`Failed to adjust coins: ${data.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error adjusting coins:', error);
+            alert('An error occurred while adjusting coins.');
+        }
+    };
+
     const openUserModal = (user: User) => {
         setSelectedUser(user);
         setNewIsVendor(user.is_vendor);
         setNewVendorTier(user.vendor_tier || 'basic');
         setEditRole(false);
+        setAdjustingCoins(false);
     };
 
-    const filteredUsers = users.filter(u =>
+    const filteredUsers = Array.isArray(users) ? users.filter(u =>
         u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    ) : [];
+
+    const getPhotoUrl = (user: User) => {
+        return user.profile_photo || user.profile_image;
+    };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out h-full flex flex-col">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-300 to-indigo-100 inline-block drop-shadow-sm mb-1">
-                        Users Management
-                    </h1>
-                    <p className="text-slate-400 text-sm">View and manage all registered accounts on Real Dream.</p>
-                </div>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out h-full flex flex-col relative">
+            {/* Ambient Background Elements */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/5 blur-[120px] -z-10" />
 
-                <div className="relative group w-full sm:w-72">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search size={16} className="text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1 h-3 bg-brand-500 rounded-full" />
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-brand-500">Security Management</span>
                     </div>
-                    <input
-                        type="text"
-                        className="w-full bg-slate-900/50 border border-slate-700/50 text-slate-200 text-sm rounded-lg focus:ring-brand-500/50 focus:border-brand-500 block pl-9 p-2.5 placeholder-slate-500 transition-all outline-none"
-                        placeholder="Search by name or email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
+                    <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-500 drop-shadow-sm tracking-tighter">
+                        User Control
+                    </h1>
+                </motion.div>
+
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative group w-full md:w-80"
+                >
+                    <div className="absolute -inset-1 bg-gradient-to-r from-brand-600/20 to-indigo-600/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search size={16} className="text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                        </div>
+                        <input
+                            type="text"
+                            className="w-full bg-slate-900 shadow-2xl border border-white/5 text-slate-200 text-sm rounded-2xl focus:ring-1 focus:ring-brand-500/50 focus:border-brand-500/50 block pl-11 p-3.5 placeholder-slate-600 transition-all outline-none font-medium"
+                            placeholder="Search users..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </motion.div>
             </div>
 
-            <div className="glass-card flex-1 overflow-hidden flex flex-col relative shadow-xl shadow-black/20">
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card flex-1 overflow-hidden flex flex-col relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5"
+            >
                 <div className="overflow-x-auto flex-1 custom-scrollbar">
                     <table className="w-full text-sm text-left text-slate-300">
-                        <thead className="text-xs text-slate-400 uppercase bg-slate-900/80 sticky top-0 z-10 border-b border-slate-700/50 backdrop-blur-md">
+                        <thead className="text-[10px] text-slate-500 uppercase font-black bg-slate-900/50 sticky top-0 z-10 border-b border-white/5 backdrop-blur-xl">
                             <tr>
-                                <th scope="col" className="px-6 py-4 font-medium tracking-wider">User</th>
-                                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Role</th>
-                                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Tier</th>
-                                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Auth</th>
-                                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Joined</th>
-                                <th scope="col" className="px-6 py-4 font-medium tracking-wider text-right">Actions</th>
+                                <th scope="col" className="px-8 py-5 tracking-[0.2em]">User</th>
+                                <th scope="col" className="px-6 py-5 tracking-[0.2em]">Status</th>
+                                <th scope="col" className="px-6 py-5 tracking-[0.2em] text-brand-400">Coins</th>
+                                <th scope="col" className="px-6 py-5 tracking-[0.2em]">Plan</th>
+                                <th scope="col" className="px-6 py-5 tracking-[0.2em]">Joined</th>
+                                <th scope="col" className="px-8 py-5 tracking-[0.2em] text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-white/[0.02]">
                             {loading ? (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500 animate-pulse">
-                                        Loading users...
-                                    </td>
-                                </tr>
+                                Array(5).fill(0).map((_, i) => (
+                                    <tr key={i} className="animate-pulse bg-white/[0.01]">
+                                        <td colSpan={6} className="px-8 py-10" />
+                                    </tr>
+                                ))
                             ) : filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                                        No users found matching "{searchTerm}"
+                                    <td colSpan={6} className="px-8 py-20 text-center text-slate-600 italic font-medium">
+                                        No neural signatures found matching your query.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredUsers.map((user) => (
-                                    <tr key={user.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                                        <td className="px-6 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg">
-                                                    {user.username?.charAt(0).toUpperCase() || '?'}
+                                filteredUsers.map((user, idx) => (
+                                    <motion.tr 
+                                        key={user.id} 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        className="group hover:bg-white/[0.03] transition-all duration-300 border-transparent hover:border-brand-500/10 cursor-default"
+                                    >
+                                        <td className="px-8 py-5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative">
+                                                     <div className="absolute -inset-1 bg-gradient-to-tr from-brand-600/50 to-indigo-600/50 rounded-full blur opacity-0 group-hover:opacity-40 transition duration-500" />
+                                                    {getPhotoUrl(user) ? (
+                                                        <img 
+                                                            src={getPhotoUrl(user)} 
+                                                            alt={user.username}
+                                                            className="relative w-11 h-11 rounded-full object-cover border-2 border-white/5 shadow-2xl"
+                                                        />
+                                                    ) : (
+                                                        <div className="relative w-11 h-11 rounded-full bg-slate-800 flex items-center justify-center font-black text-slate-400 border border-white/5 text-sm">
+                                                            {user.username?.charAt(0).toUpperCase() || '?'}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium text-slate-200">{user.full_name || user.username}</div>
-                                                    <div className="text-slate-500 text-xs flex items-center gap-1 mt-0.5">
+                                                    <div className="font-bold text-slate-100 group-hover:text-white transition-colors tracking-tight">{user.full_name || user.username}</div>
+                                                    <div className="text-slate-500 text-[10px] font-bold flex items-center gap-1.5 uppercase tracking-tighter mt-1 group-hover:text-slate-400">
                                                         <Mail size={10} />
                                                         {user.email}
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-5">
                                             {user.is_vendor ? (
-                                                <span className="flex items-center gap-1.5 text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-1 rounded-md w-fit border border-amber-400/20">
-                                                    <ShieldCheck size={14} />
-                                                    Vendor
-                                                </span>
+                                                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-500 bg-amber-500/5 px-2.5 py-1.5 rounded-lg w-fit border border-amber-500/10 shadow-[0_0_15px_-5px_rgba(245,158,11,0.3)]">
+                                                    <ShieldCheck size={12} />
+                                                    Vendor Node
+                                                </div>
                                             ) : (
-                                                <span className="flex items-center gap-1.5 text-xs font-medium text-slate-300 bg-slate-800 px-2 py-1 rounded-md w-fit border border-slate-700">
-                                                    <Shield size={14} />
-                                                    User
-                                                </span>
+                                                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 bg-slate-800/50 px-2.5 py-1.5 rounded-lg w-fit border border-white/5">
+                                                    <Shield size={12} />
+                                                    Civic Core
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 capitalize font-medium text-slate-400 text-xs">
-                                            {user.subscription_tier || 'Free'}
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-2 text-brand-400 font-black font-mono text-base">
+                                                <Coins size={16} className="text-brand-500" />
+                                                {user.coins?.toLocaleString() || 0}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 capitalize text-slate-400 text-xs">
-                                            {user.auth_provider || 'Email'}
+                                        <td className="px-6 py-5">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-800 px-2 py-1 rounded-md border border-white/5">
+                                                {user.subscription_tier || 'MEMBER'}
+                                            </span>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-400 text-xs whitespace-nowrap">
-                                            {new Date(user.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                        <td className="px-6 py-5 text-slate-500 font-mono text-[10px] font-medium">
+                                            {new Date(user.created_at).toISOString().split('T')[0]}
                                         </td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                            <button
-                                                onClick={() => openUserModal(user)}
-                                                className="text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-brand-500/30"
-                                            >
-                                                View
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteUser(user.id, user.username)}
-                                                className="text-red-400 hover:text-red-300 hover:bg-red-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-red-500/30"
-                                            >
-                                                Delete
-                                            </button>
+                                        <td className="px-8 py-5 text-right">
+                                            <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                                                <button
+                                                    onClick={() => openUserModal(user)}
+                                                    className="p-2 bg-brand-500/10 hover:bg-brand-500 text-brand-500 hover:text-white rounded-xl transition-all border border-brand-500/20 shadow-lg shadow-brand-500/10"
+                                                    title="Manage User"
+                                                >
+                                                    <Settings2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteUser(user.id, user.username)}
+                                                    className="p-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all border border-red-500/20 shadow-lg shadow-red-500/10"
+                                                    title="Delete User"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
-                                    </tr>
+                                    </motion.tr>
                                 ))
                             )}
                         </tbody>
                     </table>
                 </div>
-                <div className="bg-slate-900/50 border-t border-slate-800 p-4 text-xs text-slate-500 flex justify-between items-center">
-                    <span>Showing {filteredUsers.length} users</span>
+                <div className="bg-slate-900/80 backdrop-blur-md border-t border-white/5 p-5 text-[10px] text-slate-600 font-black uppercase tracking-[0.3em] flex justify-between items-center">
+                    <span>Repository Nodes Active: {filteredUsers.length}</span>
+                    <Activity size={14} className="animate-pulse text-emerald-500" />
                 </div>
-            </div>
+            </motion.div>
 
-            {/* View User Modal */}
-            {selectedUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedUser(null)}>
-                    <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-md overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
-                            <h3 className="text-lg font-semibold text-slate-200">User Details</h3>
-                            <button onClick={() => setSelectedUser(null)} className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="flex items-center gap-4 border-b border-slate-800/50 pb-4">
-                                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center font-bold text-2xl text-white shadow-lg">
-                                    {selectedUser.username?.charAt(0).toUpperCase() || '?'}
-                                </div>
-                                <div>
-                                    <h4 className="text-xl font-bold text-slate-100">{selectedUser.full_name || 'No Name'}</h4>
-                                    <p className="text-brand-400 font-medium">@{selectedUser.username}</p>
-                                </div>
+            {/* Modal - User Control Center */}
+            <AnimatePresence>
+                {selectedUser && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-xl" 
+                            onClick={() => setSelectedUser(null)}
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                            className="bg-[#0a0f1e] border border-white/10 shadow-[0_0_100px_rgba(139,92,246,0.15)] rounded-3xl w-full max-w-2xl overflow-hidden relative z-10"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                                <Activity size={120} className="text-brand-500" />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 text-sm mt-4">
-                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                                    <div className="text-slate-500 text-xs mb-1">Email</div>
-                                    <div className="text-slate-200 break-all">{selectedUser.email}</div>
+                            <div className="flex justify-between items-center p-6 border-b border-white/5">
+                                <div className="flex items-center gap-2">
+                                     <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                                     <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">User Management</h3>
                                 </div>
-                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                                    <div className="text-slate-500 text-xs mb-1">User ID</div>
-                                    <div className="text-slate-200 font-mono text-xs break-all">{selectedUser.id}</div>
-                                </div>
-                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                                    <div className="text-slate-500 text-xs mb-1">Role</div>
-                                    <div className="text-slate-200">
-                                        {selectedUser.is_vendor ? 'Vendor' : 'Standard User'}
-                                    </div>
-                                </div>
-                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                                    <div className="text-slate-500 text-xs mb-1">Subscription</div>
-                                    <div className="text-slate-200 capitalize">{selectedUser.subscription_tier || 'Free'}</div>
-                                </div>
-                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                                    <div className="text-slate-500 text-xs mb-1">Joined Date</div>
-                                    <div className="text-slate-200">{new Date(selectedUser.created_at).toLocaleDateString()}</div>
-                                </div>
-                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                                    <div className="text-slate-500 text-xs mb-1">Auth Provider</div>
-                                    <div className="text-slate-200 capitalize">{selectedUser.auth_provider || 'Email'}</div>
-                                </div>
-                                <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50 col-span-2">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <div className="text-slate-500 text-xs font-semibold">Vendor Configuration</div>
-                                        {editRole ? (
-                                            <div className="flex gap-2">
-                                                <button onClick={handleUpdateVendor} className="text-emerald-400 text-xs hover:underline">Save</button>
-                                                <button onClick={() => setEditRole(false)} className="text-slate-400 text-xs hover:underline">Cancel</button>
-                                            </div>
+                                <button onClick={() => setSelectedUser(null)} className="text-slate-500 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-all">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-8 space-y-8 overflow-y-auto max-h-[75vh] custom-scrollbar">
+                                <div className="flex items-center gap-8 pb-8 border-b border-white/5">
+                                    <div className="relative group/photo">
+                                        <div className="absolute -inset-2 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-2xl blur-md opacity-20 group-hover/photo:opacity-40 transition duration-500" />
+                                        {getPhotoUrl(selectedUser) ? (
+                                            <img 
+                                                src={getPhotoUrl(selectedUser)} 
+                                                alt={selectedUser.username}
+                                                className="relative w-28 h-28 rounded-2xl object-cover border border-white/10 shadow-3xl"
+                                            />
                                         ) : (
-                                            <button onClick={() => setEditRole(true)} className="text-brand-400 text-xs hover:underline">Edit Vendor Status</button>
+                                            <div className="relative w-28 h-28 rounded-2xl bg-slate-900 flex items-center justify-center font-black text-4xl text-brand-500 border border-white/10 shadow-3xl">
+                                                {selectedUser.username?.charAt(0).toUpperCase() || '?'}
+                                            </div>
                                         )}
+                                        <div className="absolute -bottom-2 -right-2 p-1.5 bg-brand-600 rounded-lg text-white shadow-xl shadow-brand-600/30">
+                                            <Shield size={14} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="text-3xl font-black text-slate-100 tracking-tighter">{selectedUser.full_name || 'Anonymous Subject'}</h4>
+                                        <p className="text-brand-400 font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                                            <span>@nexus_{selectedUser.username}</span>
+                                            <ExternalLink size={12} className="opacity-40" />
+                                        </p>
+                                        <div className="flex gap-2.5 pt-3">
+                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${selectedUser.is_vendor ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-brand-500/10 text-brand-400 border border-brand-500/20'}`}>
+                                                {selectedUser.is_vendor ? 'Class-V Vendor' : 'Level-1 Member'}
+                                            </span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                                {selectedUser.subscription_tier || 'FREE'} Protocol
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Data Stream */}
+                                    <div className="space-y-4">
+                                         <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                            <Activity size={12} />
+                                            Data Stream
+                                         </h5>
+                                         <div className="space-y-2">
+                                            {[
+                                                { label: 'Uplink ID', value: selectedUser.email },
+                                                { label: 'Neural Age', value: selectedUser.age || 'Unknown' },
+                                                { label: 'Signature', value: selectedUser.gender || 'Undefined' },
+                                                { label: 'Init Date', value: new Date(selectedUser.created_at).toLocaleDateString() }
+                                            ].map((row, i) => (
+                                                <div key={i} className="bg-slate-900/50 p-3.5 rounded-2xl border border-white/5 flex justify-between items-center group/row hover:bg-slate-800/50 transition-colors">
+                                                    <span className="text-slate-600 text-[10px] font-bold uppercase tracking-widest group-hover/row:text-slate-500">{row.label}</span>
+                                                    <span className="text-slate-300 text-xs font-black font-mono tracking-tight group-hover/row:text-white">{row.value}</span>
+                                                </div>
+                                            ))}
+                                         </div>
                                     </div>
 
-                                    {editRole ? (
-                                        <div className="flex flex-col gap-3 mt-2">
-                                            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={newIsVendor}
-                                                    onChange={(e) => setNewIsVendor(e.target.checked)}
-                                                    className="rounded bg-slate-700 border-slate-600 text-brand-500 focus:ring-brand-500 focus:ring-offset-slate-900"
-                                                />
-                                                Is Vendor
-                                            </label>
-
-                                            {newIsVendor && (
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-slate-400 text-xs">Vendor Tier</span>
-                                                    <select
-                                                        value={newVendorTier}
-                                                        onChange={(e) => setNewVendorTier(e.target.value)}
-                                                        className="bg-slate-900 border border-slate-700 rounded p-1.5 text-slate-200 text-sm outline-none w-full"
-                                                    >
-                                                        <option value="basic">Basic (Max 5 items)</option>
-                                                        <option value="pro">Pro (Max 20 items)</option>
-                                                        <option value="enterprise">Enterprise (Unlimited)</option>
-                                                    </select>
+                                    {/* Resource & Access */}
+                                    <div className="space-y-6">
+                                        <div className="space-y-4">
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                                                <Coins size={12} />
+                                                Coin Management
+                                            </h5>
+                                            <div className="bg-gradient-to-br from-brand-600/10 to-indigo-600/5 p-5 rounded-3xl border border-white/5 relative overflow-hidden group/coins">
+                                                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover/coins:opacity-10 transition-opacity">
+                                                    <Coins size={40} className="text-amber-500" />
                                                 </div>
-                                            )}
+
+                                                <div className="flex justify-between items-end relative z-10">
+                                                    <div>
+                                                        <div className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] mb-2">Available Credits</div>
+                                                        <div className="text-4xl font-black text-brand-400 flex items-center gap-2.5 drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                                                            <Coins size={28} className="text-brand-500" />
+                                                            {selectedUser.coins?.toLocaleString()}
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setAdjustingCoins(!adjustingCoins)}
+                                                        className="bg-white/10 hover:bg-white text-white hover:text-black font-black text-[10px] uppercase px-4 py-2 rounded-xl transition-all active:scale-95 shadow-lg border border-white/10"
+                                                    >
+                                                        {adjustingCoins ? 'Abort' : 'Adjust'}
+                                                    </button>
+                                                </div>
+
+                                                <AnimatePresence>
+                                                    {adjustingCoins && (
+                                                        <motion.div 
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            className="space-y-3 pt-6 relative z-10 overflow-hidden"
+                                                        >
+                                                            <div className="flex gap-2">
+                                                                <input 
+                                                                    type="number" 
+                                                                    value={coinAmount}
+                                                                    onChange={(e) => setCoinAmount(e.target.value)}
+                                                                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-white font-black text-sm outline-none focus:border-brand-500 transition-all font-mono"
+                                                                    placeholder="+/- Amount"
+                                                                />
+                                                                <button 
+                                                                    onClick={handleAdjustCoins}
+                                                                    className="bg-brand-600 text-white font-black px-6 py-2 rounded-xl hover:bg-brand-500 transition-all shadow-lg shadow-brand-600/20 active:scale-95 text-xs uppercase"
+                                                                >
+                                                                    Sync
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest italic leading-relaxed text-center">Neural update will propagate globally.</p>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="text-slate-200 flex gap-4 text-sm mt-1">
-                                            <div><span className="text-slate-500">Is Vendor:</span> {selectedUser.is_vendor ? 'Yes' : 'No'}</div>
-                                            {selectedUser.is_vendor && (
-                                                <div><span className="text-slate-500">Tier:</span> <span className="capitalize text-amber-400">{selectedUser.vendor_tier || 'Basic'}</span></div>
-                                            )}
+
+                                        <div className="space-y-4">
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+                                                <ShieldCheck size={12} />
+                                                Permissions
+                                            </h5>
+                                            <div className="bg-slate-900/50 p-5 rounded-3xl border border-white/5 space-y-5">
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <span className="text-slate-100 text-xs font-black uppercase tracking-wider">Vendor Protocol</span>
+                                                        <p className="text-[9px] text-slate-600 mt-1 font-bold uppercase">Grant subject marketplace access.</p>
+                                                    </div>
+                                                    <button onClick={() => setEditRole(!editRole)} className="bg-white/5 hover:bg-brand-500/20 hover:text-brand-400 p-2 rounded-xl border border-white/5 transition-all">
+                                                        <Settings2 size={16} className="text-slate-500" />
+                                                    </button>
+                                                </div>
+
+                                                <AnimatePresence>
+                                                    {editRole && (
+                                                        <motion.div 
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            className="space-y-4 pt-2 overflow-hidden"
+                                                        >
+                                                            <label className="flex items-center gap-3 cursor-pointer group p-3 bg-white/[0.02] border border-white/5 rounded-2xl">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={newIsVendor}
+                                                                    onChange={(e) => setNewIsVendor(e.target.checked)}
+                                                                    className="w-5 h-5 rounded-lg bg-slate-800 border-white/5 text-brand-600 focus:ring-brand-500/50 transition-all"
+                                                                />
+                                                                <span className="text-slate-300 text-[11px] font-black uppercase group-hover:text-white transition-colors">Authorize Access</span>
+                                                            </label>
+
+                                                            {newIsVendor && (
+                                                                <motion.div 
+                                                                    initial={{ opacity: 0, y: -10 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    className="space-y-2.5"
+                                                                >
+                                                                    <span className="text-slate-600 text-[9px] font-black uppercase ml-1">Assigned Protocol Level</span>
+                                                                    <select
+                                                                        value={newVendorTier}
+                                                                        onChange={(e) => setNewVendorTier(e.target.value)}
+                                                                        className="bg-slate-900 border border-white/10 rounded-2xl p-3.5 text-slate-200 text-xs font-bold outline-none w-full appearance-none hover:border-brand-500 transition-colors cursor-pointer shadow-inner"
+                                                                    >
+                                                                        <option value="basic">Standard Protocol (Limited)</option>
+                                                                        <option value="pro">Advanced Protocol (Pro)</option>
+                                                                        <option value="enterprise">Full Synergy (Enterprise)</option>
+                                                                    </select>
+                                                                </motion.div>
+                                                            )}
+                                                            
+                                                            <button 
+                                                                onClick={handleUpdateVendor}
+                                                                className="w-full bg-slate-100 hover:bg-white text-black font-black text-[10px] py-3 rounded-2xl transition-all shadow-xl active:scale-95 uppercase tracking-widest"
+                                                            >
+                                                                Update Permissions
+                                                            </button>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
-                            <button onClick={() => setSelectedUser(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors text-sm font-medium">
-                                Close
-                            </button>
-                        </div>
+                            <div className="p-6 border-t border-white/5 bg-slate-900/50 flex justify-between items-center px-10">
+                                 <div className="text-[9px] text-slate-700 font-mono font-black uppercase">Core Subject: {selectedUser.id}</div>
+                                     <button onClick={() => setSelectedUser(null)} className="px-8 py-3 bg-white/5 hover:bg-brand-500 hover:text-white text-slate-300 rounded-2xl transition-all text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl active:scale-95 border border-white/5">
+                                    Close Editor
+                                 </button>
+                            </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }

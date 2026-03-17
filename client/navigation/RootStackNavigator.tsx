@@ -17,6 +17,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import NotificationsScreen from "@/screens/NotificationsScreen"; // Apna sahi path check kar lena
 import LuckySpinScreen from "@/screens/LuckySpinScreen";       // Apna sahi path check kar lena
+import PublicProfileScreen from "@/screens/PublicProfileScreen";
 export type RootStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   LuckySpin: undefined; // 👈 Ye line add karo
   Chat: { otherUserId: string; otherUserName: string };
+  PublicProfile: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -100,6 +102,11 @@ export default function RootStackNavigator() {
             name="VendorHub"
             component={VendorHubScreen}
             options={{ headerTitle: "Vendor Hub" }}
+          />
+          <Stack.Screen
+            name="PublicProfile"
+            component={PublicProfileScreen}
+            options={{ headerShown: false }}
           />
         </>
       ) : (

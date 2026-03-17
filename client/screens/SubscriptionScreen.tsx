@@ -18,7 +18,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { useSafeBottomPadding } from "@/hooks/useSafeBottomPadding";
 
-type SubscriptionTier = "free" | "bronze" | "silver" | "gold" | "platinum";
+type SubscriptionTier = "free" | "bronze" | "silver" | "gold" | "platinum" | "basic" | "pro" | "enterprise";
 
 type SubscriptionPackage = {
   id: SubscriptionTier;
@@ -30,42 +30,63 @@ type SubscriptionPackage = {
   iconName: keyof typeof Feather.glyphMap;
 };
 
-const packages: SubscriptionPackage[] = [
-  {
-    id: "bronze",
-    name: "BRONZE",
-    colors: ["#EA580C", "#FB923C"],
-    price: 4.99,
-    period: "/month",
-    features: ["Basic dream tracking", "5 active dreams", "Community access"],
-    iconName: "award",
-  },
+const userPackages: SubscriptionPackage[] = [
   {
     id: "silver",
     name: "SILVER",
     colors: ["#6B7280", "#9CA3AF"],
-    price: 9.99,
-    period: "/month",
-    features: ["Everything in Bronze", "15 active dreams", "Priority support", "Advanced analytics"],
+    price: 0,
+    period: "/year",
+    features: ["10 Personal Dreams", "1 Team Dream", "3 Challenge Dreams", "Standard Support"],
     iconName: "star",
   },
   {
     id: "gold",
     name: "GOLD",
     colors: ["#EAB308", "#FCD34D"],
-    price: 19.99,
-    period: "/month",
-    features: ["Everything in Silver", "Unlimited dreams", "Premium themes", "Ad-free experience"],
+    price: 3.99,
+    period: "/year",
+    features: ["14 Personal Dreams", "3 Team Dreams", "5 Challenge Dreams", "Ad-Free Experience", "Premium Themes"],
     iconName: "zap",
   },
   {
     id: "platinum",
     name: "PLATINUM",
     colors: ["#8B5CF6", "#A855F7"],
-    price: 29.99,
-    period: "/month",
-    features: ["Everything in Gold", "Personal coach", "Exclusive events", "VIP badge"],
+    price: 5.99,
+    period: "/year",
+    features: ["20 Personal Dreams", "5 Team Dreams", "10 Challenge Dreams", "Priority Support", "All Themes Unlocked"],
     iconName: "diamond" as any,
+  },
+];
+
+const vendorPackages: SubscriptionPackage[] = [
+  {
+    id: "basic",
+    name: "BASIC VENDOR",
+    colors: ["#EA580C", "#FB923C"],
+    price: 9.99,
+    period: "/year",
+    features: ["Max 3 Marketplace Dreams", "20% Sales Commission", "Standard Vendor Dashboard"],
+    iconName: "shopping-bag" as any,
+  },
+  {
+    id: "pro",
+    name: "PRO VENDOR",
+    colors: ["#10B981", "#34D399"],
+    price: 19.99,
+    period: "/year",
+    features: ["Max 8 Marketplace Dreams", "15% Sales Commission", "Advanced Analytics", "Featured Listings"],
+    iconName: "briefcase" as any,
+  },
+  {
+    id: "enterprise",
+    name: "ENTERPRISE VENDOR",
+    colors: ["#3B82F6", "#60A5FA"],
+    price: 29.99,
+    period: "/year",
+    features: ["Max 15 Marketplace Dreams", "10% Sales Commission", "VIP Vendor Status", "Custom Support"],
+    iconName: "globe" as any,
   },
 ];
 
@@ -80,7 +101,10 @@ export default function SubscriptionScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [confirmPackage, setConfirmPackage] = useState<SubscriptionPackage | null>(null);
 
-  const currentTier = user?.subscriptionTier || "free";
+  const currentTier = user?.subscriptionTier || "silver";
+  const [activeTab, setActiveTab] = useState<"user" | "vendor">("user");
+
+  const packages = activeTab === "user" ? userPackages : vendorPackages;
 
   const handleSelectPlan = (pkg: SubscriptionPackage) => {
     if (pkg.id === currentTier) return;
@@ -95,7 +119,7 @@ export default function SubscriptionScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
     try {
-      const response = await fetch(new URL('/api/subscription', getApiUrl()).toString(), {
+      const response = await fetch(new URL('/api/subscriptions/upgrade', getApiUrl()).toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,6 +127,7 @@ export default function SubscriptionScreen() {
         },
         body: JSON.stringify({
           tier: confirmPackage.id,
+          type: activeTab,
         }),
       });
 
@@ -143,11 +168,33 @@ export default function SubscriptionScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.springify()}>
-          <ThemedText type="h2" style={styles.title}>Choose Your Plan</ThemedText>
+          <ThemedText type="h2" style={styles.title}>RealDream Plans</ThemedText>
           <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Unlock premium features and achieve your dreams faster
+            Choose a plan that fits your ambition
           </ThemedText>
         </Animated.View>
+
+        <View style={styles.tabsContainer}>
+          <Pressable
+            onPress={() => { setActiveTab("user"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            style={[styles.tab, activeTab === "user" && { backgroundColor: theme.link }]}
+          >
+            <ThemedText style={[styles.tabText, activeTab === "user" && { color: "#FFF" }]}>User Plans</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => { setActiveTab("vendor"); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            style={[styles.tab, activeTab === "vendor" && { backgroundColor: theme.link }]}
+          >
+            <ThemedText style={[styles.tabText, activeTab === "vendor" && { color: "#FFF" }]}>Vendor Plans</ThemedText>
+          </Pressable>
+        </View>
+
+        <View style={styles.introOfferBox}>
+          <Feather name="gift" size={20} color={theme.link} />
+          <ThemedText type="bodyMedium" style={{ color: theme.link }}>
+            Introductory Offer: First 6 Months FREE
+          </ThemedText>
+        </View>
 
         {currentTier !== "free" ? (
           <Animated.View entering={FadeInDown.delay(50).springify()}>
@@ -185,12 +232,15 @@ export default function SubscriptionScreen() {
                     <ThemedText type="h3">{pkg.name}</ThemedText>
                     <View style={styles.priceRow}>
                       <ThemedText type="h2" style={{ color: theme.link }}>
-                        ${pkg.price.toFixed(2)}
+                        GBP {pkg.price.toFixed(2)}
                       </ThemedText>
                       <ThemedText type="body" style={{ color: theme.textSecondary }}>
                         {pkg.period}
                       </ThemedText>
                     </View>
+                    <ThemedText type="xs" style={{ color: theme.green, fontWeight: '700' }}>
+                      6 MONTHS FREE STARTING NOW
+                    </ThemedText>
                   </View>
                   {currentTier === pkg.id ? (
                     <View style={[styles.currentBadge, { backgroundColor: theme.green }]}>
@@ -254,8 +304,12 @@ export default function SubscriptionScreen() {
                   Confirm Subscription
                 </ThemedText>
                 <ThemedText type="body" style={[styles.confirmText, { color: theme.textSecondary }]}>
-                  Subscribe to {confirmPackage.name} for ${confirmPackage.price.toFixed(2)}/month?
+                  Subscribe to {confirmPackage.name}? The first 6 months are free, then GBP {confirmPackage.price.toFixed(2)}/year will apply.
                 </ThemedText>
+
+                <View style={styles.dummyCardInfo}>
+                   <ThemedText type="xs" style={{ color: theme.textSecondary }}>Using dummy card 4242 ... 123 for verification</ThemedText>
+                </View>
 
                 <View style={styles.modalButtons}>
                   <Button
@@ -401,4 +455,38 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
   },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: BorderRadius.md,
+    padding: 4,
+    marginBottom: Spacing.sm,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+  },
+  tabText: {
+    fontWeight: '600',
+  },
+  introOfferBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  dummyCardInfo: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.lg,
+    alignItems: 'center',
+  }
 });

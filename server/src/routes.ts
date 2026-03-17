@@ -688,6 +688,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Subscription Plans Mapping
+  const USER_PLANS: any = {
+    silver: { personal: 10, team: 1, challenge: 3, price: 0 },
+    gold: { personal: 14, team: 3, challenge: 5, price: 399 },
+    platinum: { personal: 20, team: 5, challenge: 10, price: 599 }
+  };
+
+  const VENDOR_PLANS: any = {
+    basic: { maxDreams: 3, commission: 20, price: 999 },
+    pro: { maxDreams: 8, commission: 15, price: 1999 },
+    enterprise: { maxDreams: 15, commission: 10, price: 2999 }
+  };
+
+  app.post("/api/subscriptions/upgrade", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { tier, type } = req.body; // type: 'user' or 'vendor'
+      const plans = type === 'vendor' ? VENDOR_PLANS : USER_PLANS;
+      const plan = plans[tier];
+
+      if (!plan) {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
+
+      const updates: any = {
+        subscriptionTier: tier,
+        subscriptionStartDate: new Date(),
+        // Silver is always GBP 0/Free, others might have introductory period
+        isIntroductoryApplied: true, 
+      };
+
+      if (type === 'vendor') {
+        updates.isVendor = true;
+        updates.vendorTier = tier;
+        updates.maxVendorDreams = plan.maxDreams;
+        updates.commissionRate = plan.commission;
+      } else {
+        updates.maxPersonalDreams = plan.personal;
+        updates.maxTeamDreams = plan.team;
+        updates.maxChallengeDreams = plan.challenge;
+      }
+
+      const updatedUser = await storage.updateUser(req.user!.id, updates);
+      
+      await storage.createTransaction({
+        userId: req.user!.id,
+        amount: -plan.price,
+        type: "subscription",
+        description: `Upgraded to ${tier.toUpperCase()} ${type} plan`,
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Upgrade error:", error);
+      res.status(500).json({ error: "Failed to upgrade subscription" });
+    }
+  });
+
+  app.post("/api/payments/dummy", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { cardNumber, expiry, cvv, amount } = req.body;
+      
+      // Dummy validation
+      if (cardNumber === "4242424242424242" && expiry && cvv === "123") {
+        return res.json({ success: true, transactionId: "dummy_" + Date.now() });
+      }
+      
+      res.status(400).json({ error: "Invalid payment details" });
+    } catch (error) {
+      res.status(500).json({ error: "Payment processing failed" });
+    }
+  });
+
   app.delete("/api/profile", authMiddleware, async (req: AuthRequest, res) => {
     try {
       await storage.deleteUser(req.user!.id);
@@ -741,6 +813,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             targetDate = new Date(start);
             targetDate.setFullYear(targetDate.getFullYear() + duration);
             break;
+        }
+      }
+
+      const dreamCounts = await storage.getDreamCounts(req.user!.id);
+      const user = await storage.getUser(req.user!.id);
+
+      if (user) {
+        if (type === "personal" && dreamCounts.personal >= (user.maxPersonalDreams || 10)) {
+          return res.status(403).json({ error: "Personal dream limit reached. Please upgrade your plan." });
+        }
+        if (type === "challenge" && dreamCounts.challenge >= (user.maxChallengeDreams || 3)) {
+          return res.status(403).json({ error: "Challenge dream limit reached. Please upgrade your plan." });
+        }
+        if (type === "group" && dreamCounts.group >= (user.maxTeamDreams || 1)) {
+          return res.status(403).json({ error: "Team dream limit reached. Please upgrade your plan." });
         }
       }
 
@@ -1514,6 +1601,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(comment);
     } catch (error) {
       res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.delete("/api/news-feed/:id/comments/:commentId", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const commentId = req.params.commentId as string;
+      const deleted = await storage.deletePostComment(commentId, req.user!.id);
+      if (!deleted) {
+        return res.status(403).json({ error: "Cannot delete comment" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete comment" });
     }
   });
 

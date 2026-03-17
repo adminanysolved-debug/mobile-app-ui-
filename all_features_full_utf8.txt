@@ -1,0 +1,172 @@
+﻿--- Summary ---
+RealDream App ΓÇö Feature Coverage Summary,,,
+Module / Category,Total Features,Old Version (v1) Γ£à,New Version (v2) Γ£à
+Authentication & User Login,11,4,8
+User Profile,9,2,6
+Dreams & Goals Management,13,4,11
+Tasks ΓÇö Auto-Generated Action Steps,7,0,6
+Social Features & Community,9,0,8
+Direct Messaging / Chat,5,0,4
+Notifications,6,0,5
+Gamification & Rewards,7,0,0
+In-App Market / Store,6,0,4
+Vendor / Seller System,7,0,5
+Subscriptions & Membership Plans,7,1,1
+Gallery,3,0,0
+App Themes & Customisation,3,2,2
+Settings,4,2,4
+Backend Infrastructure & Security,9,0,8
+Advertisement System,2,0,0
+TOTAL,108,15,72
+Overall Feature Coverage:,,14%  (15 of 108 features),67%  (104 of 108 features)
+--- Feature Comparison ---
+RealDream App ΓÇö Feature Comparison: Old Version (v1) vs New Version (v2),,,,,
+"Old Version (v1) = Basic React Native frontend only  |  New Version (v2) = Full-stack platform with backend, database, market & social features",,,,,
+#,Module,Feature / Sub-Module,Version 1 (28-Feb-2026),Version 2 (28-Mar-2026),Notes & Remarks
+Legend:,,Γ£à YES ΓÇö Fully Implemented,Γ¥î NO ΓÇö Not Available,ΓÜá∩╕Å PARTIAL ΓÇö Exists but Limited / Hidden,Old v1 Yellow  |  New v2 Green
+1. AUTHENTICATION & USER LOGIN,,,,,
+1,Auth,User Registration (Sign Up),Γ£à YES,Γ£à YES,"Register with email, username, and password"
+2,Auth,Email & Password Login,Γ£à YES,Γ£à YES,Standard login ΓÇö available in both versions
+3,Auth,Google Sign-In,Γ¥î NO,Γ£à YES,v1: Screen existed but frequently redirected  |  v2: Fully integrated via Firebase
+4,Auth,Facebook Sign-In,Γ¥î NO,Γ¥î NO,Work in Progress
+5,Auth,Phone Number Sign-In (OTP),Γ¥î NO,Γ¥î NO,Work in Progress
+6,Auth,Forgot Password Flow,ΓÜá∩╕Å PARTIAL,Γ£à YES,v1: Screen only  |  v2: Full token-based email reset system
+7,Auth,Password Reset via Email,Γ¥î NO,Γ£à YES,New: password_reset_tokens DB table + email link flow
+8,Auth,Change Password (while logged in),Γ¥î NO,Γ£à YES,New: POST /api/auth/change-password endpoint
+9,Auth,Persistent Login / Session Memory,Γ¥î NO,Γ¥î NO,Work in Progress
+10,Auth,Logout,Γ£à YES,Γ£à YES,Available in both versions
+11,Auth,Multiple Auth Providers Tracked in DB,Γ¥î NO,Γ£à YES,"New: email, google, facebook, phone ΓÇö all recorded in DB"
+2. USER PROFILE,,,,,
+12,Profile,View Own Profile,Γ£à YES,Γ£à YES,Profile screen present in both versions
+13,Profile,"Edit Profile (Name, Bio,Age)",ΓÜá∩╕Å PARTIAL,Γ£à YES,v1: Basic  |  v2: All fields fully editable
+14,Profile,Upload / Change Profile Photo,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+15,Profile,Delete Profile Photo,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+16,Profile,View Another User's Public Profile,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+17,Profile,Search Users by Name / Username,Γ¥î NO,Γ£à YES,New: GET /api/users/search with query parameter
+18,Profile,Delete Account (full data wipe),Γ¥î NO,Γ£à YES,New: DELETE /api/profile ΓÇö cascades all user data
+19,Profile,Age & Gender Profile Fields,Γ¥î NO,Γ£à YES,New: Added to users table in DB schema
+20,Profile,"Display Coins, Trophies & Awards",Γ¥î NO,Γ£à YES,New: Stats visible on public and private profile
+3. DREAMS / GOALS MANAGEMENT (Core Feature),,,,,
+21,Dreams,Create a Personal Dream / Goal,Γ£à YES,Γ£à YES,Core feature ΓÇö present in both versions
+22,Dreams,View My Dreams List,Γ£à YES,Γ£à YES,Personal dreams list screen in both
+23,Dreams,Edit / Update a Dream,ΓÜá∩╕Å PARTIAL,ΓÜá∩╕Å PARTIAL,Work in Progress (Version 3)
+24,Dreams,Delete a Dream,Γ¥î NO,Γ¥î NO,Not Required
+25,Dreams,Dream Privacy (Public / Connections / Private),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+26,Dreams,Challenge Dream Type,Γ¥î NO,Γ£à YES,New: ChallengeDreamsScreen + challenge type in DB
+27,Dreams,Group Dream (Collaborative),Γ¥î NO,Γ£à YES,New: GroupDreamsScreen + group type + member management
+28,Dreams,Invite Members to a Group Dream,Γ¥î NO,Γ£à YES,New: POST /api/dreams/:id/invite + InviteModal component
+29,Dreams,Join a Group Dream,Γ¥î NO,Γ£à YES,New: POST /api/dreams/:id/join endpoint
+30,Dreams,Dream Progress Tracking (%),Γ¥î NO,Γ£à YES,New: progress field (0ΓÇô100%) in dreams table
+31,Dreams,Upload Cover Image for Dream,Γ¥î NO,Γ£à YES,New: Cloudinary image upload on dream creation
+32,Dreams,Duration & Recurrence Settings,Γ¥î NO,Γ£à YES,"New: duration, durationUnit, recurrence enums in DB"
+33,Dreams,Dream Detail Screen,ΓÜá∩╕Å PARTIAL,Γ£à YES,"v1: Basic view  |  v2: Full detail with tasks, members, progress"
+4. TASKS ΓÇö AUTO-GENERATED ACTION STEPS,,,,,
+34,Tasks,View Tasks for a Dream,Γ¥î NO,Γ£à YES,New: dreamTasks table + GET /api/dreams/:id/tasks
+35,Tasks,Auto-Generate Task Schedule,Γ¥î NO,Γ£à YES,New: task-generator.ts calculates dates based on recurrence
+36,Tasks,Mark Task as Complete / Toggle,Γ¥î NO,Γ£à YES,New: POST /api/dreams/:id/tasks/:id/toggle
+37,Tasks,Create Custom Tasks Manually,Γ¥î NO,Γ£à YES,New: POST /api/dreams/:id/tasks
+38,Tasks,Task Recurrence Types (Daily/Weekly/Monthly),Γ¥î NO,Γ£à YES,"New: recurrenceEnum ΓÇö daily, weekly, semi-weekly, monthly, semi-monthly"
+39,Tasks,Edit a Task,Γ¥î NO,Γ£à YES,New: PUT /api/dreams/:id/tasks/:id
+40,Tasks,Delete a Task,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+5. SOCIAL FEATURES & COMMUNITY,,,,,
+41,Social,Follow Another User,Γ¥î NO,Γ£à YES,New: connections table + POST /api/connections/:id/follow
+42,Social,Unfollow a User,Γ¥î NO,Γ£à YES,New: DELETE /api/connections/:id/unfollow
+43,Social,View Followers & Following Lists,Γ¥î NO,Γ£à YES,New: ConnectionsScreen + GET /api/connections
+44,Social,News Feed (Social Posts),Γ¥î NO,ΓÜá∩╕Å PARTIAL,Work in Progress (Version 3)
+45,Social,Create a Post / Share Dream Update,Γ¥î NO,ΓÜá∩╕Å PARTIAL,Work in Progress (Version 3)
+46,Social,Like a Post,Γ¥î NO,Γ£à YES,New: POST /api/news-feed/:id/like
+47,Social,Unlike a Post,Γ¥î NO,Γ£à YES,New: DELETE /api/news-feed/:id/like
+48,Social,Comment on a Post,Γ¥î NO,Γ£à YES,New: POST /api/news-feed/:id/comments
+49,Social,Delete Own Post,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+6. DIRECT MESSAGING / CHAT,,,,,
+50,Messaging,Send a Direct Message,Γ¥î NO,Γ£à YES,New: messages table + POST /api/messages
+51,Messaging,View All Conversations,Γ¥î NO,Γ£à YES,New: conversations table + GET /api/conversations
+52,Messaging,Chat History with a User,Γ¥î NO,Γ£à YES,New: ChatScreen + GET /api/messages/:userId
+53,Messaging,Mark Messages as Read,Γ¥î NO,Γ£à YES,New: PUT /api/messages/read-all
+54,Messaging,Real-Time Messaging (WebSocket),Γ¥î NO,Γ¥î NO,Work in Progress
+7. NOTIFICATIONS,,,,,
+55,Notifications,View Notification List,Γ¥î NO,Γ£à YES,New: notifications table + GET /api/notifications
+56,Notifications,Mark Single Notification as Read,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+57,Notifications,Mark All Notifications as Read,Γ¥î NO,Γ£à YES,New: PUT /api/notifications/read-all
+58,Notifications,Delete a Notification,Γ¥î NO,Γ£à YES,New: DELETE /api/notifications/:id
+59,Notifications,Unread Count Badge,Γ¥î NO,Γ£à YES,New: GET /api/notifications/unread count
+60,Notifications,Notification Types (5 types),Γ¥î NO,Γ£à YES,"New: achievement, social, system, reward, transaction"
+8. GAMIFICATION & REWARDS,,,,,
+61,Gamification,Coins / Virtual Wallet,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+62,Gamification,Daily Lucky Spin (up to 3/day),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+63,Gamification,Trophies & Awards on Profile,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+64,Gamification,Total Points System,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+65,Gamification,Champions Leaderboard,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+66,Gamification,Wall of Fame (Weekly/Monthly/All),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+67,Gamification,Points-Based Leaderboard,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+9. IN-APP MARKET / STORE,,,,,
+68,Market,Browse Market Items,Γ¥î NO,Γ£à YES,New: marketItems table + MarketScreen + GET /api/market
+69,Market,Purchase Items with Coins,Γ¥î NO,Γ£à YES,New: POST /api/market/:id/purchase ΓÇö deducts coins from wallet
+70,Market,View Purchase History,Γ¥î NO,Γ£à YES,New: marketPurchases table + GET /api/market/history
+71,Market,Premium / Paid Items,Γ¥î NO,Γ¥î NO,Work in Progress
+72,Market,Filter Items by Category,Γ¥î NO,Γ¥î NO,Work in Progress
+73,Market,Purchase App Themes from Market,Γ¥î NO,Γ£à YES,New: POST /api/themes/:id/purchase endpoint
+10. VENDOR / SELLER SYSTEM,,,,,
+74,Vendor,Apply to Become a Vendor,Γ¥î NO,Γ£à YES,New: VendorHubScreen + POST /api/vendor/apply
+75,Vendor,Vendor Profile (Business Info),Γ¥î NO,Γ£à YES,"New: vendorBusinessName, vendorDescription in DB"
+76,Vendor,Vendor Tiers (Basic/Pro/Enterprise),Γ¥î NO,Γ¥î NO,Work in Progress
+77,Vendor,List Products for Sale,Γ¥î NO,Γ£à YES,New: POST /api/market/items ΓÇö vendors create listings
+78,Vendor,View Own Listed Items,Γ¥î NO,Γ£à YES,New: GET /api/market/items (vendor-specific)
+79,Vendor,Remove Vendor Status,Γ¥î NO,Γ£à YES,New: DELETE /api/vendor endpoint
+80,Vendor,Vendor Earns Coins from Sales,Γ¥î NO,Γ¥î NO,Work in Progress
+11. SUBSCRIPTIONS & MEMBERSHIP PLANS,,,,,
+81,Subscription,Free Plan,Γ£à YES,Γ£à YES,Default for all new users
+82,Subscription,Bronze Plan ΓÇö $4.99 / month,Γ¥î NO,Γ¥î NO,Work in Progress
+83,Subscription,Silver Plan ΓÇö $9.99 / month,Γ¥î NO,Γ¥î NO,Work in Progress
+84,Subscription,Gold Plan ΓÇö $19.99 / month,Γ¥î NO,Γ¥î NO,Work in Progress
+85,Subscription,Platinum Plan ΓÇö $29.99 / month,Γ¥î NO,Γ¥î NO,Work in Progress
+86,Subscription,Upgrade / Downgrade Plan,Γ¥î NO,Γ¥î NO,Work in Progress
+87,Subscription,Ad-Free Experience (Gold & Platinum),Γ¥î NO,Γ¥î NO,Work in Progress
+12. GALLERY,,,,,
+88,Gallery,View Gallery Posts,Γ¥î NO,Γ¥î NO,Work in Progress
+89,Gallery,Create a Gallery Post,Γ¥î NO,Γ¥î NO,Work in Progress
+90,Gallery,Cloud Image Upload (Gallery),Γ¥î NO,Γ¥î NO,Work in Progress
+13. APP THEMES & CUSTOMISATION,,,,,
+91,Themes,Light / Dark Mode Toggle,Γ£à YES,Γ£à YES,ThemeContext present in both versions
+92,Themes,Theme Selection Screen,ΓÜá∩╕Å PARTIAL,Γ£à YES,v1: Basic  |  v2: ThemeScreen with purchasable premium themes
+93,Themes,Purchase Premium Themes with Coins,Γ¥î NO,Γ¥î NO,Work in Progress
+14. SETTINGS,,,,,
+94,Settings,Settings Screen,Γ£à YES,Γ£à YES,SettingsScreen present in both versions
+95,Settings,Account Management,Γ£à YES,Γ£à YES,Basic account operations in both
+96,Settings,Notification Preferences,Γ¥î NO,ΓÜá∩╕Å PARTIAL,Work in Progress
+97,Settings,Privacy Controls,Γ¥î NO,ΓÜá∩╕Å PARTIAL,Work in Progress
+15. BACKEND INFRASTRUCTURE & SECURITY,,,,,
+98,Backend,PostgreSQL Database (16 tables),Γ¥î NO,Γ£à YES,New: Full relational DB using Drizzle ORM
+99,Backend,Cloud Image Storage (Cloudinary),Γ¥î NO,Γ£à YES,"New: All images (profile, dreams, gallery) stored on Cloudinary"
+100,Backend,Firebase Authentication (Admin SDK),Γ¥î NO,Γ£à YES,New: firebase-admin for server-side token verification
+101,Backend,JWT Authentication for All API Routes,Γ¥î NO,Γ£à YES,New: JWT Bearer token on all protected endpoints
+102,Backend,Token Cache for Performance,Γ¥î NO,Γ£à YES,"New: In-memory token cache ΓÇö 5-min TTL, 500-token limit"
+103,Backend,API Rate Limiting,Γ¥î NO,Γ£à YES,"New: 1000 req/15 min (general), 50 req/15 min (auth only)"
+104,Backend,Admin User System,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+105,Backend,Input Validation (Zod Schemas),Γ¥î NO,Γ£à YES,New: Zod validation on all API inputs ΓÇö no raw data accepted
+106,Backend,Bcrypt Password Hashing,Γ¥î NO,Γ£à YES,New: All passwords hashed with bcrypt before storage
+16. ADVERTISEMENT SYSTEM,,,,,
+107,Ads,Ad Banner Component,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+108,Ads,Ad-Free Experience (Subscription),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+--- Version 3 ---
+#,Module,Feature / Sub-Module,Old Version (v1 ΓÇö client.zip),New Version (v2 ΓÇö server.zip),Notes & Remarks
+14,Profile,Upload / Change Profile Photo,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+15,Profile,Delete Profile Photo,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+16,Profile,View Another User's Public Profile,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+23,Dreams,Edit / Update a Dream,ΓÜá∩╕Å PARTIAL,ΓÜá∩╕Å PARTIAL,Work in Progress (Version 3)
+25,Dreams,Dream Privacy (Public / Connections / Private),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+40,Tasks,Delete a Task,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+44,Social,News Feed (Social Posts),Γ¥î NO,ΓÜá∩╕Å PARTIAL,Work in Progress (Version 3)
+45,Social,Create a Post / Share Dream Update,Γ¥î NO,ΓÜá∩╕Å PARTIAL,Work in Progress (Version 3)
+49,Social,Delete Own Post,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+56,Notifications,Mark Single Notification as Read,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+61,Gamification,Coins / Virtual Wallet,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+62,Gamification,Daily Lucky Spin (up to 3/day),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+63,Gamification,Trophies & Awards on Profile,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+64,Gamification,Total Points System,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+65,Gamification,Champions Leaderboard,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+66,Gamification,Wall of Fame (Weekly/Monthly/All),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+67,Gamification,Points-Based Leaderboard,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+104,Backend,Admin User System,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+107,Ads,Ad Banner Component,Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
+108,Ads,Ad-Free Experience (Subscription),Γ¥î NO,Γ¥î NO,Work in Progress (Version 3)
