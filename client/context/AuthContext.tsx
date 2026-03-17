@@ -136,6 +136,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [apiUrl]);
 
   useEffect(() => {
+    loadStoredAuth();
+  }, [loadStoredAuth]);
+
+  useEffect(() => {
     let mounted = true;
 
     const unsubscribe = onAuthStateChanged(async (firebaseUser) => {
