@@ -374,6 +374,7 @@ export const activeAds = pgTable("active_ads", {
     .default(sql`gen_random_uuid()`),
   imageUrl: text("image_url").notNull(),
   targetUrl: text("target_url"),
+  type: text("type").default("image"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

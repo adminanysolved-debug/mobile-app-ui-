@@ -391,6 +391,23 @@ app.delete('/api/admin/market-items/:id', async (req, res) => {
     }
 });
 
+app.put('/api/admin/market-items/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, price, is_active, is_premium, category, how_to_achieve } = req.body;
+        
+        await pool.query(
+            'UPDATE market_items SET title = $1, price = $2, is_active = $3, is_premium = $4, category = $5, how_to_achieve = $6, updated_at = NOW() WHERE id = $7',
+            [title, price, is_active, is_premium, category, how_to_achieve, id]
+        );
+        
+        res.json({ success: true, message: 'Market item updated successfully' });
+    } catch (error: any) {
+        console.error("Failed to update market item", error);
+        res.status(500).json({ error: "Failed to update market item" });
+    }
+});
+
 app.put('/api/admin/users/:id/vendor', async (req, res) => {
     try {
         const { id } = req.params;
@@ -427,20 +444,20 @@ app.get('/api/admin/ads', async (req, res) => {
 
 app.post('/api/admin/ads', async (req, res) => {
     try {
-        const { imageUrl, targetUrl, isActive } = req.body;
+        const { imageUrl, targetUrl, isActive, type } = req.body;
         
         const { rows: existing } = await pool.query('SELECT id FROM active_ads LIMIT 1');
         
         let result;
         if (existing.length > 0) {
             result = await pool.query(
-                'UPDATE active_ads SET image_url = $1, target_url = $2, is_active = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
-                [imageUrl, targetUrl, isActive, existing[0].id]
+                'UPDATE active_ads SET image_url = $1, target_url = $2, is_active = $3, type = $4, updated_at = NOW() WHERE id = $5 RETURNING *',
+                [imageUrl, targetUrl, isActive, type || 'image', existing[0].id]
             );
         } else {
             result = await pool.query(
-                'INSERT INTO active_ads (image_url, target_url, is_active) VALUES ($1, $2, $3) RETURNING *',
-                [imageUrl, targetUrl, isActive]
+                'INSERT INTO active_ads (image_url, target_url, is_active, type) VALUES ($1, $2, $3, $4) RETURNING *',
+                [imageUrl, targetUrl, isActive, type || 'image']
             );
         }
         

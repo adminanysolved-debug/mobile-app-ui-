@@ -4,30 +4,33 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
+import { Video, ResizeMode } from "expo-av";
 
 interface ActiveAd {
     id: string;
     image_url: string;
     target_url?: string;
     is_active: boolean;
+    type: 'image' | 'video';
 }
 
 export function AdPopup() {
   const [visible, setVisible] = useState(false);
   const [hasShownThisSession, setHasShownThisSession] = useState(false);
 
-  const { data: ad } = useQuery<ActiveAd | null>({
+  const { data: ad, isLoading, isError } = useQuery<ActiveAd | null>({
     queryKey: ["api", "ads", "active"],
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0, 
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
     if (ad && ad.is_active && !hasShownThisSession) {
-      // Show ad after a 2-second delay to ensure the app is ready and user is settled
+      console.log("Ad fetched and active, preparing to show...", ad.type);
       const timer = setTimeout(() => {
         setVisible(true);
         setHasShownThisSession(true);
-      }, 2000);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [ad, hasShownThisSession]);
@@ -64,11 +67,22 @@ export function AdPopup() {
             style={styles.content}
         >
           <Pressable onPress={handlePress} style={styles.imageContainer}>
-             <Image 
-                source={{ uri: ad.image_url }} 
-                style={styles.image}
-                resizeMode="cover"
-             />
+             {ad.type === 'video' ? (
+                <Video
+                    source={{ uri: ad.image_url }}
+                    style={styles.image}
+                    resizeMode={ResizeMode.COVER}
+                    shouldPlay
+                    isLooping
+                    isMuted={false}
+                />
+             ) : (
+                <Image 
+                    source={{ uri: ad.image_url }} 
+                    style={styles.image}
+                    resizeMode="cover"
+                />
+             )}
              {ad.target_url && (
                 <View style={styles.linkIndicator}>
                     <Feather name="external-link" size={12} color="#FFFFFF" />

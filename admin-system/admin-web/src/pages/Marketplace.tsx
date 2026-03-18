@@ -20,6 +20,9 @@ export default function Marketplace() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState<Partial<MarketItem>>({});
+
     useEffect(() => {
         fetchMarketItems();
     }, []);
@@ -72,6 +75,50 @@ export default function Marketplace() {
         d.vendor_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const handleUpdateItem = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedItem) return;
+
+        try {
+            const res = await fetch(`http://localhost:5001/api/admin/market-items/${selectedItem.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+                },
+                body: JSON.stringify(editForm)
+            });
+
+            if (res.ok) {
+                fetchMarketItems();
+                setIsEditing(false);
+                setSelectedItem(null);
+            } else {
+                alert('Failed to update item');
+            }
+        } catch (error) {
+            console.error('Error updating item:', error);
+        }
+    };
+
+    const toggleItemStatus = async (item: MarketItem) => {
+        try {
+            const res = await fetch(`http://localhost:5001/api/admin/market-items/${item.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+                },
+                body: JSON.stringify({ 
+                    ...item,
+                    is_active: !item.is_active 
+                })
+            });
+
+            if (res.ok) fetchMarketItems();
+        } catch (error) { console.error(error); }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out h-full flex flex-col">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -79,7 +126,7 @@ export default function Marketplace() {
                     <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-300 to-indigo-100 inline-block drop-shadow-sm mb-1">
                         Marketplace Management
                     </h1>
-                    <p className="text-slate-400 text-sm">Monitor all marketplace items and vendor uploads.</p>
+                    <p className="text-slate-400 text-sm">Monitor and moderate all marketplace items.</p>
                 </div>
 
                 <div className="relative group w-full sm:w-72">
@@ -151,20 +198,28 @@ export default function Marketplace() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            {item.is_active ? (
-                                                <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-                                                    <CheckCircle2 size={14} /> Active
-                                                </span>
-                                            ) : (
-                                                <span className="flex items-center gap-1.5 text-xs text-slate-400">
-                                                    <Circle size={14} className="text-slate-600" /> Inactive
-                                                </span>
-                                            )}
+                                            <button 
+                                                onClick={() => toggleItemStatus(item)}
+                                                className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border transition-all ${item.is_active ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' : 'text-slate-400 border-slate-700 bg-slate-800'}`}
+                                            >
+                                                {item.is_active ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+                                                {item.is_active ? 'Active' : 'Hidden'}
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4 text-right flex justify-end gap-2">
                                             <button
-                                                onClick={() => setSelectedItem(item)}
+                                                onClick={() => {
+                                                    setSelectedItem(item);
+                                                    setEditForm(item);
+                                                    setIsEditing(true);
+                                                }}
                                                 className="text-brand-400 hover:text-brand-300 hover:bg-brand-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent hover:border-brand-500/30"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectedItem(item)}
+                                                className="text-slate-400 hover:text-slate-200 hover:bg-white/5 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-transparent"
                                             >
                                                 Details
                                             </button>
@@ -182,8 +237,94 @@ export default function Marketplace() {
                     </table>
                 </div>
 
+                {/* Edit Item Modal */}
+                {(selectedItem && isEditing) && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => { setIsEditing(false); setSelectedItem(null); }}>
+                        <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-md overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
+                                <h3 className="text-lg font-semibold text-slate-200">Edit Marketplace Item</h3>
+                                <button onClick={() => { setIsEditing(false); setSelectedItem(null); }} className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleUpdateItem} className="p-6 space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-slate-400 ml-1">Title</label>
+                                    <input 
+                                        type="text" 
+                                        value={editForm.title} 
+                                        onChange={e => setEditForm({...editForm, title: e.target.value})}
+                                        className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-slate-200 text-sm"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-slate-400 ml-1">Price (Coins)</label>
+                                        <input 
+                                            type="number" 
+                                            value={editForm.price} 
+                                            onChange={e => setEditForm({...editForm, price: parseInt(e.target.value)})}
+                                            className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-slate-200 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-slate-400 ml-1">Category</label>
+                                        <select 
+                                            value={editForm.category} 
+                                            onChange={e => setEditForm({...editForm, category: e.target.value})}
+                                            className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-slate-200 text-sm"
+                                        >
+                                            <option value="Dream">Dream</option>
+                                            <option value="Themes">Themes</option>
+                                            <option value="Badges">Badges</option>
+                                            <option value="Customization">Customization</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-slate-400 ml-1">Achievement Steps (Protocol)</label>
+                                    <textarea 
+                                        value={editForm.how_to_achieve} 
+                                        onChange={e => setEditForm({...editForm, how_to_achieve: e.target.value})}
+                                        className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-slate-200 text-sm h-24"
+                                    />
+                                </div>
+                                <div className="flex gap-4 pt-2">
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={editForm.is_premium} 
+                                            onChange={e => setEditForm({...editForm, is_premium: e.target.checked})}
+                                            className="rounded border-slate-700 bg-slate-800 text-brand-500 focus:ring-brand-500/20"
+                                        />
+                                        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Premium Item</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={editForm.is_active} 
+                                            onChange={e => setEditForm({...editForm, is_active: e.target.checked})}
+                                            className="rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500/20"
+                                        />
+                                        <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Active / Visible</span>
+                                    </label>
+                                </div>
+                                
+                                <div className="pt-4 flex gap-3">
+                                    <button type="submit" className="flex-1 bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-lg font-bold text-sm transition-all shadow-lg shadow-brand-600/20">
+                                        Save Changes
+                                    </button>
+                                    <button type="button" onClick={() => { setIsEditing(false); setSelectedItem(null); }} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg font-bold text-sm transition-all">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
                 {/* View Item Modal */}
-                {selectedItem && (
+                {(selectedItem && !isEditing) && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedItem(null)}>
                         <div className="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl w-full max-w-md overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
@@ -248,6 +389,9 @@ export default function Marketplace() {
                                 </div>
                             </div>
                             <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-2">
+                                <button onClick={() => { setIsEditing(true); setEditForm(selectedItem); }} className="px-4 py-2 bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 rounded-lg transition-colors text-sm font-medium">
+                                    Edit Details
+                                </button>
                                 <button onClick={() => handleDeleteItem(selectedItem.id, selectedItem.title)} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors text-sm font-medium flex items-center gap-2">
                                     <Trash2 size={16} /> Delete Item
                                 </button>

@@ -179,34 +179,32 @@ export default function VendorHubScreen() {
 
                         <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: Spacing.sm }}>Category</ThemedText>
                         <View style={styles.categoryRow}>
-                            {["Themes", "Badges", "Customization", "Dream"].map(cat => (
+                            {["Dream"].map(cat => (
                                 <Pressable
                                     key={cat}
                                     onPress={() => setCategory(cat)}
                                     style={[
                                         styles.categoryPill,
-                                        { backgroundColor: category === cat ? theme.accent : theme.backgroundSecondary }
+                                        { backgroundColor: theme.accent }
                                     ]}
                                 >
-                                    <ThemedText type="xs" style={{ color: theme.text }}>{cat}</ThemedText>
+                                    <ThemedText type="xs" style={{ color: "#FFF", fontWeight: "bold" }}>{cat}</ThemedText>
                                 </Pressable>
                             ))}
                         </View>
 
-                        {category === "Dream" && (
-                            <Animated.View entering={FadeInDown.springify()} style={{ marginTop: Spacing.md }}>
-                                <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 4 }}>Achievement Steps (Protocol) *</ThemedText>
-                                <TextInput
-                                    style={[styles.input, styles.textArea, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
-                                    value={howToAchieve}
-                                    onChangeText={setHowToAchieve}
-                                    placeholder="e.g. 1. Clean room\n2. Do homework..."
-                                    placeholderTextColor={theme.textMuted}
-                                    multiline
-                                    numberOfLines={4}
-                                />
-                            </Animated.View>
-                        )}
+                        <View style={{ marginTop: Spacing.md }}>
+                            <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 4 }}>Achievement Steps (Protocol) *</ThemedText>
+                            <TextInput
+                                style={[styles.input, styles.textArea, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                                value={howToAchieve}
+                                onChangeText={setHowToAchieve}
+                                placeholder="e.g. 1. Clean room\n2. Do homework..."
+                                placeholderTextColor={theme.textMuted}
+                                multiline
+                                numberOfLines={4}
+                            />
+                        </View>
 
                         <View style={[styles.premiumRow, { marginTop: Spacing.md }]}>
                             <ThemedText type="body">Premium Lock Item?</ThemedText>

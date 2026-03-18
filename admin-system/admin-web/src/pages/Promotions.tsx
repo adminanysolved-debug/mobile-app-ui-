@@ -7,13 +7,15 @@ interface AdSettings {
     image_url: string;
     target_url: string;
     is_active: boolean;
+    type: 'image' | 'video';
 }
 
 export default function Promotions() {
     const [ad, setAd] = useState<AdSettings>({
         image_url: '',
         target_url: '',
-        is_active: true
+        is_active: true,
+        type: 'image'
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -34,7 +36,8 @@ export default function Promotions() {
                     id: data.id,
                     image_url: data.image_url || '',
                     target_url: data.target_url || '',
-                    is_active: data.is_active ?? true
+                    is_active: data.is_active ?? true,
+                    type: data.type || 'image'
                 });
             }
             setLoading(false);
@@ -59,7 +62,8 @@ export default function Promotions() {
                 body: JSON.stringify({
                     imageUrl: ad.image_url,
                     targetUrl: ad.target_url,
-                    isActive: ad.is_active
+                    isActive: ad.is_active,
+                    type: ad.type
                 })
             });
 
@@ -116,7 +120,25 @@ export default function Promotions() {
 
                     <form onSubmit={handleSave} className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Image URL</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Ad Media Type</label>
+                            <div className="flex gap-4">
+                                {['image', 'video'].map((t) => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setAd({ ...ad, type: t as any })}
+                                        className={`flex-1 py-3 rounded-xl border font-black text-[10px] uppercase tracking-widest transition-all ${ad.type === t ? 'bg-brand-600 border-brand-400 text-white shadow-lg shadow-brand-600/20' : 'bg-slate-900/50 border-white/5 text-slate-500 hover:border-white/10'}`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                                {ad.type === 'video' ? 'Video URL' : 'Image URL'}
+                            </label>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                     <ImageIcon size={14} className="text-slate-600 group-focus-within:text-brand-400 transition-colors" />
@@ -126,7 +148,7 @@ export default function Promotions() {
                                     value={ad.image_url}
                                     onChange={(e) => setAd({ ...ad, image_url: e.target.value })}
                                     className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all font-medium"
-                                    placeholder="https://content.realdream.app/ads/promo-1.jpg"
+                                    placeholder={ad.type === 'video' ? "https://example.com/video.mp4" : "https://example.com/image.jpg"}
                                     required
                                 />
                             </div>
@@ -212,20 +234,30 @@ export default function Promotions() {
                     <div className="relative mx-auto w-[280px] aspect-[9/16] bg-slate-900 rounded-[3rem] border-[8px] border-slate-800 shadow-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center">
                         {ad.image_url ? (
                             <div className="relative w-full h-full group">
-                                <img
-                                    src={ad.image_url}
-                                    alt="Ad Preview"
-                                    className="w-full h-full object-cover rounded-2xl opacity-80"
-                                    onError={(e) => {
-                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/280x500?text=Invalid+Image+URL';
-                                    }}
-                                />
+                                {ad.type === 'video' ? (
+                                    <video
+                                        src={ad.image_url}
+                                        className="w-full h-full object-cover rounded-2xl opacity-80"
+                                        autoPlay
+                                        muted
+                                        loop
+                                    />
+                                ) : (
+                                    <img
+                                        src={ad.image_url}
+                                        alt="Ad Preview"
+                                        className="w-full h-full object-cover rounded-2xl opacity-80"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/280x500?text=Invalid+Image+URL';
+                                        }}
+                                    />
+                                )}
                                 <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/20">
                                     <div className="w-4 h-4 text-white font-bold text-[10px]">X</div>
                                 </div>
                                 {!ad.is_active && (
                                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                                        <span className="text-red-500 font-black text-[10px] uppercase tracking-widest border border-red-500/20 px-3 py-1 rounded-full">Inactive</span>
+                                        <span className="text-red-500 font-black text-[10px] uppercase tracking_widest border border-red-500/20 px-3 py-1 rounded-full">Inactive</span>
                                     </div>
                                 )}
                             </div>

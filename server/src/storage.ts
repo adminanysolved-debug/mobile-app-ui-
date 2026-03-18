@@ -449,6 +449,7 @@ class DatabaseStorage implements IStorage {
     // Map the flat SQL result into the nested objects expected by the frontend
     return (rows as any[]).map(row => ({
       id: row.id,
+      userId: row.user_id,
       content: row.content,
       likes: row.likes,
       comments: row.comments,
@@ -533,6 +534,7 @@ class DatabaseStorage implements IStorage {
 
     return (rows as any[]).map(row => ({
       id: row.id,
+      userId: row.user_id,
       content: row.content,
       createdAt: row.created_at,
       user: {
