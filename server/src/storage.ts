@@ -18,6 +18,7 @@ import {
   marketPurchases,
   passwordResetTokens,
   conversations,
+  activeAds,
   type User,
   type Dream,
   type DreamTask,
@@ -30,6 +31,9 @@ import {
   type NewsFeedPost,
   type PasswordResetToken,
   type Conversation,
+  type MarketItem,
+  type MarketPurchase,
+  type ActiveAd,
 } from "./shared/schema.js";
 
 export interface IStorage {
@@ -93,6 +97,8 @@ export interface IStorage {
   getVendorMarketItemsCount(vendorId: string): Promise<number>;
   hasPurchasedMarketItem(userId: string, marketItemId: string): Promise<boolean>;
   getDreamCounts(userId: string): Promise<{ personal: number; challenge: number; group: number }>;
+  getActiveAd(): Promise<ActiveAd | undefined>;
+  updateActiveAd(data: Partial<ActiveAd>): Promise<ActiveAd>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -873,6 +879,22 @@ class DatabaseStorage implements IStorage {
       isCompleted,
       completedAt: isCompleted ? new Date() : null,
     });
+  }
+
+  async getActiveAd(): Promise<ActiveAd | undefined> {
+    const [ad] = await db.select().from(activeAds).where(eq(activeAds.isActive, true)).orderBy(desc(activeAds.createdAt)).limit(1);
+    return ad;
+  }
+
+  async updateActiveAd(data: Partial<ActiveAd>): Promise<ActiveAd> {
+    const existing = await this.getActiveAd();
+    if (existing) {
+      const [updated] = await db.update(activeAds).set({ ...data, updatedAt: new Date() }).where(eq(activeAds.id, existing.id)).returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(activeAds).values(data as any).returning();
+      return created;
+    }
   }
 }
 

@@ -368,6 +368,17 @@ export const marketPurchases = pgTable("market_purchases", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const activeAds = pgTable("active_ads", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  imageUrl: text("image_url").notNull(),
+  targetUrl: text("target_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const userRelations = relations(users, ({ many }) => ({
   dreams: many(dreams),
   sentMessages: many(messages, { relationName: "sentMessages" }),
@@ -485,3 +496,4 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Conversation = typeof conversations.$inferSelect;
 export type MarketItem = typeof marketItems.$inferSelect;
 export type MarketPurchase = typeof marketPurchases.$inferSelect;
+export type ActiveAd = typeof activeAds.$inferSelect;

@@ -1918,6 +1918,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  app.get("/api/ads/active", async (_req, res) => {
+    try {
+      const ad = await storage.getActiveAd();
+      res.json(ad || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch active ad" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

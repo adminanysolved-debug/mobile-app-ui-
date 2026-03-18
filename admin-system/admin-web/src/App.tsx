@@ -7,6 +7,7 @@ import Dreams from './pages/Dreams';
 import Social from './pages/Social';
 import Marketplace from './pages/Marketplace';
 import Settings from './pages/Settings';
+import Promotions from './pages/Promotions';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -26,6 +27,7 @@ function App() {
             <Route path="notifications" element={<div className="text-slate-400">Notifications under construction</div>} />
             <Route path="marketplace" element={<Marketplace />} />
             <Route path="gallery" element={<div className="text-slate-400">Gallery oversight under construction</div>} />
+            <Route path="promotions" element={<Promotions />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>

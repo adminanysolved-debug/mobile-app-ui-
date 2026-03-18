@@ -13,6 +13,7 @@ import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { AdPopup } from "@/components/AdPopup";
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
                     <RootStackNavigator />
                   </NavigationContainer>
                   <StatusBar style="auto" />
+                  <AdPopup />
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </SafeAreaProvider>

@@ -11,7 +11,8 @@ import {
     LogOut,
     Settings,
     Shield,
-    Activity
+    Activity,
+    Megaphone
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -24,6 +25,7 @@ const MENU_ITEMS = [
     { label: 'Notifications', icon: Bell, href: '/notifications' },
     { label: 'Marketplace', icon: ShoppingCart, href: '/marketplace' },
     { label: 'Gallery', icon: ImageIcon, href: '/gallery' },
+    { label: 'Promotions', icon: Megaphone, href: '/promotions' },
     { label: 'Settings', icon: Settings, href: '/settings' },
 ];
 

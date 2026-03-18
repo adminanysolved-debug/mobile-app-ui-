@@ -1,18 +1,19 @@
-# Ignore everything by default
-*
+# Ignore non-essential root directories to keep build context clean
+server/
+admin-system/
+migrations/
+.vscode/
+.git/
 
-# Allow the client directory
-!client/
-
-# Standard ignores (within allowed directories)
+# Standard ignores
 **/node_modules/
 **/android/
 **/ios/
 **/.expo/
-**/.git/
-**/.vscode/
 **/dist/
 **/build/
 **/*.apk
 **/*.aab
 **/*.log
+
+# Allow everything else (root config files, client directory, assets directory)

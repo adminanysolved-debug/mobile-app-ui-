@@ -415,6 +415,42 @@ app.put('/api/admin/users/:id/subscription', async (req, res) => {
     }
 });
 
+app.get('/api/admin/ads', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT * FROM active_ads ORDER BY created_at DESC LIMIT 1');
+        res.json(rows[0] || null);
+    } catch (error: any) {
+        console.error("Failed to fetch active ad", error);
+        res.status(500).json({ error: "Failed to fetch active ad" });
+    }
+});
+
+app.post('/api/admin/ads', async (req, res) => {
+    try {
+        const { imageUrl, targetUrl, isActive } = req.body;
+        
+        const { rows: existing } = await pool.query('SELECT id FROM active_ads LIMIT 1');
+        
+        let result;
+        if (existing.length > 0) {
+            result = await pool.query(
+                'UPDATE active_ads SET image_url = $1, target_url = $2, is_active = $3, updated_at = NOW() WHERE id = $4 RETURNING *',
+                [imageUrl, targetUrl, isActive, existing[0].id]
+            );
+        } else {
+            result = await pool.query(
+                'INSERT INTO active_ads (image_url, target_url, is_active) VALUES ($1, $2, $3) RETURNING *',
+                [imageUrl, targetUrl, isActive]
+            );
+        }
+        
+        res.json(result.rows[0]);
+    } catch (error: any) {
+        console.error("Failed to update active ad", error);
+        res.status(500).json({ error: "Failed to update active ad" });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Admin Server running on port ${port}`);
 });
