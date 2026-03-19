@@ -8,11 +8,11 @@ import { Video, ResizeMode } from "expo-av";
 
 interface ActiveAd {
     id: string;
-    image_url: string;
-    target_url?: string;
-    is_active: boolean;
+    imageUrl: string;
+    targetUrl?: string;
+    isActive: boolean;
     type: 'image' | 'video';
-    target_screens: string;
+    targetScreens: string;
 }
 
 export function AdPopup({ currentRoute }: { currentRoute: string }) {
@@ -26,10 +26,10 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
   });
 
   useEffect(() => {
-    if (ad && ad.is_active && currentRoute) {
+    if (ad && ad.isActive && currentRoute) {
       if (currentRoute === 'Payment') return;
 
-      const isTargeted = ad.target_screens === '*' || (ad.target_screens || '').split(',').includes(currentRoute);
+      const isTargeted = ad.targetScreens === '*' || (ad.targetScreens || '').split(',').includes(currentRoute);
       
       if (isTargeted && lastAdId !== ad.id) {
         console.log("Showing ad on targeted screen:", currentRoute);
@@ -48,14 +48,14 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
   };
 
   const handlePress = () => {
-    if (ad?.target_url) {
+    if (ad?.targetUrl) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Linking.openURL(ad.target_url);
+      Linking.openURL(ad.targetUrl);
       handleClose();
     }
   };
 
-  if (!ad || !ad.is_active || !visible) return null;
+  if (!ad || !ad.isActive || !visible) return null;
 
   return (
     <Modal
@@ -76,7 +76,7 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
           <Pressable onPress={handlePress} style={styles.imageContainer}>
              {ad.type === 'video' ? (
                 <Video
-                    source={{ uri: ad.image_url }}
+                    source={{ uri: ad.imageUrl }}
                     style={styles.image}
                     resizeMode={ResizeMode.COVER}
                     shouldPlay
@@ -85,12 +85,12 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
                 />
              ) : (
                 <Image 
-                    source={{ uri: ad.image_url }} 
+                    source={{ uri: ad.imageUrl }} 
                     style={styles.image}
                     resizeMode="cover"
                 />
              )}
-             {ad.target_url && (
+             {ad.targetUrl && (
                 <View style={styles.linkIndicator}>
                     <Feather name="external-link" size={12} color="#FFFFFF" />
                     <View style={styles.linkText}>
