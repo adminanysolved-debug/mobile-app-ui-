@@ -90,15 +90,6 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
                     resizeMode="cover"
                 />
              )}
-             {ad.targetUrl && (
-                <View style={styles.linkIndicator}>
-                    <Feather name="external-link" size={12} color="#FFFFFF" />
-                    <View style={styles.linkText}>
-                        <View style={styles.dot} />
-                        <View style={[styles.dot, { opacity: 0.5 }]} />
-                    </View>
-                </View>
-             )}
           </Pressable>
 
           <Pressable 
@@ -169,27 +160,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
     backdropFilter: "blur(10px)",
-  },
-  linkIndicator: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    backgroundColor: "rgba(124, 58, 237, 0.8)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  linkText: {
-    flexDirection: "row",
-    gap: 2,
-  },
-  dot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#FFF",
   }
 });
