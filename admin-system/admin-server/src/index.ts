@@ -5,7 +5,14 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 import os from 'os';
+import multer from 'multer';
 import { pool } from './db';
+import { uploadToCloudinary } from './cloudinary';
+
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit to support videos
+});
 
 const app = express();
 const port = process.env.PORT || 5001;
@@ -92,6 +99,19 @@ app.use('/api/admin', (req, res, next) => {
 });
 
 // Also protect the main data routes used by the dashboard
+app.post('/api/admin/upload', upload.single('file'), async (req: any, res: any) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file provided' });
+        }
+        
+        const secureUrl = await uploadToCloudinary(req.file.buffer, req.file.originalname);
+        res.json({ url: secureUrl });
+    } catch (error) {
+        console.error('Error in /api/admin/upload:', error);
+        res.status(500).json({ error: 'Failed to upload file to Cloudinary' });
+    }
+});
 app.get('/api/stats', authenticateAdmin, async (req, res) => {
     try {
         const usersRes = await pool.query(`SELECT count(*)::int as count FROM users`);

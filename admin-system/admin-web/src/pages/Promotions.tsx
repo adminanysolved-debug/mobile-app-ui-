@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Megaphone, ExternalLink, Image as ImageIcon, Save, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';
+import { Megaphone, ExternalLink, Image as ImageIcon, Save, CheckCircle2, AlertCircle, TrendingUp, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface AdSettings {
@@ -19,7 +19,41 @@ export default function Promotions() {
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        setMessage(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('http://localhost:5001/api/admin/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
+                },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setAd(prev => ({ ...prev, image_url: data.url }));
+                setMessage({ type: 'success', text: 'File uploaded successfully!' });
+            } else {
+                throw new Error('Upload failed');
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Failed to upload file. Please try again.' });
+        } finally {
+            setUploading(false);
+        }
+    };
 
     useEffect(() => {
         fetchAd();
@@ -137,20 +171,37 @@ export default function Promotions() {
 
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                                {ad.type === 'video' ? 'Video URL' : 'Image URL'}
+                                {ad.type === 'video' ? 'Video URL or Upload' : 'Image URL or Upload'}
                             </label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <ImageIcon size={14} className="text-slate-600 group-focus-within:text-brand-400 transition-colors" />
+                            <div className="flex gap-2">
+                                <div className="relative group flex-1">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <ImageIcon size={14} className="text-slate-600 group-focus-within:text-brand-400 transition-colors" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={ad.image_url}
+                                        onChange={(e) => setAd({ ...ad, image_url: e.target.value })}
+                                        className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all font-medium"
+                                        placeholder={ad.type === 'video' ? "https://example.com/video.mp4" : "https://example.com/image.jpg"}
+                                        required
+                                    />
                                 </div>
-                                <input
-                                    type="text"
-                                    value={ad.image_url}
-                                    onChange={(e) => setAd({ ...ad, image_url: e.target.value })}
-                                    className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all font-medium"
-                                    placeholder={ad.type === 'video' ? "https://example.com/video.mp4" : "https://example.com/image.jpg"}
-                                    required
-                                />
+                                
+                                <label className="flex items-center justify-center bg-slate-800 hover:bg-slate-700 border border-white/5 rounded-xl px-4 cursor-pointer transition-colors group">
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        accept={ad.type === 'video' ? 'video/mp4,video/quicktime' : 'image/jpeg,image/png,image/gif,image/webp'}
+                                        onChange={handleFileUpload}
+                                        disabled={uploading}
+                                    />
+                                    {uploading ? (
+                                        <div className="w-5 h-5 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                                    ) : (
+                                        <Upload size={18} className="text-slate-400 group-hover:text-brand-400 transition-colors" />
+                                    )}
+                                </label>
                             </div>
                         </div>
 
