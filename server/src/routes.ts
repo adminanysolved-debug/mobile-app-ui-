@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
 import { eq, and, or, desc, sql } from "drizzle-orm";
-import { loginSchema, registerSchema, users } from "./shared/schema.js";
+import { loginSchema, registerSchema, users, dreams, dreamTasks } from "./shared/schema.js";
 import { verifyIdToken, initializeFirebaseAdmin } from "./firebase-admin.js";
 import { generateTaskDates, validateDreamFields } from "./task-generator.js";
 import multer from "multer";
@@ -1671,6 +1671,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const success = await storage.purchaseMarketItem(userId, itemId, item.price, item.userId);
       if (success) {
+        // Core Logic: Automatically import bought Item templates into Personal Dreams
+        try {
+          // Verify format: { title: string, timeframe: string }[]
+          let parsedTasks: { title: string; timeframe: string }[] = [];
+          
+          if (item.howToAchieve) {
+             try {
+                parsedTasks = JSON.parse(item.howToAchieve);
+             } catch (e) {
+                // Formatting fallback for legacy raw texts
+                parsedTasks = [{ title: item.howToAchieve, timeframe: "1 month" }];
+             }
+          }
+
+          // Generate base Personal Dream wrapper
+          const [newDream] = await db.insert(dreams).values({
+            userId,
+            title: item.title,
+            description: item.category ? `Strategy Category: ${item.category}` : "Vendor Dream Template",
+            type: "personal",
+            progress: 0,
+            isCompleted: false,
+          }).returning();
+
+          // Map and populate defined template timeline
+          if (parsedTasks.length > 0) {
+            const compiledTasks = parsedTasks.map(task => ({
+              dreamId: newDream.id,
+              title: task.title || "Activity Step",
+              timeframe: task.timeframe || "1 week",
+              isCompleted: false
+            }));
+
+            await db.insert(dreamTasks).values(compiledTasks);
+          }
+
+        } catch (assemblyError) {
+          console.error("Critical Failure: Automated dream template provisioning failed:", assemblyError);
+        }
+
         res.json({ success: true, newBalance: (user.coins || 0) - item.price });
       } else {
         res.status(500).json({ error: "Transaction failed" });

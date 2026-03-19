@@ -36,11 +36,10 @@ export default function VendorHubScreen() {
 
     // New Item State
     const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
     const [price, setPrice] = useState("");
-    const [category, setCategory] = useState("Themes");
+    const [category, setCategory] = useState("Dream");
+    const [tasks, setTasks] = useState<{ title: string; timeframe: string }[]>([{ title: "", timeframe: "1 month" }]);
     const [isPremium, setIsPremium] = useState(false);
-    const [howToAchieve, setHowToAchieve] = useState("");
 
     useEffect(() => {
         fetchVendorItems();
@@ -101,13 +100,20 @@ export default function VendorHubScreen() {
         );
     };
 
-    const handleUploadItem = async () => {
-        if (!title || !price || isNaN(Number(price))) {
-            Alert.alert("Error", "Please fill valid title and price.");
-            return;
-        }
+    const removeTask = (index: number) => {
+    if (tasks.length > 1) {
+      setTasks(tasks.filter((_, i) => i !== index));
+    }
+  };
 
-        setIsUploading(true);
+  const handleUploadItem = async () => {
+    const validTasks = tasks.filter(t => t.title.trim().length > 0);
+    if (!title.trim() || !price || validTasks.length === 0) {
+      Alert.alert("Required Fields", "Please provide a title, price, and at least one valid strategy task.");
+      return;
+    }
+    
+    setIsUploading(true);
         try {
             const response = await fetch(new URL('/api/market/items', getApiUrl()).toString(), {
                 method: "POST",
@@ -117,22 +123,25 @@ export default function VendorHubScreen() {
                 },
                 body: JSON.stringify({
                     title,
-                    description,
-                    price: Number(price),
-                    category,
-                    isPremium,
-                    howToAchieve,
-                    imageUrl: "" // Optional placeholder
-                })
+                    description: "", // Description is no longer a direct input, but the API might still expect it.
+                    body: JSON.stringify({
+          title,
+          category,
+          price: parseInt(price),
+          howToAchieve: JSON.stringify(validTasks),
+          isPremium,
+          isActive: true
+        })
+      })
             });
 
             if (response.ok) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 Alert.alert("Success", "Item uploaded to marketplace!");
                 setTitle("");
-                setDescription("");
                 setPrice("");
-                setHowToAchieve("");
+                setTasks([{ title: "", timeframe: "1 month" }]);
+                setIsPremium(false);
                 fetchVendorItems();
             } else {
                 const data = await response.json();
@@ -194,16 +203,56 @@ export default function VendorHubScreen() {
                         </View>
 
                         <View style={{ marginTop: Spacing.md }}>
-                            <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 4 }}>Achievement Steps (Protocol) *</ThemedText>
-                            <TextInput
-                                style={[styles.input, styles.textArea, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
-                                value={howToAchieve}
-                                onChangeText={setHowToAchieve}
-                                placeholder="e.g. 1. Clean room\n2. Do homework..."
-                                placeholderTextColor={theme.textMuted}
-                                multiline
-                                numberOfLines={4}
-                            />
+                            <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>Dream Tasks Strategy *</ThemedText>
+                            <ThemedText type="xs" style={{ color: theme.textMuted, marginBottom: Spacing.md }}>Define the actionable tasks required to achieve this Dream. Users will receive these tasks upon purchase.</ThemedText>
+                            
+                            {tasks.map((task, index) => (
+                                <View key={index} style={{ marginBottom: Spacing.md, padding: Spacing.sm, backgroundColor: theme.backgroundSecondary, borderRadius: 12, borderWidth: 1, borderColor: theme.border }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs }}>
+                                        <ThemedText type="xs" style={{ color: theme.textSecondary, fontWeight: "bold" }}>Task {index + 1}</ThemedText>
+                                        {tasks.length > 1 && (
+                                            <Pressable onPress={() => removeTask(index)} hitSlop={10}>
+                                                <Feather name="x" size={14} color={theme.textMuted} />
+                                            </Pressable>
+                                        )}
+                                    </View>
+                                    
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: "transparent", color: theme.text, paddingHorizontal: 0, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border, borderRadius: 0, marginBottom: 8 }]}
+                                        value={task.title}
+                                        onChangeText={(val) => {
+                                            const updated = [...tasks];
+                                            updated[index].title = val;
+                                            setTasks(updated);
+                                        }}
+                                        placeholder="e.g. Meditate for 10 minutes"
+                                        placeholderTextColor={theme.textMuted}
+                                    />
+                                    
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                                        <Feather name="clock" size={12} color={theme.textMuted} />
+                                        <TextInput
+                                            style={{ flex: 1, color: theme.text, fontSize: 12, paddingVertical: 4 }}
+                                            value={task.timeframe}
+                                            onChangeText={(val) => {
+                                                const updated = [...tasks];
+                                                updated[index].timeframe = val;
+                                                setTasks(updated);
+                                            }}
+                                            placeholder="Timeframe (e.g. 1 week)"
+                                            placeholderTextColor={theme.textMuted}
+                                        />
+                                    </View>
+                                </View>
+                            ))}
+
+                            <Pressable 
+                                onPress={() => setTasks([...tasks, { title: "", timeframe: "1 month" }])}
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, alignSelf: 'flex-start', paddingVertical: Spacing.xs, paddingHorizontal: Spacing.sm, borderRadius: 16, backgroundColor: theme.accent + '20' }}
+                            >
+                                <Feather name="plus" size={14} color={theme.accent} />
+                                <ThemedText type="xs" style={{ color: theme.accent, fontWeight: "bold" }}>Add Another Task</ThemedText>
+                            </Pressable>
                         </View>
 
                         <View style={[styles.premiumRow, { marginTop: Spacing.md }]}>
