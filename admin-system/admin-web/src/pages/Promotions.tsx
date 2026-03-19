@@ -8,14 +8,27 @@ interface AdSettings {
     target_url: string;
     is_active: boolean;
     type: 'image' | 'video';
+    target_screens?: string;
 }
+
+const AVAILABLE_SCREENS = [
+    { id: 'Home', label: 'Home Screen' },
+    { id: 'Market', label: 'Marketplace' },
+    { id: 'NewsFeed', label: 'Social Feed' },
+    { id: 'VendorHub', label: 'Vendor Hub' },
+    { id: 'Profile', label: 'User Profile' },
+    { id: 'Chat', label: 'Chat Messaging' },
+    { id: 'Notifications', label: 'Activity Log' },
+    { id: 'LuckySpin', label: 'Lucky Spin' }
+];
 
 export default function Promotions() {
     const [ad, setAd] = useState<AdSettings>({
         image_url: '',
         target_url: '',
         is_active: true,
-        type: 'image'
+        type: 'image',
+        target_screens: '*'
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -71,13 +84,32 @@ export default function Promotions() {
                     image_url: data.image_url || '',
                     target_url: data.target_url || '',
                     is_active: data.is_active ?? true,
-                    type: data.type || 'image'
+                    type: data.type || 'image',
+                    target_screens: data.target_screens || '*'
                 });
             }
             setLoading(false);
         } catch (err) {
             console.error("Failed to fetch ad settings", err);
             setLoading(false);
+        }
+    };
+
+    const toggleScreen = (screenId: string) => {
+        let selected = ad.target_screens === '*' 
+            ? AVAILABLE_SCREENS.map(s => s.id) 
+            : (ad.target_screens || '').split(',').filter(Boolean);
+            
+        if (selected.includes(screenId)) {
+            selected = selected.filter(s => s !== screenId);
+        } else {
+            selected.push(screenId);
+        }
+        
+        if (selected.length === AVAILABLE_SCREENS.length) {
+            setAd(prev => ({ ...prev, target_screens: '*' }));
+        } else {
+            setAd(prev => ({ ...prev, target_screens: selected.join(',') }));
         }
     };
 
@@ -97,7 +129,8 @@ export default function Promotions() {
                     imageUrl: ad.image_url,
                     targetUrl: ad.target_url,
                     isActive: ad.is_active,
-                    type: ad.type
+                    type: ad.type,
+                    targetScreens: ad.target_screens
                 })
             });
 
@@ -218,6 +251,29 @@ export default function Promotions() {
                                     className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all font-medium"
                                     placeholder="Deep link or external URL"
                                 />
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 pt-4 border-t border-white/5">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Target Screens</label>
+                                <p className="text-[9px] text-slate-500 font-bold ml-1 mb-3">Select which specific screens will trigger this popup ad (Payment screens are strictly excluded).</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {AVAILABLE_SCREENS.map(screen => {
+                                    const isSelected = ad.target_screens === '*' || (ad.target_screens || '').split(',').includes(screen.id);
+                                    return (
+                                        <label key={screen.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-brand-500/10 border-brand-500/30' : 'bg-slate-900/50 border-white/5 opacity-60 hover:opacity-100'}`}>
+                                            <input 
+                                                type="checkbox" 
+                                                className="rounded border-slate-700 bg-slate-800 text-brand-500 focus:ring-brand-500/20"
+                                                checked={isSelected}
+                                                onChange={() => toggleScreen(screen.id)}
+                                            />
+                                            <span className="text-xs font-bold text-slate-300">{screen.label}</span>
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </div>
 

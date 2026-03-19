@@ -376,6 +376,7 @@ export const activeAds = pgTable("active_ads", {
   targetUrl: text("target_url"),
   type: text("type").default("image"),
   isActive: boolean("is_active").default(true),
+  targetScreens: text("target_screens").default("*"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

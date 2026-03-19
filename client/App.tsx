@@ -26,9 +26,9 @@ export default function App() {
                 <KeyboardProvider>
                   <NavigationContainer>
                     <RootStackNavigator />
+                    <AdPopup />
                   </NavigationContainer>
                   <StatusBar style="auto" />
-                  <AdPopup />
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </SafeAreaProvider>

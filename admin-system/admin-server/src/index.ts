@@ -464,21 +464,20 @@ app.get('/api/admin/ads', async (req, res) => {
 
 app.post('/api/admin/ads', async (req, res) => {
     try {
-        const { imageUrl, targetUrl, isActive, type } = req.body;
+        const { imageUrl, targetUrl, isActive, type, targetScreens } = req.body;
         
         const { rows: existing } = await pool.query('SELECT id FROM active_ads LIMIT 1');
         
         let result;
         if (existing.length > 0) {
             result = await pool.query(
-                'UPDATE active_ads SET image_url = $1, target_url = $2, is_active = $3, type = $4, updated_at = NOW() WHERE id = $5 RETURNING *',
-                [imageUrl, targetUrl, isActive, type || 'image', existing[0].id]
+                'UPDATE active_ads SET image_url = $1, target_url = $2, is_active = $3, type = $4, target_screens = $5, updated_at = NOW() WHERE id = $6 RETURNING *',
+                [imageUrl, targetUrl, isActive, type || 'image', targetScreens || '*', existing[0].id]
             );
         } else {
             result = await pool.query(
-                'INSERT INTO active_ads (image_url, target_url, is_active, type) VALUES ($1, $2, $3, $4) RETURNING *',
-                [imageUrl, targetUrl, isActive, type || 'image']
-            );
+                'INSERT INTO active_ads (image_url, target_url, is_active, type, target_screens) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+                [imageUrl, targetUrl, isActive, type || 'image', targetScreens || '*']            );
         }
         
         res.json(result.rows[0]);
@@ -491,3 +490,5 @@ app.post('/api/admin/ads', async (req, res) => {
 app.listen(port, () => {
     console.log(`Admin Server running on port ${port}`);
 });
+
+// Restart server trigger
