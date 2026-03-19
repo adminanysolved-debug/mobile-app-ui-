@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
+
+export const navigationRef = createNavigationContainerRef();
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,6 +18,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { AdPopup } from "@/components/AdPopup";
 
 export default function App() {
+  const [currentRoute, setCurrentRoute] = useState<string>("Unknown");
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -24,11 +28,23 @@ export default function App() {
             <SafeAreaProvider>
               <GestureHandlerRootView style={styles.root}>
                 <KeyboardProvider>
-                  <NavigationContainer>
+                  <NavigationContainer
+                    ref={navigationRef}
+                    onReady={() => {
+                      if (navigationRef.isReady()) {
+                        setCurrentRoute(navigationRef.getCurrentRoute()?.name || "Unknown");
+                      }
+                    }}
+                    onStateChange={() => {
+                      if (navigationRef.isReady()) {
+                        setCurrentRoute(navigationRef.getCurrentRoute()?.name || "Unknown");
+                      }
+                    }}
+                  >
                     <RootStackNavigator />
-                    <AdPopup />
                   </NavigationContainer>
                   <StatusBar style="auto" />
+                  <AdPopup currentRoute={currentRoute} />
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </SafeAreaProvider>

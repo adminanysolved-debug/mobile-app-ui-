@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { Video, ResizeMode } from "expo-av";
-import { useNavigationState } from "@react-navigation/native";
 
 interface ActiveAd {
     id: string;
@@ -16,21 +15,9 @@ interface ActiveAd {
     target_screens: string;
 }
 
-export function AdPopup() {
+export function AdPopup({ currentRoute }: { currentRoute: string }) {
   const [visible, setVisible] = useState(false);
   const [lastAdId, setLastAdId] = useState<string | null>(null);
-
-  const currentRouteName = useNavigationState(state => {
-      if (!state) return undefined;
-      const getActiveRouteName = (routeState: any): string => {
-          const route = routeState.routes[routeState.index];
-          if (route.state) {
-              return getActiveRouteName(route.state);
-          }
-          return route.name;
-      };
-      return getActiveRouteName(state);
-  });
 
   const { data: ad, isLoading, isError } = useQuery<ActiveAd | null>({
     queryKey: ["api", "ads", "active"],
@@ -39,13 +26,13 @@ export function AdPopup() {
   });
 
   useEffect(() => {
-    if (ad && ad.is_active && currentRouteName) {
-      if (currentRouteName === 'Payment') return;
+    if (ad && ad.is_active && currentRoute) {
+      if (currentRoute === 'Payment') return;
 
-      const isTargeted = ad.target_screens === '*' || (ad.target_screens || '').split(',').includes(currentRouteName);
+      const isTargeted = ad.target_screens === '*' || (ad.target_screens || '').split(',').includes(currentRoute);
       
       if (isTargeted && lastAdId !== ad.id) {
-        console.log("Showing ad on targeted screen:", currentRouteName);
+        console.log("Showing ad on targeted screen:", currentRoute);
         const timer = setTimeout(() => {
           setVisible(true);
           setLastAdId(ad.id);
@@ -53,7 +40,7 @@ export function AdPopup() {
         return () => clearTimeout(timer);
       }
     }
-  }, [ad, currentRouteName, lastAdId]);
+  }, [ad, currentRoute, lastAdId]);
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
