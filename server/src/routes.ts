@@ -554,6 +554,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public Ads Target Endpoint
+  app.get("/api/ads/active", async (req, res) => {
+    try {
+      const ad = await storage.getActiveAd();
+      if (!ad) return res.json(null);
+      res.json(ad);
+    } catch (error) {
+      console.error("Failed to fetch active ad:", error);
+      res.status(500).json({ error: "Failed to fetch active ad" });
+    }
+  });
+
   app.put("/api/profile", authMiddleware, async (req: AuthRequest, res) => {
     try {
       // SECURITY FIX: Whitelist only fields users are allowed to change
