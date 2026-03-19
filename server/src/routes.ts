@@ -1644,12 +1644,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase a market item
   app.post("/api/market/:id/purchase", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const itemId = req.params.id as string;
       const userId = req.user!.id;
+      const itemId = req.params.id as string;
+      const { dreamType, invitedUserIds } = req.body;
 
       const item = await storage.getMarketItem(itemId);
       if (!item) {
-        return res.status(404).json({ error: "Item not found" });
+        return res.status(404).json({ error: "Market item not found" });
       }
       if (!item.isActive) {
         return res.status(400).json({ error: "Item is no longer available" });
@@ -1665,13 +1666,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "You have already purchased this item" });
       }
 
-      if ((user.coins || 0) < item.price) {
+      if ((user.coins || 0) < (item.price || 0)) {
         return res.status(400).json({ error: "Insufficient coins" });
       }
 
       const success = await storage.purchaseMarketItem(userId, itemId, item.price, item.userId);
       if (success) {
-        // Core Logic: Automatically import bought Item templates into Personal Dreams
+        // Core Logic: Automatically import bought Item templates into Personal/Team Dreams
         try {
           // Verify format: { title: string, timeframe: string }[]
           let parsedTasks: { title: string; timeframe: string }[] = [];
@@ -1685,12 +1686,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
              }
           }
 
-          // Generate base Personal Dream wrapper
+          // Generate base Dream wrapper (Personal or Group/Team)
           const [newDream] = await db.insert(dreams).values({
             userId,
             title: item.title,
-            description: item.category ? `Strategy Category: ${item.category}` : "Vendor Dream Template",
-            type: "personal",
+            description: item.description || (item.category ? `Strategy Category: ${item.category}` : "Vendor Dream Template"),
+            type: (dreamType === "group" || dreamType === "challenge") ? dreamType : "personal",
             progress: 0,
             isCompleted: false,
           }).returning();
@@ -1705,6 +1706,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
 
             await db.insert(dreamTasks).values(compiledTasks);
+          }
+
+          // Handle Team/Group invitations if selected
+          if (Array.isArray(invitedUserIds) && dreamType === "group") {
+            const inviter = user;
+            for (const invitedId of invitedUserIds) {
+               await storage.addDreamMember(newDream.id, invitedId, "pending");
+               await storage.createNotification({
+                  userId: invitedId,
+                  title: "Team Dream Invite",
+                  description: `${inviter.fullName || inviter.username} invited you to join the "${item.title}" team dream!`,
+                  type: "social",
+                  actionType: "challenge_invite", // Reuse existing action type for UI compatibility
+                  actionData: { dreamId: newDream.id }
+               });
+            }
           }
 
         } catch (assemblyError) {

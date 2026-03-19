@@ -21,11 +21,12 @@ type MarketItem = {
   id: string;
   title: string;
   description: string | null;
-  category: string | null;
-  price: number | null;
+  category: string;
+  price: number;
   imageUrl: string | null;
   userId: string;
   isActive: boolean;
+  howToAchieve: string | null;
 };
 
 const categoryGradients: { [key: string]: [string, string] } = {
@@ -84,6 +85,38 @@ export default function MarketScreen() {
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvc, setCvc] = useState("");
+  const [selectedDreamType, setSelectedDreamType] = useState<"personal" | "group">("personal");
+  const [chatableUsers, setChatableUsers] = useState<any[]>([]);
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    if (purchaseModalVisible && selectedDreamType === "group" && chatableUsers.length === 0) {
+      fetchChatableUsers();
+    }
+  }, [purchaseModalVisible, selectedDreamType]);
+
+  const fetchChatableUsers = async () => {
+    if (!token) return;
+    setIsLoadingUsers(true);
+    try {
+      const response = await fetch(new URL('/api/connections', getApiUrl()).toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const followers = Array.isArray(data.followers) ? data.followers : [];
+        const following = Array.isArray(data.following) ? data.following : [];
+        const combined = [...followers, ...following];
+        const unique = Array.from(new Map(combined.map(u => [u.id, u])).values());
+        setChatableUsers(unique);
+      }
+    } catch (error) {
+      console.error("Failed to fetch friends:", error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
 
   const resetForm = () => {
     setPurchaseModalVisible(false);
@@ -91,6 +124,8 @@ export default function MarketScreen() {
     setCardNumber("4242 4242 4242 4242");
     setExpiry("12/28");
     setCvc("123");
+    setSelectedDreamType("personal");
+    setSelectedFriends([]);
   };
 
   useEffect(() => {
@@ -126,16 +161,25 @@ export default function MarketScreen() {
   const confirmPurchase = async () => {
     if (!selectedItem || !token) return;
 
+    if (selectedItem.category === "Dream" && selectedDreamType === "group" && selectedFriends.length === 0) {
+       Alert.alert("Invite Friends", "Please select at least one friend for your Team Dream.");
+       return;
+    }
+
     setIsPurchasing(true);
     try {
       const response = await fetch(
-        new URL(`/api/market/${selectedItem.id}/purchase`, getApiUrl()).toString(),
+        new URL(`/api/market/purchase/${selectedItem.id}`, getApiUrl()).toString(),
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({
+             dreamType: selectedDreamType,
+             invitedUserIds: selectedDreamType === "group" ? selectedFriends : undefined
+          })
         }
       );
 
@@ -306,10 +350,19 @@ export default function MarketScreen() {
                   </ThemedText>
                   <ThemedText
                     type="xs"
-                    style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}
+                    style={{ color: theme.textSecondary, marginBottom: 4 }}
                   >
                     {item.category || "Item"}
                   </ThemedText>
+                  {item.description ? (
+                    <ThemedText 
+                       type="xs" 
+                       style={{ color: theme.textMuted, textAlign: 'center', marginBottom: Spacing.sm }} 
+                       numberOfLines={2}
+                    >
+                       {item.description}
+                    </ThemedText>
+                  ) : null}
                   <View style={styles.priceContainer}>
                     <Feather name="dollar-sign" size={14} color={theme.yellow} />
                     <ThemedText type="bodyMedium" style={{ color: theme.yellow }}>
@@ -368,11 +421,66 @@ export default function MarketScreen() {
                   {selectedItem.description || "No description available"}
                 </ThemedText>
                 <View style={styles.modalPriceContainer}>
-                  <Feather name="dollar-sign" size={20} color={theme.yellow} />
+                  <Feather name="star" size={20} color={theme.yellow} />
                   <ThemedText type="h2" style={{ color: theme.yellow }}>
                     {selectedItem.price || 0}
                   </ThemedText>
                 </View>
+
+                {selectedItem.category === "Dream" && (
+                  <View style={{ width: '100%', marginTop: Spacing.md }}>
+                    <ThemedText type="small" style={styles.label}>SELECT DREAM TYPE</ThemedText>
+                    <View style={styles.typeRow}>
+                       <Pressable 
+                          onPress={() => setSelectedDreamType("personal")}
+                          style={[styles.typeButton, selectedDreamType === "personal" && { backgroundColor: theme.accent }]}
+                       >
+                          <Feather name="user" size={16} color={selectedDreamType === "personal" ? "#FFF" : theme.textSecondary} />
+                          <ThemedText type="xs" style={[styles.typeButtonText, selectedDreamType === "personal" && { color: "#FFF" }]}>Personal</ThemedText>
+                       </Pressable>
+                       <Pressable 
+                          onPress={() => setSelectedDreamType("group")}
+                          style={[styles.typeButton, selectedDreamType === "group" && { backgroundColor: theme.yellow }]}
+                       >
+                          <Feather name="users" size={16} color={selectedDreamType === "group" ? "#FFF" : theme.textSecondary} />
+                          <ThemedText type="xs" style={[styles.typeButtonText, selectedDreamType === "group" && { color: "#FFF" }]}>Team</ThemedText>
+                       </Pressable>
+                    </View>
+
+                    {selectedDreamType === "group" && (
+                       <View style={{ marginTop: Spacing.md }}>
+                          <View style={styles.labelRow}>
+                             <ThemedText type="small" style={styles.label}>INVITE FRIENDS</ThemedText>
+                             <ThemedText type="xs" style={styles.charCount}>{selectedFriends.length} selected</ThemedText>
+                          </View>
+                          {isLoadingUsers ? (
+                             <ActivityIndicator color={theme.accent} style={{ marginVertical: 10 }} />
+                          ) : chatableUsers.length === 0 ? (
+                             <ThemedText type="xs" style={{ color: theme.textMuted, fontStyle: 'italic' }}>No connections yet.</ThemedText>
+                          ) : (
+                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm, paddingVertical: 4 }}>
+                                {chatableUsers.map(u => {
+                                   const isSelected = selectedFriends.includes(u.id);
+                                   return (
+                                      <Pressable 
+                                         key={u.id}
+                                         onPress={() => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setSelectedFriends(prev => isSelected ? prev.filter(id => id !== u.id) : [...prev, u.id]);
+                                         }}
+                                         style={[styles.friendChip, isSelected && { backgroundColor: theme.yellow + '20', borderColor: theme.yellow }]}
+                                      >
+                                         <ThemedText type="xs" style={{ color: isSelected ? theme.yellow : theme.textSecondary }}>{u.username}</ThemedText>
+                                         {isSelected && <Feather name="check" size={10} color={theme.yellow} />}
+                                      </Pressable>
+                                   );
+                                })}
+                             </ScrollView>
+                          )}
+                       </View>
+                    )}
+                  </View>
+                )}
 
                 {/* Dummy Credit Card Form */}
                 <View style={[styles.cardForm, { backgroundColor: theme.background, borderColor: theme.border }]}>
@@ -542,6 +650,52 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     paddingHorizontal: Spacing.xs,
   },
+  label: {
+    fontWeight: "600",
+    color: "#A78BFA",
+    marginBottom: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  charCount: {
+    color: "#8B7FC7",
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  typeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    backgroundColor: "transparent",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  typeButtonText: {
+    fontWeight: "bold",
+    color: "#8B7FC7",
+    fontSize: 12,
+  },
+  friendChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
   loadingContainer: {
     padding: Spacing["3xl"],
     alignItems: "center",
@@ -614,12 +768,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: BorderRadius.lg,
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.xl,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   modalTitle: {
     fontWeight: "600",

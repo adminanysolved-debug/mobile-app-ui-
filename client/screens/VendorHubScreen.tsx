@@ -15,11 +15,13 @@ import { getApiUrl } from "@/lib/query-client";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import * as Haptics from "expo-haptics";
 
-type MarketItem = {
+interface MarketItem {
     id: string;
     title: string;
+    description: string | null;
     price: number;
     category: string;
+    howToAchieve: string | null;
     isPremium: boolean;
     isActive: boolean;
 };
@@ -36,6 +38,7 @@ export default function VendorHubScreen() {
 
     // New Item State
     const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
     const [price, setPrice] = useState("");
     const [category, setCategory] = useState("Dream");
     const [tasks, setTasks] = useState<{ title: string; timeframe: string }[]>([{ title: "", timeframe: "1 month" }]);
@@ -123,22 +126,20 @@ export default function VendorHubScreen() {
                 },
                 body: JSON.stringify({
                     title,
-                    description: "", // Description is no longer a direct input, but the API might still expect it.
-                    body: JSON.stringify({
-          title,
-          category,
-          price: parseInt(price),
-          howToAchieve: JSON.stringify(validTasks),
-          isPremium,
-          isActive: true
-        })
-      })
+                    description,
+                    price: Number(price),
+                    category,
+                    isPremium,
+                    howToAchieve: JSON.stringify(validTasks),
+                    imageUrl: "" 
+                })
             });
 
             if (response.ok) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 Alert.alert("Success", "Item uploaded to marketplace!");
                 setTitle("");
+                setDescription("");
                 setPrice("");
                 setTasks([{ title: "", timeframe: "1 month" }]);
                 setIsPremium(false);
@@ -172,9 +173,26 @@ export default function VendorHubScreen() {
                             style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
                             value={title}
                             onChangeText={setTitle}
-                            placeholder="e.g. Neon Theme"
+                            placeholder="e.g. Health Protocol"
                             placeholderTextColor={theme.textMuted}
+                            maxLength={24}
                         />
+
+                        <View style={{ marginTop: Spacing.sm }}>
+                            <View style={styles.labelRow}>
+                                <ThemedText type="small" style={{ color: theme.textSecondary }}>Bio / Description</ThemedText>
+                                <ThemedText type="xs" style={{ color: theme.textMuted }}>{description.length}/60</ThemedText>
+                            </View>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, height: 60, textAlignVertical: 'top', paddingTop: 8 }]}
+                                value={description}
+                                onChangeText={(val) => setDescription(val.slice(0, 60))}
+                                placeholder="Describe the goal of this dream..."
+                                placeholderTextColor={theme.textMuted}
+                                multiline
+                                maxLength={60}
+                            />
+                        </View>
 
                         <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: Spacing.sm }}>Price (Coins) *</ThemedText>
                         <TextInput
@@ -288,6 +306,7 @@ export default function VendorHubScreen() {
                                 <View key={item.id || idx} style={[styles.itemRow, { backgroundColor: theme.backgroundSecondary }]}>
                                     <View>
                                         <ThemedText type="bodyMedium">{item.title}</ThemedText>
+                                        {item.description ? <ThemedText type="xs" style={{ color: theme.textMuted }}>{item.description}</ThemedText> : null}
                                         <ThemedText type="xs" style={{ color: theme.textSecondary }}>{item.category}</ThemedText>
                                     </View>
                                     <View style={{ alignItems: "flex-end" }}>
@@ -378,8 +397,15 @@ const styles = StyleSheet.create({
     itemRow: {
         flexDirection: "row",
         justifyContent: "space-between",
+        alignItems: "center",
         padding: Spacing.md,
-        borderRadius: BorderRadius.sm,
-        marginBottom: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        marginBottom: Spacing.sm
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
     }
 });
