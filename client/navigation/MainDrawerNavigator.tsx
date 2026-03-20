@@ -142,7 +142,10 @@ function CustomDrawerContent(props: any) {
 }
 
 // Helper for consistent Alignment
-function DrawerItemBase({ label, icon, onPress, theme, inactiveTintColor, activeTintColor, ...props }: any) {
+function DrawerItemBase({ label, icon, onPress, theme: propsTheme, inactiveTintColor, activeTintColor, ...props }: any) {
+  const { theme: hookTheme } = useTheme();
+  const theme = propsTheme || hookTheme;
+  
   return (
     <DrawerItem
       label={label}
