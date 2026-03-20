@@ -24,6 +24,7 @@ const MENU_ITEMS = [
     { label: 'Feed', icon: MessageSquare, href: '/social' },
     { label: 'Notifications', icon: Bell, href: '/notifications' },
     { label: 'Marketplace', icon: ShoppingCart, href: '/marketplace' },
+    { label: 'Themes', icon: MoonStar, href: '/themes' },
     { label: 'Gallery', icon: ImageIcon, href: '/gallery' },
     { label: 'Promotions', icon: Megaphone, href: '/promotions' },
     { label: 'Settings', icon: Settings, href: '/settings' },

@@ -83,6 +83,7 @@ const menuItems: MenuItemType[] = [
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const MenuItem = React.memo(function MenuItem({ item, index }: { item: MenuItemType; index: number }) {
+  const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const scale = useSharedValue(1);
 
@@ -118,9 +119,9 @@ const MenuItem = React.memo(function MenuItem({ item, index }: { item: MenuItemT
             end={{ x: 1, y: 1 }}
             style={styles.iconContainer}
           >
-            <Feather name={item.icon} size={28} color="#FFFFFF" />
+            <Feather name={item.icon} size={28} color={theme.buttonText} />
           </LinearGradient>
-          <ThemedText type="small" style={styles.menuLabel}>
+          <ThemedText type="small" style={[styles.menuLabel, { color: theme.text }]}>
             {item.label}
           </ThemedText>
         </View>
@@ -168,10 +169,10 @@ export default function MainMenuScreen() {
         <ScreenAnim distance={500} style={styles.welcomeSection}>
           <View style={styles.welcomeHeader}>
             <View>
-              <ThemedText type="h2" style={styles.welcomeTitle}>
+              <ThemedText type="h2" style={[styles.welcomeTitle, { color: theme.textSecondary }]}>
                 Welcome back,
               </ThemedText>
-              <ThemedText type="h3" style={styles.userName}>
+              <ThemedText type="h3" style={[styles.userName, { color: theme.text }]}>
                 {user?.fullName || user?.username || "Dreamer"}
               </ThemedText>
             </View>
@@ -189,7 +190,7 @@ export default function MainMenuScreen() {
                   <Feather name="star" size={24} color="#FFFFFF" />
                 </View>
                 <View>
-                  <ThemedText type="small" style={styles.coinLabel}>
+                  <ThemedText type="small" style={[styles.coinLabel, { color: 'rgba(255,255,255,0.9)' }]}>
                     Your Balance
                   </ThemedText>
                   <ThemedText type="h2" style={styles.coinAmount}>
@@ -322,7 +323,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   menuLabel: {
-    color: "#FFFFFF",
     fontWeight: "600",
     textAlign: "center",
   },

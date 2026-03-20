@@ -487,6 +487,75 @@ app.post('/api/admin/ads', async (req, res) => {
     }
 });
 
+// --- THEME MANAGEMENT API ---
+
+app.get('/api/admin/themes', authenticateAdmin, async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT * FROM themes ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (error: any) {
+        console.error("Failed to fetch themes", error);
+        res.status(500).json({ error: "Failed to fetch themes" });
+    }
+});
+
+app.post('/api/admin/themes', authenticateAdmin, async (req, res) => {
+    try {
+        const { name, isPremium, price, colors, isActive } = req.body;
+        
+        if (!name || !colors) {
+            return res.status(400).json({ error: "Name and colors are required" });
+        }
+
+        const result = await pool.query(
+            'INSERT INTO themes (name, is_premium, price, colors, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, isPremium || false, price || 0, JSON.stringify(colors), isActive !== undefined ? isActive : true]
+        );
+        
+        res.status(201).json(result.rows[0]);
+    } catch (error: any) {
+        console.error("Failed to create theme", error);
+        res.status(500).json({ error: "Failed to create theme" });
+    }
+});
+
+app.put('/api/admin/themes/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, isPremium, price, colors, isActive } = req.body;
+        
+        const result = await pool.query(
+            'UPDATE themes SET name = $1, is_premium = $2, price = $3, colors = $4, is_active = $5, updated_at = NOW() WHERE id = $6 RETURNING *',
+            [name, isPremium, price, JSON.stringify(colors), isActive, id]
+        );
+        
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Theme not found" });
+        }
+        
+        res.json(result.rows[0]);
+    } catch (error: any) {
+        console.error("Failed to update theme", error);
+        res.status(500).json({ error: "Failed to update theme" });
+    }
+});
+
+app.delete('/api/admin/themes/:id', authenticateAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('DELETE FROM themes WHERE id = $1', [id]);
+        
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Theme not found" });
+        }
+        
+        res.json({ success: true, message: "Theme deleted successfully" });
+    } catch (error: any) {
+        console.error("Failed to delete theme", error);
+        res.status(500).json({ error: "Failed to delete theme" });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Admin Server running on port ${port}`);
 });

@@ -12,7 +12,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
-import { themes, ThemeType } from "@/constants/theme";
+import { ThemeType } from "@/constants/theme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useSafeBottomPadding } from "@/hooks/useSafeBottomPadding";
 
@@ -115,15 +115,24 @@ export default function ThemeScreen() {
   const bottomPadding = useSafeBottomPadding();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const { theme, currentTheme, setThemeById, purchasedThemes, purchaseTheme, userCoins } =
-    useTheme();
+  const {
+    theme,
+    currentTheme,
+    setThemeById,
+    purchasedThemes,
+    purchaseTheme,
+    userCoins,
+    useSystemTheme,
+    setUseSystemTheme,
+    availableThemes
+  } = useTheme();
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [selectedPurchaseTheme, setSelectedPurchaseTheme] = useState<ThemeType | null>(
     null
   );
 
-  const freeThemes = themes.filter((t) => !t.isPremium);
-  const premiumThemes = themes.filter((t) => t.isPremium);
+  const freeThemes = availableThemes.filter((t) => !t.isPremium);
+  const premiumThemes = availableThemes.filter((t) => t.isPremium);
 
   const handleSelectTheme = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -167,12 +176,46 @@ export default function ThemeScreen() {
               <Feather name="star" size={24} color={theme.yellow} />
             </View>
             <View>
-              <ThemedText type="small" style={{ color: "#C4B5FD" }}>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
                 Your Balance
               </ThemedText>
               <ThemedText type="h3">{userCoins.toLocaleString()} points</ThemedText>
             </View>
           </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(50).springify()}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setUseSystemTheme(!useSystemTheme);
+            }}
+            style={[
+              styles.systemToggleCard,
+              { backgroundColor: theme.backgroundSecondary }
+            ]}
+          >
+            <View style={styles.systemToggleInfo}>
+              <View style={[styles.systemIcon, { backgroundColor: theme.purple + "20" }]}>
+                <Feather name="monitor" size={20} color={theme.purple} />
+              </View>
+              <View>
+                <ThemedText type="bodyMedium">Match System Appearance</ThemedText>
+                <ThemedText type="xs" style={{ color: theme.textSecondary }}>
+                  Auto-switch between Light and Dark
+                </ThemedText>
+              </View>
+            </View>
+            <View style={[
+              styles.toggleOuter,
+              { backgroundColor: useSystemTheme ? theme.accent : theme.backgroundTertiary }
+            ]}>
+              <View style={[
+                styles.toggleInner,
+                { transform: [{ translateX: useSystemTheme ? 20 : 0 }] }
+              ]} />
+            </View>
+          </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(100).springify()}>
@@ -200,7 +243,7 @@ export default function ThemeScreen() {
           </ThemedText>
           <ThemedText
             type="small"
-            style={[styles.sectionSubtitle, { color: "#C4B5FD" }]}
+            style={[styles.sectionSubtitle, { color: theme.textSecondary }]}
           >
             Unlock beautiful themes with your points
           </ThemedText>
@@ -246,7 +289,7 @@ export default function ThemeScreen() {
 
                 <ThemedText
                   type="body"
-                  style={[styles.modalPrice, { color: "#C4B5FD" }]}
+                  style={[styles.modalPrice, { color: theme.textSecondary }]}
                 >
                   Price: {selectedPurchaseTheme.price} points
                 </ThemedText>
@@ -414,5 +457,38 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+  },
+  systemToggleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+  },
+  systemToggleInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  systemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toggleOuter: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    justifyContent: "center",
+  },
+  toggleInner: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
   },
 });

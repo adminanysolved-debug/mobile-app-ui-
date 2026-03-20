@@ -6,6 +6,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { Video, ResizeMode } from "expo-av";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
 
 interface ActiveAd {
     id: string;
@@ -20,6 +21,7 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
   const [visible, setVisible] = useState(false);
   const [lastAdId, setLastAdId] = useState<string | null>(null);
   const { user } = useAuth();
+  const { theme } = useTheme();
   const isPremium = user?.subscriptionTier && user.subscriptionTier !== "silver";
 
   const { data: ad, isLoading, isError } = useQuery<ActiveAd | null>({
@@ -74,7 +76,7 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
       >
         <Animated.View 
             entering={ZoomIn.delay(200).springify()}
-            style={styles.content}
+            style={[styles.content, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
         >
           <Pressable onPress={handlePress} style={styles.imageContainer}>
              {ad.type === 'video' ? (
@@ -123,7 +125,6 @@ const styles = StyleSheet.create({
     height: height * 0.65,
     borderRadius: 32,
     overflow: "hidden",
-    backgroundColor: "#1A1040",
     ...Platform.select({
       ios: {
         shadowColor: "#000",

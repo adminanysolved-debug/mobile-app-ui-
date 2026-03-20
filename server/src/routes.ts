@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
 import { eq, and, or, desc, sql } from "drizzle-orm";
-import { loginSchema, registerSchema, users, dreams, dreamTasks } from "./shared/schema.js";
+import { loginSchema, registerSchema, users, dreams, dreamTasks, themes } from "./shared/schema.js";
 import { verifyIdToken, initializeFirebaseAdmin } from "./firebase-admin.js";
 import { generateTaskDates, validateDreamFields } from "./task-generator.js";
 import multer from "multer";
@@ -2052,6 +2052,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ad || null);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch active ad" });
+    }
+  });
+
+  app.get("/api/themes", async (_req, res) => {
+    try {
+       const rows = await storage.getThemes(true);
+       res.json(rows);
+    } catch (error) {
+       console.error("Failed to fetch themes:", error);
+       res.status(500).json({ error: "Failed to fetch themes" });
     }
   });
 

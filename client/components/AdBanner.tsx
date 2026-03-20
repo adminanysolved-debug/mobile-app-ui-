@@ -10,6 +10,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
 
 interface AdBannerProps {
   variant?: "default" | "compact";
@@ -19,6 +20,7 @@ export function AdBanner({ variant = "default" }: AdBannerProps) {
   const isCompact = variant === "compact";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
+  const { theme } = useTheme();
 
   const isPremium = user?.subscriptionTier && user.subscriptionTier !== "silver";
 
@@ -35,27 +37,27 @@ export function AdBanner({ variant = "default" }: AdBannerProps) {
       style={[styles.container, isCompact && styles.containerCompact]}
     >
       <LinearGradient
-        colors={["rgba(124, 58, 237, 0.15)", "rgba(168, 85, 247, 0.1)"]}
+        colors={[theme.purple + "20", theme.accent + "10"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
         <View style={styles.content}>
-          <View style={styles.adLabel}>
-            <ThemedText type="xs" style={styles.adLabelText}>AD</ThemedText>
+          <View style={[styles.adLabel, { backgroundColor: theme.purple + "40" }]}>
+            <ThemedText type="xs" style={[styles.adLabelText, { color: theme.purple }]}>AD</ThemedText>
           </View>
           <View style={styles.textContainer}>
-            <ThemedText type={isCompact ? "small" : "body"} style={styles.title}>
+            <ThemedText type={isCompact ? "small" : "body"} style={[styles.title, { color: theme.text }]}>
               {isCompact ? "Upgrade to Premium" : "Unlock Premium Features"}
             </ThemedText>
             {!isCompact && (
-              <ThemedText type="xs" style={styles.description}>
+              <ThemedText type="xs" style={[styles.description, { color: theme.textSecondary }]}>
                 Get unlimited dreams, exclusive badges & more
               </ThemedText>
             )}
           </View>
-          <Pressable style={styles.ctaButton} onPress={handlePress}>
-            <Feather name="arrow-right" size={16} color="#FFFFFF" />
+          <Pressable style={[styles.ctaButton, { backgroundColor: theme.purple }]} onPress={handlePress}>
+            <Feather name="arrow-right" size={16} color={theme.buttonText} />
           </Pressable>
         </View>
       </LinearGradient>
@@ -70,7 +72,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(139, 127, 199, 0.3)",
+    borderColor: "rgba(139, 127, 199, 0.2)",
   },
   containerCompact: {
     marginVertical: Spacing.sm,
@@ -91,7 +93,6 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   adLabelText: {
-    color: "#A78BFA",
     fontWeight: "700",
     fontSize: 10,
   },
@@ -99,11 +100,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: "#FFFFFF",
     fontWeight: "600",
   },
   description: {
-    color: "#C4B5FD",
     marginTop: 2,
   },
   ctaButton: {

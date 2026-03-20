@@ -384,6 +384,19 @@ export const activeAds = pgTable("active_ads", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const themes = pgTable("themes", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  isPremium: boolean("is_premium").default(false),
+  price: integer("price").default(0),
+  colors: jsonb("colors").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const userRelations = relations(users, ({ many }) => ({
   dreams: many(dreams),
   sentMessages: many(messages, { relationName: "sentMessages" }),

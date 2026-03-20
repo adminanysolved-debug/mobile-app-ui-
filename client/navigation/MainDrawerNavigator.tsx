@@ -48,11 +48,11 @@ function CustomDrawerContent(props: any) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0D0B1E" }}>
+    <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
       <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 0 }}>
         {/* Header - User Info */}
         <LinearGradient
-            colors={["#1A1040", "#0D0B1E"]}
+            colors={[theme.backgroundDefault, theme.backgroundRoot]}
             style={styles.drawerHeader}
         >
           <View style={styles.userInfo}>
@@ -61,7 +61,7 @@ function CustomDrawerContent(props: any) {
               style={styles.avatar}
             />
             <View style={styles.userText}>
-              <ThemedText type="bodyMedium" style={styles.userName}>
+              <ThemedText type="bodyMedium" style={[styles.userName, { color: theme.text }]}>
                 {user?.fullName || "Guest User"}
               </ThemedText>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
@@ -149,8 +149,8 @@ function DrawerItemBase({ label, icon, onPress, theme, inactiveTintColor, active
       icon={({ color, size }) => <Feather name={icon} size={22} color={color} />}
       onPress={onPress}
       labelStyle={styles.drawerLabel}
-      inactiveTintColor={inactiveTintColor || "#C4B5FD"}
-      activeTintColor={activeTintColor || "#FFFFFF"}
+      inactiveTintColor={inactiveTintColor || theme.textSecondary}
+      activeTintColor={activeTintColor || theme.text}
       style={styles.drawerItemStyle}
       {...props}
     />
@@ -185,16 +185,16 @@ export default function MainDrawerNavigator() {
               }} 
               style={{ marginLeft: 16 }}
             >
-              <Feather name="arrow-left" size={24} color="#C4B5FD" />
+              <Feather name="arrow-left" size={24} color={theme.link} />
             </Pressable>
           );
         },
         headerStyle: {
-          backgroundColor: "#0D0B1E",
+          backgroundColor: theme.backgroundRoot,
           elevation: 0,
           shadowOpacity: 0,
         },
-        headerTintColor: "#C4B5FD",
+        headerTintColor: theme.link,
         headerTitleStyle: {
           fontWeight: "600",
         },
@@ -275,7 +275,6 @@ const styles = StyleSheet.create({
     marginLeft: 15,
   },
   userName: {
-    color: "#FFFFFF",
     fontWeight: "700",
   },
   drawerItems: {
@@ -318,7 +317,6 @@ const styles = StyleSheet.create({
   headerLabel: {
     fontSize: 16,
     fontWeight: "500",
-    color: "#C4B5FD",
   },
   subItems: {
     marginLeft: 44,

@@ -41,11 +41,6 @@ type NewsFeedPost = {
   } | null;
 };
 
-const typeGradients: { [key: string]: [string, string] } = {
-  personal: ["#8B5CF6", "#A855F7"],
-  challenge: ["#22C55E", "#10B981"],
-  group: ["#EAB308", "#F59E0B"],
-};
 
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -71,6 +66,12 @@ export default function NewsFeedScreen() {
   const headerHeight = useHeaderHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  
+  const typeGradients: { [key: string]: [string, string] } = {
+    personal: [theme.purple, theme.accent],
+    challenge: [theme.green, theme.success],
+    group: [theme.yellow, theme.orange],
+  };
   const { token, user } = useAuth();
   const [feedPosts, setFeedPosts] = useState<NewsFeedPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -277,7 +278,7 @@ export default function NewsFeedScreen() {
   };
 
   const getGradient = (type: string | undefined): [string, string] => {
-    return typeGradients[type || "personal"] || ["#6B7280", "#9CA3AF"];
+    return typeGradients[type || "personal"] || [theme.textMuted, theme.textSecondary];
   };
 
   const displayPosts = feedPosts.length > 0 ? feedPosts : [];
@@ -714,7 +715,6 @@ const styles = StyleSheet.create({
     bottom: 100,
     borderRadius: BorderRadius.full,
     elevation: 8,
-    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,

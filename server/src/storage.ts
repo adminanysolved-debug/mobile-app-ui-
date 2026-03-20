@@ -19,6 +19,7 @@ import {
   passwordResetTokens,
   conversations,
   activeAds,
+  themes,
   type User,
   type Dream,
   type DreamTask,
@@ -99,6 +100,9 @@ export interface IStorage {
   getDreamCounts(userId: string): Promise<{ personal: number; challenge: number; group: number }>;
   getActiveAd(): Promise<ActiveAd | undefined>;
   updateActiveAd(data: Partial<ActiveAd>): Promise<ActiveAd>;
+  
+  // Theme Management
+  getThemes(onlyActive?: boolean): Promise<any[]>;
 }
 
 class DatabaseStorage implements IStorage {
@@ -901,6 +905,14 @@ class DatabaseStorage implements IStorage {
       const [created] = await db.insert(activeAds).values(data as any).returning();
       return created;
     }
+  }
+
+  async getThemes(onlyActive: boolean = true): Promise<any[]> {
+    let query = db.select().from(themes);
+    if (onlyActive) {
+      query = query.where(eq(themes.isActive, true)) as any;
+    }
+    return query.orderBy(themes.name);
   }
 }
 
