@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { Video, ResizeMode } from "expo-av";
+import { useAuth } from "@/context/AuthContext";
 
 interface ActiveAd {
     id: string;
@@ -18,6 +19,8 @@ interface ActiveAd {
 export function AdPopup({ currentRoute }: { currentRoute: string }) {
   const [visible, setVisible] = useState(false);
   const [lastAdId, setLastAdId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const isPremium = user?.subscriptionTier && user.subscriptionTier !== "silver";
 
   const { data: ad, isLoading, isError } = useQuery<ActiveAd | null>({
     queryKey: ["api", "ads", "active"],
@@ -55,7 +58,7 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
     }
   };
 
-  if (!ad || !ad.isActive || !visible) return null;
+  if (isPremium || !ad || !ad.isActive || !visible) return null;
 
   return (
     <Modal

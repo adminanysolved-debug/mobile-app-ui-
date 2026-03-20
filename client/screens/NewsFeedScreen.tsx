@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -69,7 +68,6 @@ function formatTimeAgo(dateString: string): string {
 export default function NewsFeedScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { token, user } = useAuth();
@@ -291,7 +289,7 @@ export default function NewsFeedScreen() {
           styles.scrollContent,
           {
             paddingTop: insets.top + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
+            paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA,
           },
         ]}
         showsVerticalScrollIndicator={true}

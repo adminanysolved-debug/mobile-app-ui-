@@ -15,7 +15,6 @@ import { AdBanner } from "@/components/AdBanner";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 
 type Dream = {
@@ -79,7 +78,6 @@ function DreamCard({ dream, index }: { dream: Dream; index: number }) {
 export default function GroupDreamsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { token } = useAuth();
   const [dreams, setDreams] = useState<Dream[]>([]);
@@ -126,7 +124,7 @@ export default function GroupDreamsScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: insets.top + Spacing.lg + Spacing.xl,
-          paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
+          paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA,
           paddingHorizontal: Spacing.lg,
           gap: Spacing.md,
         }}

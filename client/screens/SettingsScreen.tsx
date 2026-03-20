@@ -2,7 +2,6 @@ import { useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Alert, Modal, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -33,7 +32,6 @@ const menuItems: MenuItem[] = [
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { user, logout, forgotPassword, token, updateUser } = useAuth();
@@ -156,8 +154,8 @@ export default function SettingsScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
+            paddingTop: Spacing.xl,
+            paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA,
           },
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}

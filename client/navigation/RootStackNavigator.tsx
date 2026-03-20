@@ -2,7 +2,7 @@ import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import GoogleAuthScreen from '../screens/GoogleAuthScreen';
-import MainTabNavigator from "@/navigation/MainTabNavigator";
+import MainDrawerNavigator from "@/navigation/MainDrawerNavigator";
 import SignInScreen from "@/screens/SignInScreen";
 import SignUpScreen from "@/screens/SignUpScreen";
 import ForgotPasswordScreen from "@/screens/ForgotPasswordScreen";
@@ -65,7 +65,7 @@ export default function RootStackNavigator() {
         <>
           <Stack.Screen
             name="MainTabs"
-            component={MainTabNavigator}
+            component={MainDrawerNavigator}
             options={{ headerShown: false }}
           />
           <Stack.Screen

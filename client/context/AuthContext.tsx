@@ -14,6 +14,8 @@ import {
   sendPhoneOTP,
   verifyPhoneOTP,
   clearRecaptcha,
+  updateAccountPassword,
+  reauthenticateUser,
 } from '../lib/firebase';
 import { Platform } from 'react-native';
 export interface User {
@@ -57,6 +59,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 interface RegisterData {
@@ -489,6 +492,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const changePassword = async (oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!auth.currentUser) return { success: false, error: 'User not logged in' };
+      
+      // Re-authenticate first
+      await reauthenticateUser(oldPassword);
+      
+      // Update password
+      await updateAccountPassword(auth.currentUser, newPassword);
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      let errorMessage = 'Failed to change password';
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect current password';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'New password is too weak';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many attempts. Please try again later.';
+      }
+      return { success: false, error: errorMessage };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -506,6 +534,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshUser,
         updateUser,
         forgotPassword,
+        changePassword,
       }}
     >
       {children}

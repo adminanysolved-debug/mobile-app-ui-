@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal, ActivityIndicator, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -45,7 +44,6 @@ function getMedalType(rank: number): "gold" | "silver" | "bronze" | null {
 export default function ChampionsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
 
@@ -110,8 +108,8 @@ export default function ChampionsScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
+            paddingTop: Spacing.xl,
+            paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA,
           },
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}

@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useAuth } from "@/context/AuthContext";
 
 interface AdBannerProps {
   variant?: "default" | "compact";
@@ -17,6 +18,11 @@ interface AdBannerProps {
 export function AdBanner({ variant = "default" }: AdBannerProps) {
   const isCompact = variant === "compact";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { user } = useAuth();
+
+  const isPremium = user?.subscriptionTier && user.subscriptionTier !== "silver";
+
+  if (isPremium) return null;
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

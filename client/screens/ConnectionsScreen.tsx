@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, RefreshControl, TextInput } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
@@ -14,7 +15,6 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 type TabType = "followers" | "following" | "discover";
 
@@ -29,11 +29,17 @@ type Connection = {
 export default function ConnectionsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { token } = useAuth();
+  const route = useRoute<any>();
   
-  const [activeTab, setActiveTab] = useState<TabType>("followers");
+  const [activeTab, setActiveTab] = useState<TabType>(route.params?.tab || "followers");
+
+  useEffect(() => {
+    if (route.params?.tab) {
+      setActiveTab(route.params.tab);
+    }
+  }, [route.params?.tab]);
   const [followers, setFollowers] = useState<Connection[]>([]);
   const [following, setFollowing] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -233,7 +239,7 @@ export default function ConnectionsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={{ flex: 1, paddingTop: insets.top + Spacing.lg }}>
+      <View style={{ flex: 1, paddingTop: Spacing.lg }}>
         {/* Fixed tabs - always visible (avoids FlatList flexGrow hiding header when empty) */}
         <View style={[styles.tabContainer, { backgroundColor: theme.backgroundRoot, borderBottomColor: theme.backgroundSecondary }]}>
           {(["followers", "following", "discover"] as TabType[]).map((tab) => (
@@ -281,7 +287,8 @@ export default function ConnectionsScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderConnection}
           contentContainerStyle={{
-            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
+            paddingTop: Spacing.xl,
+            paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA,
           }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.link} />

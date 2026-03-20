@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image, Alert, ActionSheetIOS, Platform, ActivityIndicator } from "react-native";
-//import { useSafeAreaInsets } from "react-native-safe-area-context";
-//import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -28,38 +26,6 @@ type MenuItem = {
   iconBg: string;
   iconColor: string;
   danger?: boolean;
-};
-
-const connectionItem: MenuItem = {
-  icon: "users",
-  label: "Connections",
-  route: "Connections",
-  iconBg: "rgba(45, 39, 82, 0.6)",
-  iconColor: "#C4B5FD",
-};
-
-const achievementsItem: MenuItem = {
-  icon: "award",
-  label: "My Achievements",
-  route: "WallOfFame",
-  iconBg: "rgba(45, 39, 82, 0.6)",
-  iconColor: "#FBBF24",
-};
-
-const themeItem: MenuItem = {
-  icon: "sun",
-  label: "Theme & Appearance",
-  route: "Themes",
-  iconBg: "rgba(45, 39, 82, 0.6)",
-  iconColor: "#A78BFA",
-};
-
-const subscriptionItem: MenuItem = {
-  icon: "award",
-  label: "Subscription Plan",
-  route: "Subscription",
-  iconBg: "rgba(99, 102, 241, 0.2)",
-  iconColor: "#818cf8",
 };
 
 const ordersItems: MenuItem[] = [
@@ -140,9 +106,8 @@ function MenuRow({
 
 export default function ProfileScreen() {
   const safePadding = useSafeScrollPadding();
-  // const insets = useSafeAreaInsets();
-  //const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { theme, currentTheme } = useTheme();
   const { user, logout, token, updateUser, refreshUser } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -160,6 +125,16 @@ export default function ProfileScreen() {
   useEffect(() => {
     setProfilePhoto(user?.profilePhoto || user?.profileImage || null);
   }, [user?.profilePhoto, user?.profileImage]);
+
+  useEffect(() => {
+    if (route.params?.isEditing) {
+      setEditFullName(user?.fullName || "");
+      setEditBio(user?.bio || "");
+      setEditAge(user?.age?.toString() || "");
+      setEditGender(user?.gender || "");
+      setShowEditModal(true);
+    }
+  }, [route.params?.isEditing, user]);
 
   // 3D Animated Avatar logic
   const avatarTranslateY = useSharedValue(-150);
@@ -568,102 +543,7 @@ export default function ProfileScreen() {
 
         <AdBanner variant="compact" />
 
-        <Animated.View entering={FadeInDown.delay(100).springify()}>
-          <Card
-            onPress={() => handleNavigate(connectionItem.route)}
-            style={styles.linkCard}
-          >
-            <View style={[styles.linkIcon, { backgroundColor: connectionItem.iconBg }]}>
-              <Feather name={connectionItem.icon} size={24} color={connectionItem.iconColor} />
-            </View>
-            <View style={styles.linkContent}>
-              <ThemedText type="body" style={styles.linkTitle}>
-                {connectionItem.label}
-              </ThemedText>
-              <ThemedText
-                type="small"
-                style={{ color: theme.textSecondary }}
-              >
-                View followers and following
-              </ThemedText>
-            </View>
-            <Feather name="chevron-right" size={20} color={theme.textMuted} />
-          </Card>
-        </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(150).springify()}>
-          <Card
-            onPress={() => handleNavigate(achievementsItem.route)}
-            style={styles.linkCard}
-          >
-            <View style={[styles.linkIcon, { backgroundColor: achievementsItem.iconBg }]}>
-              <Feather name={achievementsItem.icon} size={24} color={achievementsItem.iconColor} />
-            </View>
-            <View style={styles.linkContent}>
-              <ThemedText type="body" style={styles.linkTitle}>
-                {achievementsItem.label}
-              </ThemedText>
-              <ThemedText
-                type="small"
-                style={{ color: theme.textSecondary }}
-              >
-                View your badges and awards
-              </ThemedText>
-            </View>
-            <Feather name="chevron-right" size={20} color={theme.textMuted} />
-          </Card>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(160).springify()}>
-          <Card
-            onPress={() => handleNavigate(subscriptionItem.route)}
-            style={styles.linkCard}
-          >
-            <View style={[styles.linkIcon, { backgroundColor: subscriptionItem.iconBg }]}>
-              <Feather name={subscriptionItem.icon} size={24} color={subscriptionItem.iconColor} />
-            </View>
-            <View style={styles.linkContent}>
-              <ThemedText type="body" style={styles.linkTitle}>
-                {subscriptionItem.label}
-              </ThemedText>
-              <ThemedText
-                type="small"
-                style={{ color: theme.textSecondary }}
-              >
-                Upgraded: {user?.subscriptionTier || 'Silver'}
-              </ThemedText>
-            </View>
-            <Feather name="chevron-right" size={20} color={theme.textMuted} />
-          </Card>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(175).springify()}>
-          <Card
-            onPress={() => handleNavigate(themeItem.route)}
-            style={styles.linkCard}
-          >
-            <LinearGradient
-              colors={currentTheme.colors.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.linkIcon}
-            >
-              <Feather name="sun" size={24} color="#FFFFFF" />
-            </LinearGradient>
-            <View style={styles.linkContent}>
-              <ThemedText type="body" style={styles.linkTitle}>
-                {themeItem.label}
-              </ThemedText>
-              <ThemedText
-                type="small"
-                style={{ color: theme.textSecondary }}
-              >
-                Current: {currentTheme.name}
-              </ThemedText>
-            </View>
-            <Feather name="chevron-right" size={20} color={theme.textMuted} />
-          </Card>
-        </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(200).springify()}>
           <ThemedText

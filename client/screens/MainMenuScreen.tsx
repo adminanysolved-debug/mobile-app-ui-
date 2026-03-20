@@ -2,7 +2,6 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 //import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -136,7 +135,6 @@ export default function MainMenuScreen() {
   const safePadding = useSafeScrollPadding();
   const insets = useSafeAreaInsets();
   //const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -164,9 +162,9 @@ export default function MainMenuScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: tabBarHeight + Spacing.lg },
+          { paddingBottom: insets.bottom + Spacing.lg },
         ]}
-        scrollIndicatorInsets={{ bottom: tabBarHeight }}
+        scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.springify()} style={styles.welcomeSection}>

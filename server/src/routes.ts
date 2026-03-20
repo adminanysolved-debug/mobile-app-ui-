@@ -1674,36 +1674,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (success) {
         // Core Logic: Automatically import bought Item templates into Personal/Team Dreams
         try {
-          // Verify format: { title: string, timeframe: string }[]
-          let parsedTasks: { title: string; timeframe: string }[] = [];
+          // Verify format: { title: string, timeframe: string }[] or string[]
+          let parsedTasks: any[] = [];
           
           if (item.howToAchieve) {
              try {
                 parsedTasks = JSON.parse(item.howToAchieve);
              } catch (e) {
                 // Formatting fallback for legacy raw texts
-                parsedTasks = [{ title: item.howToAchieve, timeframe: "1 month" }];
+                parsedTasks = [{ title: item.howToAchieve }];
              }
           }
 
           // Generate base Dream wrapper (Personal or Group/Team)
+          const startDate = new Date();
+          let targetDate = new Date();
+          
+          if (item.duration && item.durationUnit) {
+            const start = startDate;
+            switch (item.durationUnit) {
+              case "days":
+                targetDate = new Date(start.getTime() + item.duration * 24 * 60 * 60 * 1000);
+                break;
+              case "weeks":
+                targetDate = new Date(start.getTime() + item.duration * 7 * 24 * 60 * 60 * 1000);
+                break;
+              case "months":
+                targetDate = new Date(start);
+                targetDate.setMonth(targetDate.getMonth() + item.duration);
+                break;
+              case "years":
+                targetDate = new Date(start);
+                targetDate.setFullYear(targetDate.getFullYear() + item.duration);
+                break;
+            }
+          }
+
           const [newDream] = await db.insert(dreams).values({
             userId,
             title: item.title,
             description: item.description || (item.category ? `Strategy Category: ${item.category}` : "Vendor Dream Template"),
             type: (dreamType === "group" || dreamType === "challenge") ? dreamType : "personal",
+            startDate,
+            targetDate: (item.duration && item.durationUnit) ? targetDate : null,
+            duration: item.duration,
+            durationUnit: item.durationUnit,
+            recurrence: item.recurrence,
             progress: 0,
             isCompleted: false,
           }).returning();
 
+          // Generate target dates for tasks if recurrence is set
+          let taskDates: { date: Date, order: number }[] = [];
+          if (item.duration && item.durationUnit && item.recurrence) {
+            taskDates = generateTaskDates(
+              startDate,
+              item.duration,
+              item.durationUnit as any,
+              item.recurrence as any
+            );
+          } else {
+             // Fallback: 1 task per day based on length of tasks
+             for (let i = 0; i < parsedTasks.length; i++) {
+               const d = new Date();
+               d.setDate(d.getDate() + i);
+               taskDates.push({ date: d, order: i });
+             }
+          }
+
           // Map and populate defined template timeline
-          if (parsedTasks.length > 0) {
-            const compiledTasks = parsedTasks.map(task => ({
-              dreamId: newDream.id,
-              title: task.title || "Activity Step",
-              timeframe: task.timeframe || "1 week",
-              isCompleted: false
-            }));
+          if (parsedTasks.length > 0 || taskDates.length > 0) {
+            const numTasks = Math.max(parsedTasks.length, taskDates.length);
+            const compiledTasks = [];
+            
+            for (let i = 0; i < numTasks; i++) {
+               const taskData = parsedTasks[i] || {};
+               const title = typeof taskData === 'string' ? taskData : (taskData.title || `Task ${i + 1}`);
+               const taskDateInfo = taskDates[i] || { date: new Date(), order: i };
+               
+               compiledTasks.push({
+                 dreamId: newDream.id,
+                 title: title,
+                 dueDate: taskDateInfo.date,
+                 order: taskDateInfo.order,
+                 isCompleted: false
+               });
+            }
 
             await db.insert(dreamTasks).values(compiledTasks);
           }
@@ -1961,7 +2017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: `Upload limit reached for ${user.vendorTier} tier (${limit} items). Please upgrade your tier.` });
       }
 
-      const { title, description, category, imageUrl, price, isPremium, dreamId, howToAchieve } = req.body;
+      const { title, description, category, imageUrl, price, duration, durationUnit, recurrence, isPremium, dreamId, howToAchieve } = req.body;
 
       if (!title || price === undefined) {
         return res.status(400).json({ error: "Title and price are required" });
@@ -1974,6 +2030,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         category,
         imageUrl,
         price,
+        duration,
+        durationUnit,
+        recurrence,
         isPremium: isPremium || price > 0,
         dreamId,
         howToAchieve

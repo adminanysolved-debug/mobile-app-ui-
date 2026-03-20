@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Platform, Modal, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -195,7 +194,6 @@ function generateTaskDates(startDate: Date, duration: number, durationUnit: Dura
 export default function CreateDreamScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme } = useTheme();
@@ -205,6 +203,8 @@ export default function CreateDreamScreen() {
   const [selectedType, setSelectedType] = useState<DreamTypeOption>(route.params?.type || "personal");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [privacy, setPrivacy] = useState<"public" | "connections" | "private">(route.params?.privacy || "public");
+  const [showPrivacyPicker, setShowPrivacyPicker] = useState(false);
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [showStartPicker, setShowStartPicker] = useState(false);
@@ -235,6 +235,7 @@ export default function CreateDreamScreen() {
       setTitle(route.params?.dreamTitle || "");
       setDescription(route.params?.dreamDescription || "");
       if (route.params?.type) setSelectedType(route.params.type);
+      if (route.params?.privacy) setPrivacy(route.params.privacy);
       if (route.params?.dreamStartDate) setStartDate(new Date(route.params.dreamStartDate));
 
       // If we have existing tasks passed from DreamDetail, load them directly.
@@ -414,6 +415,7 @@ export default function CreateDreamScreen() {
           title: title.trim(),
           description: description.trim() || null,
           startDate: startDate.toISOString(),
+          privacy: privacy,
           duration: parseInt(duration, 10),
           durationUnit: durationUnit,
           recurrence: recurrence,
@@ -422,6 +424,7 @@ export default function CreateDreamScreen() {
           title: title.trim(),
           description: description.trim() || null,
           type: selectedType,
+          privacy: privacy,
           startDate: startDate.toISOString(),
           duration: parseInt(duration, 10),
           durationUnit: durationUnit,
@@ -466,6 +469,12 @@ export default function CreateDreamScreen() {
     { value: "semi-monthly", label: "Semi-Monthly" },
   ];
 
+  const privacyOptions: { value: "public" | "connections" | "private"; label: string; icon: any }[] = [
+    { value: "public", label: "Public", icon: "globe" },
+    { value: "connections", label: "Connections", icon: "users" },
+    { value: "private", label: "Private", icon: "lock" },
+  ];
+
   const targetDate = useMemo(() => {
     const durationNum = parseInt(duration, 10);
     if (durationNum > 0) {
@@ -482,7 +491,7 @@ export default function CreateDreamScreen() {
           styles.scrollContent,
           {
             paddingTop: insets.top + Spacing.xl,
-            paddingBottom: tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA,
+            paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -528,6 +537,33 @@ export default function CreateDreamScreen() {
             maxLength={60}
             testID="input-dream-description"
           />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(160).springify()}>
+          <ThemedText type="small" style={styles.label}>DREAM PRIVACY</ThemedText>
+          <View style={styles.privacyRow}>
+            {privacyOptions.map((option) => {
+              const isSelected = privacy === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.privacyOption,
+                    isSelected && { backgroundColor: "rgba(139, 92, 246, 0.3)", borderColor: "#8B5CF6" }
+                  ]}
+                  onPress={() => {
+                    setPrivacy(option.value);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                >
+                  <Feather name={option.icon} size={16} color={isSelected ? "#FFFFFF" : "#A78BFA"} />
+                  <ThemedText style={[styles.privacyText, isSelected && { fontWeight: "600" }]}>
+                    {option.label}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
         </Animated.View>
 
         {!isEditing && selectedType === "challenge" && (
@@ -928,6 +964,26 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 60,
     textAlignVertical: "top",
+  },
+  privacyRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  privacyOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    backgroundColor: "rgba(45, 39, 82, 0.6)",
+    borderRadius: BorderRadius.sm,
+    paddingVertical: Spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(139, 127, 199, 0.3)",
+  },
+  privacyText: {
+    color: "#FFFFFF",
+    fontSize: 14,
   },
   durationRow: {
     flexDirection: "row",

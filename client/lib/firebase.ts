@@ -17,7 +17,10 @@ import {
   onAuthStateChanged as firebaseOnAuthStateChanged,
   initializeAuth,
   getAuth,
-  getReactNativePersistence
+  getReactNativePersistence,
+  updatePassword as firebaseUpdatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -90,6 +93,15 @@ export const signOutUser = () => signOut(auth);
 
 export const resetPassword = (email: string) =>
   sendPasswordResetEmail(auth, email);
+
+export const updateAccountPassword = (user: any, newPassword: string) =>
+  firebaseUpdatePassword(user, newPassword);
+
+export const reauthenticateUser = (password: string) => {
+  if (!auth.currentUser || !auth.currentUser.email) return null;
+  const credential = EmailAuthProvider.credential(auth.currentUser.email, password);
+  return reauthenticateWithCredential(auth.currentUser, credential);
+};
 
 // ================= GOOGLE =================
 

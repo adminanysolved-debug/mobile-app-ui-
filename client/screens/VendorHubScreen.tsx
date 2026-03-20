@@ -163,8 +163,6 @@ export default function VendorHubScreen() {
                 contentContainerStyle={{ paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA }}
             >
                 <Animated.View entering={FadeInDown.springify()} style={styles.section}>
-                    <ThemedText type="h2" style={{ marginBottom: Spacing.md }}>Vendor Dashboard</ThemedText>
-
                     <Card style={styles.uploadCard}>
                         <ThemedText type="h3" style={{ marginBottom: Spacing.md }}>Upload Market Item</ThemedText>
 

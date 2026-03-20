@@ -15,10 +15,21 @@ interface HeaderTitleProps {
 }
 
 export function HeaderTitle({ title }: HeaderTitleProps) {
+  const navigation = useNavigation<any>();
   const { theme } = useTheme();
+
+  const handleDrawerToggle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (navigation.openDrawer) {
+      navigation.openDrawer();
+    }
+  };
 
   return (
     <View style={styles.container}>
+      <Pressable onPress={handleDrawerToggle} style={styles.menuButton}>
+        <Feather name="menu" size={24} color="#C4B5FD" />
+      </Pressable>
       <Image
         source={require("../assets/images/app-logo.png")}
         style={styles.icon}
@@ -89,6 +100,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     flexShrink: 1,
+    gap: Spacing.sm,
+  },
+  menuButton: {
+    paddingRight: Spacing.sm,
   },
   icon: {
     width: 32,

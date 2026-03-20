@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -46,7 +45,6 @@ interface Task {
 export default function DreamDetailScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme } = useTheme();
@@ -70,7 +68,7 @@ export default function DreamDetailScreen() {
     Spacing.lg +
     Spacing.xl;
 
-  const bottomPadding = tabBarHeight + insets.bottom + SCROLL_BOTTOM_EXTRA;
+  const bottomPadding = insets.bottom + SCROLL_BOTTOM_EXTRA;
 
   const fetchDream = useCallback(async () => {
     if (!token || !dreamId) return;

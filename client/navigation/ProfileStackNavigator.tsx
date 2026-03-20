@@ -8,7 +8,7 @@ import ConnectionsScreen from "@/screens/ConnectionsScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type ProfileStackParamList = {
-  Profile: undefined;
+  Profile: { isEditing?: boolean } | undefined;
   Themes: undefined;
   Wallet: undefined;
   Connections: undefined;
