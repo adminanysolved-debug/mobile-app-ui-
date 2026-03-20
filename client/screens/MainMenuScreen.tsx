@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ThemedText } from "@/components/ThemedText";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { AdBanner } from "@/components/AdBanner";
+import { ScreenAnim } from "@/components/ScreenAnim";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -103,10 +104,7 @@ const MenuItem = React.memo(function MenuItem({ item, index }: { item: MenuItemT
   };
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(index * 80).springify()}
-      style={styles.menuItemWrapper}
-    >
+    <ScreenAnim delay={index * 80} distance={600} style={styles.menuItemWrapper}>
       <AnimatedPressable
         onPress={handlePress}
         onPressIn={handlePressIn}
@@ -127,7 +125,7 @@ const MenuItem = React.memo(function MenuItem({ item, index }: { item: MenuItemT
           </ThemedText>
         </View>
       </AnimatedPressable>
-    </Animated.View>
+    </ScreenAnim>
   );
 });
 
@@ -167,7 +165,7 @@ export default function MainMenuScreen() {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.springify()} style={styles.welcomeSection}>
+        <ScreenAnim distance={500} style={styles.welcomeSection}>
           <View style={styles.welcomeHeader}>
             <View>
               <ThemedText type="h2" style={styles.welcomeTitle}>
@@ -207,7 +205,7 @@ export default function MainMenuScreen() {
               </Pressable>
             </LinearGradient>
           </View>
-        </Animated.View>
+        </ScreenAnim>
 
         <AdBanner />
 

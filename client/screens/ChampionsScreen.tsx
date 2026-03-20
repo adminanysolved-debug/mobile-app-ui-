@@ -13,6 +13,7 @@ import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { AdBanner } from "@/components/AdBanner";
+import { ScreenAnim } from "@/components/ScreenAnim";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
@@ -118,7 +119,7 @@ export default function ChampionsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.link} />
         }
       >
-        <Animated.View entering={FadeInDown.springify()}>
+        <ScreenAnim distance={500}>
           <Card
             onPress={handleNavigateToWallOfFame}
             style={styles.linkCard}
@@ -144,9 +145,9 @@ export default function ChampionsScreen() {
             </View>
             <Feather name="chevron-right" size={20} color={theme.textMuted} />
           </Card>
-        </Animated.View>
+        </ScreenAnim>
 
-        <Animated.View entering={FadeInDown.delay(100).springify()}>
+        <ScreenAnim delay={100} distance={600}>
           <Card
             onPress={handleNavigateToWallOfFame}
             style={styles.linkCard}
@@ -172,11 +173,11 @@ export default function ChampionsScreen() {
             </View>
             <Feather name="chevron-right" size={20} color={theme.textMuted} />
           </Card>
-        </Animated.View>
+        </ScreenAnim>
 
         <AdBanner variant="compact" />
 
-        <Animated.View entering={FadeInDown.delay(200).springify()}>
+        <ScreenAnim delay={200} distance={700}>
           <View style={styles.sectionHeader}>
             <ThemedText
               type="xs"
@@ -244,10 +245,10 @@ export default function ChampionsScreen() {
               })
             )}
           </Card>
-        </Animated.View>
+        </ScreenAnim>
 
         {risingStars.length > 0 ? (
-          <Animated.View entering={FadeInDown.delay(300).springify()}>
+          <ScreenAnim delay={300} distance={800}>
             <ThemedText
               type="xs"
               style={[styles.sectionLabel, { color: theme.textSecondary }]}
@@ -286,7 +287,7 @@ export default function ChampionsScreen() {
                 </View>
               ))}
             </Card>
-          </Animated.View>
+          </ScreenAnim>
         ) : null}
       </ScrollView>
 

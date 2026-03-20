@@ -11,6 +11,7 @@ import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { AdBanner } from "@/components/AdBanner";
+import { ScreenAnim } from "@/components/ScreenAnim";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -106,7 +107,7 @@ export default function WalletScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.springify()}>
+        <ScreenAnim distance={500}>
           <Card style={styles.balanceCard}>
             <View style={styles.balanceHeader}>
               <ThemedText
@@ -154,11 +155,11 @@ export default function WalletScreen() {
               </Pressable>
             </View>
           </Card>
-        </Animated.View>
+        </ScreenAnim>
 
         <AdBanner variant="compact" />
 
-        <Animated.View entering={FadeInDown.delay(100).springify()}>
+        <ScreenAnim delay={100} distance={600}>
           <View
             style={[styles.tabContainer, { backgroundColor: theme.backgroundDefault }]}
           >
@@ -211,10 +212,10 @@ export default function WalletScreen() {
               </ThemedText>
             </Pressable>
           </View>
-        </Animated.View>
+        </ScreenAnim>
 
         {activeTab === "points" ? (
-          <Animated.View entering={FadeInDown.delay(200).springify()}>
+          <ScreenAnim delay={200} distance={700}>
             <ThemedText type="body" style={styles.sectionTitle}>
               Recent Transactions
             </ThemedText>
@@ -282,9 +283,9 @@ export default function WalletScreen() {
                 })}
               </Card>
             )}
-          </Animated.View>
+          </ScreenAnim>
         ) : (
-          <Animated.View entering={FadeInDown.delay(200).springify()}>
+          <ScreenAnim delay={200} distance={700}>
             <ThemedText type="body" style={styles.sectionTitle}>
               My Awards ({balance.awards})
             </ThemedText>
@@ -311,7 +312,7 @@ export default function WalletScreen() {
                 </Card>
               ))}
             </View>
-          </Animated.View>
+          </ScreenAnim>
         )}
       </ScrollView>
     </GalaxyBackground>

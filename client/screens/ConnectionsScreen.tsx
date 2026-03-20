@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
+import { ScreenAnim } from "@/components/ScreenAnim";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
@@ -208,7 +209,7 @@ export default function ConnectionsScreen() {
   const connections = activeTab === "followers" ? followers : activeTab === "following" ? following : discoverUsers;
 
   const renderConnection = ({ item, index }: { item: Connection; index: number }) => (
-    <Animated.View entering={FadeInDown.delay(index * 40).springify()} style={{ paddingHorizontal: Spacing.lg }}>
+    <ScreenAnim delay={index * 40} distance={500} style={{ paddingHorizontal: Spacing.lg }}>
       <Card style={styles.connectionCard}>
         <LinearGradient
           colors={[theme.blue, theme.purple]}
@@ -234,7 +235,7 @@ export default function ConnectionsScreen() {
           </ThemedText>
         </Pressable>
       </Card>
-    </Animated.View>
+    </ScreenAnim>
   );
 
   return (

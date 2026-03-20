@@ -13,6 +13,7 @@ import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { Card } from "@/components/Card";
 import { AdBanner } from "@/components/AdBanner";
 import { Button } from "@/components/Button";
+import { ScreenAnim } from "@/components/ScreenAnim";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
@@ -297,14 +298,14 @@ export default function NewsFeedScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Animated.View entering={FadeInDown.springify()}>
+        <ScreenAnim distance={400}>
           <ThemedText type="h3" style={styles.title}>
             Community Feed
           </ThemedText>
           <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
             See what others are achieving
           </ThemedText>
-        </Animated.View>
+        </ScreenAnim>
 
         <AdBanner />
 
@@ -314,9 +315,9 @@ export default function NewsFeedScreen() {
           </View>
         ) : displayPosts.length > 0 ? (
           displayPosts.map((post, index) => (
-            <Animated.View
+            <ScreenAnim
               key={post.id}
-              entering={FadeInDown.delay(index * 80).springify()}
+              delay={index * 80} distance={600}
             >
               <Card style={styles.postCard}>
                 <View style={styles.postHeader}>
@@ -389,12 +390,12 @@ export default function NewsFeedScreen() {
                   </Pressable>
                 </View>
               </Card>
-            </Animated.View>
+            </ScreenAnim>
           ))
         ) : (
-          <Animated.View
+          <ScreenAnim
             style={styles.emptyStateContainer}
-            entering={FadeInDown.springify()}
+            distance={500}
           >
             <View style={styles.emptyStateContent}>
               <Feather name="inbox" size={48} color={theme.textSecondary} />
@@ -408,7 +409,7 @@ export default function NewsFeedScreen() {
                 Be the first to share your dream achievements with the community!
               </ThemedText>
             </View>
-          </Animated.View>
+          </ScreenAnim>
         )}
       </ScrollView>
 

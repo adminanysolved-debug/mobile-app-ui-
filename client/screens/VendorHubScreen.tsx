@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, TextInput, Alert, ActivityIndicator, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { ScreenAnim } from "@/components/ScreenAnim";
 
 import { ThemedText } from "@/components/ThemedText";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
@@ -162,7 +162,7 @@ export default function VendorHubScreen() {
                 style={styles.container}
                 contentContainerStyle={{ paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA }}
             >
-                <Animated.View entering={FadeInDown.springify()} style={styles.section}>
+                <ScreenAnim distance={500} style={styles.section}>
                     <Card style={styles.uploadCard}>
                         <ThemedText type="h3" style={{ marginBottom: Spacing.md }}>Upload Market Item</ThemedText>
 
@@ -292,9 +292,9 @@ export default function VendorHubScreen() {
                             {isUploading ? "Uploading..." : "Upload Item"}
                         </Button>
                     </Card>
-                </Animated.View>
+                </ScreenAnim>
 
-                <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.section}>
+                <ScreenAnim delay={150} distance={600} style={styles.section}>
                     <ThemedText type="h3" style={{ marginBottom: Spacing.md }}>Your Market Uploads</ThemedText>
                     {isLoading ? (
                         <ActivityIndicator color={theme.link} />
@@ -319,9 +319,9 @@ export default function VendorHubScreen() {
                             </ThemedText>
                         )
                     )}
-                </Animated.View>
+                </ScreenAnim>
 
-                <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.section, { marginTop: Spacing.xl }]}>
+                <ScreenAnim delay={200} distance={700} style={[styles.section, { marginTop: Spacing.xl }]}>
                     <ThemedText type="h3" style={{ color: theme.error, marginBottom: Spacing.md }}>Danger Zone</ThemedText>
                     <Card style={[styles.uploadCard, { borderColor: `${theme.error}40`, borderWidth: 1 }] as any}>
                         <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
@@ -340,7 +340,7 @@ export default function VendorHubScreen() {
                             <ThemedText type="bodyMedium" style={{ color: theme.error }}>Delete Vendor Profile</ThemedText>
                         </Pressable>
                     </Card>
-                </Animated.View>
+                </ScreenAnim>
 
             </ScrollView>
         </GalaxyBackground>

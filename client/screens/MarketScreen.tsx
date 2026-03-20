@@ -11,6 +11,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { Card } from "@/components/Card";
 import { AdBanner } from "@/components/AdBanner";
+import { ScreenAnim } from "@/components/ScreenAnim";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
@@ -254,7 +255,7 @@ export default function MarketScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Animated.View entering={FadeInDown.springify()}>
+        <ScreenAnim distance={500}>
           <View style={styles.balanceCard}>
             <View style={[styles.coinIcon, { backgroundColor: theme.yellow + "20" }]}>
               <Feather name="star" size={24} color={theme.yellow} />
@@ -278,11 +279,11 @@ export default function MarketScreen() {
               </Pressable>
             </View>
           </View>
-        </Animated.View>
+        </ScreenAnim>
 
         <AdBanner />
 
-        <Animated.View entering={FadeInDown.delay(100).springify()}>
+        <ScreenAnim delay={100} distance={600}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -311,16 +312,16 @@ export default function MarketScreen() {
               </Pressable>
             ))}
           </ScrollView>
-        </Animated.View>
+        </ScreenAnim>
 
-        <Animated.View entering={FadeInDown.delay(200).springify()}>
+        <ScreenAnim delay={200} distance={700}>
           <ThemedText
             type="xs"
             style={[styles.sectionLabel, { color: theme.textSecondary }]}
           >
             FEATURED ITEMS
           </ThemedText>
-        </Animated.View>
+        </ScreenAnim>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -329,9 +330,9 @@ export default function MarketScreen() {
         ) : filteredItems.length > 0 ? (
           <View style={styles.itemsGrid}>
             {filteredItems.map((item, index) => (
-              <Animated.View
+              <ScreenAnim
                 key={item.id}
-                entering={FadeInDown.delay(200 + index * 50).springify()}
+                delay={200 + index * 50} distance={800}
                 style={styles.itemWrapper}
               >
                 <Card onPress={() => handlePurchase(item)} style={styles.itemCard}>
@@ -368,7 +369,7 @@ export default function MarketScreen() {
                     </ThemedText>
                   </View>
                 </Card>
-              </Animated.View>
+              </ScreenAnim>
             ))}
           </View>
         ) : (
