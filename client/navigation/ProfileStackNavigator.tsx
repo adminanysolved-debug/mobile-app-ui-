@@ -20,7 +20,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/hooks/useTheme";
 
 export default function ProfileStackNavigator() {
-  const screenOptions = useScreenOptions();
+  const screenOptions = useScreenOptions({ transparent: true });
   const { theme } = useTheme();
 
   return (

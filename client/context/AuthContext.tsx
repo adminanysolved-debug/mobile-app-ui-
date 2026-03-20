@@ -100,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(data.user);
         setToken(firebaseToken);
         await AsyncStorage.setItem('auth_token', firebaseToken);
+        await AsyncStorage.setItem('auth_user', JSON.stringify(data.user));
         return { success: true };
       } else {
         const error = await response.json();
@@ -114,14 +115,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadStoredAuth = useCallback(async () => {
     try {
       const storedToken = await AsyncStorage.getItem('auth_token');
+      const storedUser = await AsyncStorage.getItem('auth_user');
 
-      if (!storedToken) {
+      if (!storedToken || !storedUser) {
         setIsLoading(false);
         return;
       }
 
-      // ✅ 1. Trust token immediately (UNBLOCK UI)
+      // ✅ 1. Trust token and user immediately (UNBLOCK UI completely)
       setToken(storedToken);
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        // Ignore parse error
+      }
       setIsLoading(false);
 
       // ✅ 2. Verify in background (DON'T await)
@@ -130,8 +137,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
         .then(res => (res.ok ? res.json() : null))
         .then(data => {
-          if (data) setUser(data);
-          else AsyncStorage.removeItem('auth_token');
+          if (data) {
+            setUser(data);
+            AsyncStorage.setItem('auth_user', JSON.stringify(data));
+          }
+          // DO NOT remove token if data is null (token might just be expired).
+          // Allow Firebase's onAuthStateChanged to refresh it seamlessly!
         })
         .catch(() => { });
     } catch (error) {
@@ -164,6 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then(data => {
             if (mounted && data) {
               setUser(data);
+              AsyncStorage.setItem('auth_user', JSON.stringify(data));
             }
           })
           .catch(() => { });
@@ -172,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(null);
         setUser(null);
         AsyncStorage.removeItem('auth_token');
+        AsyncStorage.removeItem('auth_user');
       }
 
       if (mounted) setIsLoading(false);
@@ -218,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem('auth_token', firebaseToken);
 
       // Minimal temporary user (UI unblock)
-      setUser({
+      const minimalUser = {
         id: 'temp',
         email: userCredential.user.email || '',
         username: '',
@@ -229,7 +242,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         subscriptionTier: 'free',
         isVendor: false,
         createdAt: new Date().toISOString(),
-      });
+      };
+      setUser(minimalUser as User);
+      await AsyncStorage.setItem('auth_user', JSON.stringify(minimalUser));
 
       // ✅ 2. Backend sync in background (DON'T await)
       syncUserWithBackend(firebaseToken, userCredential.user);
@@ -271,7 +286,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(token);
       await AsyncStorage.setItem('auth_token', token);
 
-      setUser({
+      const minimalUser = {
         id: 'temp',
         email: userCredential.user.email || '',
         fullName: userCredential.user.displayName || '',
@@ -283,7 +298,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isVendor: false,
         createdAt: new Date().toISOString(),
         authProvider: 'google',
-      });
+      };
+      setUser(minimalUser as User);
+      await AsyncStorage.setItem('auth_user', JSON.stringify(minimalUser));
 
       syncUserWithBackend(token, userCredential.user);
       return { success: true };
@@ -347,6 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await response.json();
       await AsyncStorage.setItem('auth_token', firebaseToken);
+      await AsyncStorage.setItem('auth_user', JSON.stringify(data.user));
       setUser(data.user);
       setToken(firebaseToken);
       return { success: true };
@@ -373,6 +391,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Firebase sign out error:', error);
     }
     await AsyncStorage.removeItem('auth_token');
+    await AsyncStorage.removeItem('auth_user');
     setUser(null);
     setToken(null);
   };

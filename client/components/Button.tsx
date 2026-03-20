@@ -1,10 +1,12 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState, useCallback } from "react";
 import { StyleSheet, Pressable, ViewStyle, StyleProp } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   WithSpringConfig,
+  FadeInDown,
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -40,6 +42,13 @@ export function Button({
 }: ButtonProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
+  const [focusKey, setFocusKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocusKey((prev) => prev + 1);
+    }, [])
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -86,6 +95,8 @@ export function Button({
 
   return (
     <AnimatedPressable
+      key={focusKey}
+      entering={FadeInDown.springify()}
       onPress={disabled ? undefined : onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
