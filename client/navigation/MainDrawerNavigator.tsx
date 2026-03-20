@@ -80,54 +80,18 @@ function CustomDrawerContent(props: any) {
             activeBackgroundColor="rgba(124, 58, 237, 0.2)"
           />
 
-          {/* Profile Expandable */}
-          <Pressable onPress={() => toggleExpand("profile")} style={styles.expandableHeader}>
-            <View style={styles.headerLeft}>
-              <View style={styles.iconContainer}>
-                <Feather name="user" size={22} color="#C4B5FD" />
-              </View>
-              <ThemedText style={styles.headerLabel}>Profile</ThemedText>
-            </View>
-            <Feather name={isExpanded("profile") ? "chevron-up" : "chevron-down"} size={18} color="#C4B5FD" />
-          </Pressable>
-          {isExpanded("profile") && (
-            <Animated.View entering={FadeIn} layout={Layout.springify()} style={styles.subItems}>
-              <DrawerItem
-                label="View Profile"
-                onPress={() => props.navigation.navigate("ProfileMain")}
-                labelStyle={styles.subLabel}
-                inactiveTintColor="#8B7FC7"
-                style={styles.subDrawerItem}
-              />
-              <DrawerItem
-                label="Edit Profile"
-                onPress={() => props.navigation.navigate("ProfileMain", { screen: 'Profile', params: { isEditing: true } })}
-                labelStyle={styles.subLabel}
-                inactiveTintColor="#8B7FC7"
-                style={styles.subDrawerItem}
-              />
-              <DrawerItem
-                label="Change Password"
-                onPress={() => props.navigation.navigate("ChangePassword")}
-                labelStyle={styles.subLabel}
-                inactiveTintColor="#8B7FC7"
-                style={styles.subDrawerItem}
-              />
-              <DrawerItem
-                label="Log Out"
-                onPress={handleLogout}
-                labelStyle={[styles.subLabel, { color: "#EF4444" }]}
-                inactiveTintColor="#EF4444"
-                style={styles.subDrawerItem}
-              />
-            </Animated.View>
-          )}
-
-          {/* Themes */}
+          {/* Profile */}
           <DrawerItemBase
-            label="Themes"
-            icon="layout"
-            onPress={() => props.navigation.navigate("Themes")}
+            label="Profile"
+            icon="user"
+            onPress={() => props.navigation.navigate("ProfileMain")}
+          />
+
+          {/* Settings */}
+          <DrawerItemBase
+            label="Settings"
+            icon="settings"
+            onPress={() => props.navigation.navigate("SettingsMain")}
           />
 
           {/* Wallet */}
@@ -137,63 +101,19 @@ function CustomDrawerContent(props: any) {
             onPress={() => props.navigation.navigate("WalletMain")}
           />
 
-          {/* Connections Expandable */}
-          <Pressable onPress={() => toggleExpand("connections")} style={styles.expandableHeader}>
-            <View style={styles.headerLeft}>
-              <View style={styles.iconContainer}>
-                <Feather name="users" size={22} color="#C4B5FD" />
-              </View>
-              <ThemedText style={styles.headerLabel}>Connections</ThemedText>
-            </View>
-            <Feather name={isExpanded("connections") ? "chevron-up" : "chevron-down"} size={18} color="#C4B5FD" />
-          </Pressable>
-          {isExpanded("connections") && (
-            <Animated.View entering={FadeIn} layout={Layout.springify()} style={styles.subItems}>
-              <DrawerItem
-                label="Followers"
-                onPress={() => props.navigation.navigate("ConnectionsMain", { tab: 'followers' })}
-                labelStyle={styles.subLabel}
-                inactiveTintColor="#8B7FC7"
-                style={styles.subDrawerItem}
-              />
-              <DrawerItem
-                label="Following"
-                onPress={() => props.navigation.navigate("ConnectionsMain", { tab: 'following' })}
-                labelStyle={styles.subLabel}
-                inactiveTintColor="#8B7FC7"
-                style={styles.subDrawerItem}
-              />
-              <DrawerItem
-                label="Discover"
-                onPress={() => props.navigation.navigate("ConnectionsMain", { tab: 'discover' })}
-                labelStyle={styles.subLabel}
-                inactiveTintColor="#8B7FC7"
-                style={styles.subDrawerItem}
-              />
-            </Animated.View>
-          )}
+          {/* Connections */}
+          <DrawerItemBase
+            label="Connections"
+            icon="users"
+            onPress={() => props.navigation.navigate("ConnectionsMain")}
+          />
 
-          {/* My Achievements Expandable */}
-          <Pressable onPress={() => toggleExpand("achievements")} style={styles.expandableHeader}>
-            <View style={styles.headerLeft}>
-              <View style={styles.iconContainer}>
-                <Feather name="award" size={22} color="#C4B5FD" />
-              </View>
-              <ThemedText style={styles.headerLabel}>My Achievements</ThemedText>
-            </View>
-            <Feather name={isExpanded("achievements") ? "chevron-up" : "chevron-down"} size={18} color="#C4B5FD" />
-          </Pressable>
-          {isExpanded("achievements") && (
-            <Animated.View entering={FadeIn} layout={Layout.springify()} style={styles.subItems}>
-              <DrawerItem
-                label="Badges & Scores"
-                onPress={() => props.navigation.navigate("ChampionsMain")}
-                labelStyle={styles.subLabel}
-                inactiveTintColor="#8B7FC7"
-                style={styles.subDrawerItem}
-              />
-            </Animated.View>
-          )}
+          {/* My Achievements */}
+          <DrawerItemBase
+            label="My Achievements"
+            icon="award"
+            onPress={() => props.navigation.navigate("ChampionsMain")}
+          />
 
           {/* Become a Vendor */}
           <DrawerItemBase
@@ -202,9 +122,9 @@ function CustomDrawerContent(props: any) {
             onPress={() => props.navigation.navigate("VendorHubMain")}
           />
 
-          {/* Subscription Package */}
+          {/* Subscriptions */}
           <DrawerItemBase
-            label="Subscription Package"
+            label="Subscriptions"
             icon="zap"
             onPress={() => props.navigation.navigate("SubscriptionMain")}
           />
@@ -295,9 +215,9 @@ export default function MainDrawerNavigator() {
         options={{ headerShown: false }}
       />
       <Drawer.Screen 
-        name="Themes" 
+        name="SettingsMain" 
         component={SettingsStackNavigator} 
-        options={{ headerTitle: "THEMES & SETTINGS" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="WalletMain" 

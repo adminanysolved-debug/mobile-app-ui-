@@ -346,7 +346,7 @@ export default function NewsFeedScreen() {
                   </View>
                   {(user?.id === post.userId || user?.isAdmin) && (
                     <Pressable onPress={() => handleDeletePost(post.id)} hitSlop={10}>
-                      <Feather name="trash-2" size={16} color={theme.textMuted} />
+                      <Feather name="trash-2" size={16} color={theme.error || "#EF4444"} />
                     </Pressable>
                   )}
                 </View>
@@ -364,7 +364,7 @@ export default function NewsFeedScreen() {
                   </View>
                 ) : null}
 
-                <View style={[styles.postActions, { borderTopColor: "rgba(139, 127, 199, 0.3)" }]}>
+                <View style={[styles.postActions, { borderTopColor: theme.border }]}>
                   <Pressable
                     onPress={() => handleLike(post.id)}
                     style={styles.actionButton}

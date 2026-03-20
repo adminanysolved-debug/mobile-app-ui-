@@ -33,14 +33,12 @@ const ordersItems: MenuItem[] = [
     icon: "shopping-bag",
     label: "My Purchase",
     route: "Market",
-    iconBg: "rgba(45, 39, 82, 0.6)",
     iconColor: "#C4B5FD",
   },
   {
     icon: "credit-card",
     label: "My Wallet",
     route: "Wallet",
-    iconBg: "rgba(45, 39, 82, 0.6)",
     iconColor: "#C4B5FD",
   },
 ];
@@ -51,21 +49,18 @@ const accountItems: MenuItem[] = [
     icon: "edit-2",
     label: "Edit Profile",
     route: "EditProfile",
-    iconBg: "rgba(45, 39, 82, 0.6)",
     iconColor: "#60A5FA",
   },
   {
     icon: "log-out",
     label: "Sign Out",
     route: "SignOut",
-    iconBg: "rgba(45, 39, 82, 0.6)",
     iconColor: "#FBBF24",
   },
   {
     icon: "trash-2",
     label: "Delete Account",
     route: "DeleteAccount",
-    iconBg: "rgba(45, 39, 82, 0.6)",
     iconColor: "#F87171",
     danger: true,
   },
@@ -704,7 +699,6 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     padding: Spacing.xl,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   profileContainer: {
     flexDirection: "row",
@@ -764,7 +758,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: Spacing.lg,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   linkIcon: {
     width: 48,
@@ -790,7 +783,6 @@ const styles = StyleSheet.create({
   menuCard: {
     padding: 0,
     overflow: "hidden",
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   menuRow: {
     flexDirection: "row",

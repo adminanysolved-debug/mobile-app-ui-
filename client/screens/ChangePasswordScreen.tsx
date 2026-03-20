@@ -207,7 +207,6 @@ const styles = StyleSheet.create({
   glassInput: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: "rgba(139, 127, 199, 0.3)",

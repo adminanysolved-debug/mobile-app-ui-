@@ -24,7 +24,7 @@ type MenuItem = {
 };
 
 const menuItems: MenuItem[] = [
-  { icon: "user", label: "PERSONAL PROFILE", route: "Profile" },
+  { icon: "layout", label: "THEMES", route: "Themes" },
   { icon: "credit-card", label: "SUBSCRIPTION", route: "Subscription" },
   { icon: "bell", label: "NOTIFICATIONS", route: "Notifications" },
 ];
@@ -90,9 +90,11 @@ export default function SettingsScreen() {
   const handleNavigate = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (route === "Profile") {
-      navigation.navigate("ProfileTab");
+      navigation.navigate("ProfileMain");
     } else if (route === "Subscription") {
       navigation.navigate("Subscription");
+    } else if (route === "Themes") {
+      navigation.navigate("Themes");
     } else if (route === "Notifications") {
       navigation.navigate("Notifications");
     }
@@ -196,22 +198,7 @@ export default function SettingsScreen() {
 
         <AdBanner variant="compact" />
 
-        <Animated.View entering={FadeInDown.delay(75).springify()}>
-          <Card style={styles.menuCard}>
-            <Pressable
-              onPress={handleVendorHubPress}
-              style={[styles.menuRow]}
-            >
-              <View style={styles.menuIcon}>
-                <Feather name="briefcase" size={20} color={theme.textSecondary} />
-              </View>
-              <ThemedText type="body" style={[styles.menuLabel, { color: theme.text }]}>
-                {user?.isVendor ? "VENDOR HUB" : "BECOME A VENDOR"}
-              </ThemedText>
-              <Feather name="chevron-right" size={20} color="#A78BFA" />
-            </Pressable>
-          </Card>
-        </Animated.View>
+
 
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           <Card style={styles.menuCard}>
@@ -365,7 +352,6 @@ const styles = StyleSheet.create({
   userInfoCard: {
     padding: Spacing.lg,
     gap: Spacing.md,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   userInfoRow: {
     flexDirection: "row",
@@ -382,7 +368,6 @@ const styles = StyleSheet.create({
   menuCard: {
     padding: 0,
     overflow: "hidden",
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   menuRow: {
     flexDirection: "row",
@@ -400,7 +385,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   menuLabel: {
     flex: 1,

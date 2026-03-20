@@ -139,7 +139,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: Spacing.lg,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     borderWidth: 1,
     borderColor: "rgba(139, 127, 199, 0.2)",
   },

@@ -254,7 +254,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: BorderRadius.full,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -310,7 +309,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   glassCard: {
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     borderWidth: 1,
     borderColor: "rgba(139, 127, 199, 0.2)",
     borderRadius: BorderRadius.lg,

@@ -131,7 +131,7 @@ export default function ChatScreen({ route }: any) {
             styles.messageBubble,
             isMe
               ? { backgroundColor: "#7C3AED" }
-              : { backgroundColor: "rgba(45, 39, 82, 0.6)" },
+              : { },
           ]}
         >
           <ThemedText
@@ -217,7 +217,7 @@ export default function ChatScreen({ route }: any) {
           <TextInput
             style={[
               styles.textInput,
-              { backgroundColor: "rgba(45, 39, 82, 0.6)", color: "#FFFFFF" },
+              { color: "#FFFFFF" },
             ]}
             placeholder="Type a message..."
             placeholderTextColor="#8B7FC7"

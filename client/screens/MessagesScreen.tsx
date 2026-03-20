@@ -453,7 +453,6 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     gap: Spacing.md,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   avatar: {
     width: 44,

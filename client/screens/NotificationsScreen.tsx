@@ -250,7 +250,7 @@ export default function NotificationsScreen() {
           {unreadCount > 0 ? (
             <Pressable
               onPress={handleMarkAllRead}
-              style={[styles.markAllButton, { backgroundColor: "rgba(45, 39, 82, 0.6)" }]}
+              style={[styles.markAllButton, { }]}
             >
               <Feather name="check-circle" size={16} color="#A78BFA" />
               <ThemedText type="xs" style={{ color: "#A78BFA", marginLeft: 4 }}>
@@ -283,7 +283,7 @@ export default function NotificationsScreen() {
           </View>
         ) : notifications.length === 0 ? (
           <Animated.View entering={FadeInDown.delay(100).springify()}>
-            <View style={[styles.emptyCard, { backgroundColor: "rgba(45, 39, 82, 0.6)" }]}>
+            <View style={[styles.emptyCard, { }]}>
               <Feather name="bell-off" size={48} color={theme.textMuted} />
               <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
                 No notifications yet
@@ -303,7 +303,7 @@ export default function NotificationsScreen() {
                 onPress={() => handleNotificationPress(notification)}
                 style={({ pressed }) => [
                   styles.notificationCard,
-                  { backgroundColor: "rgba(45, 39, 82, 0.6)" },
+                  { },
                   !notification.read
                     ? { borderLeftWidth: 3, borderLeftColor: "#A78BFA" }
                     : null,

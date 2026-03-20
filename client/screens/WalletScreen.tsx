@@ -353,7 +353,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xs,
   },
   actionButtonOutline: {
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     borderWidth: 1,
     borderColor: "rgba(139, 127, 199, 0.3)",
   },

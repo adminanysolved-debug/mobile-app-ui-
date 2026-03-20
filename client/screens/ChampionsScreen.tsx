@@ -388,7 +388,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: Spacing.lg,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   linkIcon: {
     width: 48,
@@ -418,7 +417,6 @@ const styles = StyleSheet.create({
   },
   championsCard: {
     padding: Spacing.lg,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   emptyState: {
     alignItems: "center",
@@ -455,7 +453,6 @@ const styles = StyleSheet.create({
   starsCard: {
     padding: 0,
     overflow: "hidden",
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   starRow: {
     flexDirection: "row",

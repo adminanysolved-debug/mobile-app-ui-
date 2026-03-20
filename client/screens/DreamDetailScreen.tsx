@@ -633,7 +633,6 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     padding: Spacing.lg,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     borderWidth: 1,
     borderColor: "rgba(139, 127, 199, 0.3)",
   },
@@ -689,7 +688,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
@@ -722,7 +720,6 @@ const styles = StyleSheet.create({
   },
   addTaskInput: {
     flex: 1,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,

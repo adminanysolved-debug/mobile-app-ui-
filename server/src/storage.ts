@@ -478,6 +478,8 @@ class DatabaseStorage implements IStorage {
     const isAdmin = user?.isAdmin || false;
 
     if (isAdmin) {
+      await db.delete(postLikes).where(eq(postLikes.postId, postId));
+      await db.delete(postComments).where(eq(postComments.postId, postId));
       await db.delete(newsFeedPosts).where(eq(newsFeedPosts.id, postId));
       return true;
     }
@@ -486,6 +488,8 @@ class DatabaseStorage implements IStorage {
     const [existing] = await db.select().from(newsFeedPosts).where(and(eq(newsFeedPosts.id, postId), eq(newsFeedPosts.userId, userId)));
     if (!existing) return false;
 
+    await db.delete(postLikes).where(eq(postLikes.postId, postId));
+    await db.delete(postComments).where(eq(postComments.postId, postId));
     await db.delete(newsFeedPosts).where(eq(newsFeedPosts.id, postId));
     return true;
   }

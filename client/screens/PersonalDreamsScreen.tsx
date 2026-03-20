@@ -181,7 +181,6 @@ const styles = StyleSheet.create({
   dreamCard: {
     padding: Spacing.lg,
     marginBottom: Spacing.sm,
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
     overflow: "visible",
   },
   dreamHeader: {
@@ -239,7 +238,6 @@ const styles = StyleSheet.create({
   emptyCard: {
     padding: Spacing.xl,
     alignItems: "center",
-    backgroundColor: "rgba(45, 39, 82, 0.6)",
   },
   emptyIcon: {
     width: 80,
