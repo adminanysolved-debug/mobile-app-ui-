@@ -22,7 +22,7 @@ export function AdPopup({ currentRoute }: { currentRoute: string }) {
   const [lastAdId, setLastAdId] = useState<string | null>(null);
   const { user } = useAuth();
   const { theme } = useTheme();
-  const isPremium = user?.subscriptionTier && user.subscriptionTier !== "silver";
+  const isPremium = user?.subscriptionTier === "gold" || user?.subscriptionTier === "platinum";
 
   const { data: ad, isLoading, isError } = useQuery<ActiveAd | null>({
     queryKey: ["api", "ads", "active"],
@@ -121,23 +121,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   content: {
-    width: width * 0.85,
-    height: height * 0.65,
-    borderRadius: 32,
+    width: width,
+    height: height,
+    borderRadius: 0,
     overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.5,
-        shadowRadius: 30,
-      },
-      android: {
-        elevation: 24,
-      },
-    }),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderWidth: 0,
   },
   imageContainer: {
     width: "100%",
@@ -149,8 +137,8 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    top: 20,
-    right: 20,
+    top: 50,
+    right: 25,
     zIndex: 10,
   },
   closeButtonPressed: {

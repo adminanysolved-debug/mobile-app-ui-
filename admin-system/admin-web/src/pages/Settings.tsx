@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Server, Database, Activity, ShieldAlert, Cpu, Lock, Send, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 export default function Settings() {
     const [loading, setLoading] = useState(true);
@@ -20,11 +21,19 @@ export default function Settings() {
 
     const fetchHealth = async () => {
         try {
-            const res = await fetch('http://localhost:5001/api/admin/system-health', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/system-health`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
                 }
             });
+
+            if (res.status === 401) {
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                window.location.href = '/login';
+                return;
+            }
+
             const data = await res.json();
             setHealth(data);
             setLoading(false);
@@ -45,7 +54,7 @@ export default function Settings() {
         setPassMessage({ type: '', text: '' });
 
         try {
-            const res = await fetch('http://localhost:5001/api/admin/change-password', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/change-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

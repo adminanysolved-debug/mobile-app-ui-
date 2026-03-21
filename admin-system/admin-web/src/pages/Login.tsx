@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, Loader2, ShieldCheck, ArrowLeft, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -18,7 +19,7 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await fetch('http://localhost:5001/api/admin/login', {
+            const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -47,7 +48,7 @@ export default function Login() {
         setSuccessMsg('');
 
         try {
-            const response = await fetch('http://localhost:5001/api/admin/forgot-password', {
+            const response = await fetch(`${API_BASE_URL}/api/admin/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),

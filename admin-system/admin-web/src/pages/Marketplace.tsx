@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, ShoppingCart, CheckCircle2, Circle, X, Trash2 } from 'lucide-react';
+import { API_BASE_URL } from '../lib/config';
 
 interface MarketItem {
     id: string;
@@ -29,19 +30,32 @@ export default function Marketplace() {
 
     const fetchMarketItems = () => {
         setLoading(true);
-        fetch('http://localhost:5001/api/market-items', {
+        fetch(`${API_BASE_URL}/api/market-items`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
             }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = '/login';
+                    return;
+                }
+                return res.json();
+            })
             .then(data => {
-                setItems(data);
+                if (Array.isArray(data)) {
+                    setItems(data);
+                } else {
+                    setItems([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to fetch market items", err);
                 setLoading(false);
+                setItems([]);
             });
     };
 
@@ -49,7 +63,7 @@ export default function Marketplace() {
         if (!confirm(`Are you sure you want to delete the market item "${title}"?\nThis action cannot be undone.`)) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/market-items/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/market-items/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
@@ -80,7 +94,7 @@ export default function Marketplace() {
         if (!selectedItem) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/market-items/${selectedItem.id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/market-items/${selectedItem.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -103,7 +117,7 @@ export default function Marketplace() {
 
     const toggleItemStatus = async (item: MarketItem) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/market-items/${item.id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/market-items/${item.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

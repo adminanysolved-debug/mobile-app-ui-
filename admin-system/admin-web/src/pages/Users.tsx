@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Mail, Search, Shield, ShieldCheck, X, Coins, Trash2, Settings2, ExternalLink, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 interface User {
     id: string;
@@ -40,12 +41,20 @@ export default function Users() {
 
     const fetchUsers = () => {
         setLoading(true);
-        fetch('http://localhost:5001/api/users', {
+        fetch(`${API_BASE_URL}/api/users`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
             }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = '/login';
+                    return;
+                }
+                return res.json();
+            })
             .then(data => {
                 if (Array.isArray(data)) {
                     setUsers(data);
@@ -62,7 +71,7 @@ export default function Users() {
         if (!confirm(`Are you sure you want to delete the user "${username}"?\nThis action cannot be undone.`)) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/users/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
@@ -84,7 +93,7 @@ export default function Users() {
     const handleUpdateVendor = async () => {
         if (!selectedUser) return;
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/users/${selectedUser.id}/vendor`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${selectedUser.id}/vendor`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
@@ -112,7 +121,7 @@ export default function Users() {
     const handleUpdateSubscription = async () => {
         if (!selectedUser) return;
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/users/${selectedUser.id}/subscription`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${selectedUser.id}/subscription`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
@@ -143,7 +152,7 @@ export default function Users() {
         if (isNaN(amount)) return alert('Please enter a valid number');
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/users/${selectedUser.id}/coins`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${selectedUser.id}/coins`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,

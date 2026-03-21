@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Megaphone, ExternalLink, Image as ImageIcon, Save, CheckCircle2, AlertCircle, TrendingUp, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 interface AdSettings {
     id?: string;
@@ -15,11 +16,15 @@ const AVAILABLE_SCREENS = [
     { id: 'Home', label: 'Home Screen' },
     { id: 'Market', label: 'Marketplace' },
     { id: 'NewsFeed', label: 'Social Feed' },
-    { id: 'VendorHub', label: 'Vendor Hub' },
-    { id: 'Profile', label: 'User Profile' },
-    { id: 'Chat', label: 'Chat Messaging' },
+    { id: 'VendorHubMain', label: 'Vendor Hub' },
+    { id: 'ProfileMain', label: 'User Profile' },
+    { id: 'Messages', label: 'Chat Messaging' },
     { id: 'Notifications', label: 'Activity Log' },
-    { id: 'LuckySpin', label: 'Lucky Spin' }
+    { id: 'LuckySpin', label: 'Lucky Spin' },
+    { id: 'SettingsMain', label: 'Settings' },
+    { id: 'WalletMain', label: 'Wallet' },
+    { id: 'ConnectionsMain', label: 'Connections' },
+    { id: 'ChampionsMain', label: 'Champions' }
 ];
 
 export default function Promotions() {
@@ -46,7 +51,7 @@ export default function Promotions() {
             const formData = new FormData();
             formData.append('file', file);
 
-            const res = await fetch('http://localhost:5001/api/admin/upload', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/upload`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
@@ -74,9 +79,17 @@ export default function Promotions() {
 
     const fetchAd = async () => {
         try {
-            const res = await fetch('http://localhost:5001/api/admin/ads', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/ads`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}` }
             });
+
+            if (res.status === 401) {
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                window.location.href = '/login';
+                return;
+            }
+
             const data = await res.json();
             if (data) {
                 setAd({
@@ -119,7 +132,7 @@ export default function Promotions() {
         setMessage(null);
 
         try {
-            const res = await fetch('http://localhost:5001/api/admin/ads', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/ads`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

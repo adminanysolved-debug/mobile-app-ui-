@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Users, MoonStar, Zap, Award, Activity, TrendingUp, Cpu, Server, Database } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 interface Stats {
     totalUsers: number;
@@ -46,14 +47,21 @@ export default function Dashboard() {
                 const headers = { 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}` };
                 
                 const [statsRes, healthRes] = await Promise.all([
-                    fetch('http://localhost:5001/api/stats', { headers }),
-                    fetch('http://localhost:5001/api/admin/system-health', { headers })
+                    fetch(`${API_BASE_URL}/api/stats`, { headers }),
+                    fetch(`${API_BASE_URL}/api/admin/system-health`, { headers })
                 ]);
+
+                if (statsRes.status === 401 || healthRes.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = '/login';
+                    return;
+                }
 
                 const statsData = await statsRes.json();
                 const healthData = await healthRes.json();
 
-                setStats(statsData);
+                setStats(Array.isArray(statsData) ? statsData[0] : statsData);
                 setHealth(healthData);
                 setLoading(false);
             } catch (err) {

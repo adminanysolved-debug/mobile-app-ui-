@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, MoonStar, CheckCircle2, Circle, X, Info, Trash2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 interface Dream {
     id: string;
@@ -26,19 +27,32 @@ export default function Dreams() {
 
     const fetchDreams = () => {
         setLoading(true);
-        fetch('http://localhost:5001/api/dreams', {
+        fetch(`${API_BASE_URL}/api/dreams`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
             }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = '/login';
+                    return;
+                }
+                return res.json();
+            })
             .then(data => {
-                setDreams(data);
+                if (Array.isArray(data)) {
+                    setDreams(data);
+                } else {
+                    setDreams([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to fetch dreams", err);
                 setLoading(false);
+                setDreams([]);
             });
     };
 
@@ -46,7 +60,7 @@ export default function Dreams() {
         if (!confirm(`Are you sure you want to delete the dream "${title}"?\nThis action cannot be undone.`)) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/dreams/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/dreams/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`

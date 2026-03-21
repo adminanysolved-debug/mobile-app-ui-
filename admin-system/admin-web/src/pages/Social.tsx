@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, MessageSquare, Heart, Trash2, X, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 interface FeedPost {
     id: string;
@@ -29,17 +30,30 @@ export default function Social() {
 
     const fetchPosts = () => {
         setLoading(true);
-        fetch('http://localhost:5001/api/newsfeed', {
+        fetch(`${API_BASE_URL}/api/newsfeed`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}` }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = '/login';
+                    return;
+                }
+                return res.json();
+            })
             .then(data => {
-                setPosts(data);
+                if (Array.isArray(data)) {
+                    setPosts(data);
+                } else {
+                    setPosts([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to fetch news feed", err);
                 setLoading(false);
+                setPosts([]);
             });
     };
 
@@ -51,7 +65,7 @@ export default function Social() {
         if (!window.confirm('Terminate this broadcast transmission? This action is irreversible.')) return;
         
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/posts/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/posts/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}` }
             });
@@ -66,7 +80,7 @@ export default function Social() {
     const fetchComments = async (postId: string) => {
         setLoadingComments(true);
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/posts/${postId}/comments`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/posts/${postId}/comments`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}` }
             });
             const data = await res.json();
@@ -82,7 +96,7 @@ export default function Social() {
         if (!window.confirm('Redact this comment permanently?')) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/comments/${commentId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/comments/${commentId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}` }
             });

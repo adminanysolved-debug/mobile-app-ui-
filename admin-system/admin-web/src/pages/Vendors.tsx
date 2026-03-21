@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Briefcase, CheckCircle2, Circle, ShieldBan, MoreVertical, Building2, User as UserIcon, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_BASE_URL } from '../lib/config';
 
 interface User {
     id: string;
@@ -25,20 +26,33 @@ export default function Vendors() {
 
     const fetchUsers = () => {
         setLoading(true);
-        fetch('http://localhost:5001/api/users', {
+        fetch(`${API_BASE_URL}/api/users`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
             }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = '/login';
+                    return;
+                }
+                return res.json();
+            })
             .then(data => {
-                const vendorsOrApplied = data.filter((u: User) => u.is_vendor === true || Boolean(u.vendor_business_name));
-                setUsers(vendorsOrApplied);
+                if (Array.isArray(data)) {
+                    const vendorsOrApplied = data.filter((u: User) => u.is_vendor === true || Boolean(u.vendor_business_name));
+                    setUsers(vendorsOrApplied);
+                } else {
+                    setUsers([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to fetch users", err);
                 setLoading(false);
+                setUsers([]);
             });
     };
 
@@ -46,7 +60,7 @@ export default function Vendors() {
         if (!confirm(`Are you sure you want to ${isVendor ? 'approve' : 'revoke'} vendor status for this user?`)) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/users/${userId}/vendor`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/vendor`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

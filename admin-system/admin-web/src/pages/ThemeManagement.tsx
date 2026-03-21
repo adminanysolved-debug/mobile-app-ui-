@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Palette, CheckCircle2, Circle, X, Trash2, Plus, Edit2 } from 'lucide-react';
+import { API_BASE_URL } from '../lib/config';
 
 interface Theme {
     id: string;
@@ -45,26 +46,40 @@ export default function ThemeManagement() {
 
     const fetchThemes = () => {
         setLoading(true);
-        fetch('http://localhost:5001/api/admin/themes', {
+        fetch(`${API_BASE_URL}/api/admin/themes`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
             }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = '/login';
+                    return;
+                }
+                return res.json();
+            })
             .then(data => {
-                setThemes(data);
+                if (Array.isArray(data)) {
+                    setThemes(data);
+                } else {
+                    console.error("Received non-array theme data:", data);
+                    setThemes([]);
+                }
                 setLoading(false);
             })
             .catch(err => {
                 console.error("Failed to fetch themes", err);
                 setLoading(false);
+                setThemes([]);
             });
     };
 
     const handleCreateTheme = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch('http://localhost:5001/api/admin/themes', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/themes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -90,7 +105,7 @@ export default function ThemeManagement() {
         if (!selectedTheme) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/themes/${selectedTheme.id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/themes/${selectedTheme.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -116,7 +131,7 @@ export default function ThemeManagement() {
         if (!confirm(`Are you sure you want to delete the theme "${name}"?`)) return;
 
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/themes/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/themes/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`
@@ -135,7 +150,7 @@ export default function ThemeManagement() {
 
     const toggleThemeStatus = async (theme: Theme) => {
         try {
-            const res = await fetch(`http://localhost:5001/api/admin/themes/${theme.id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/themes/${theme.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
