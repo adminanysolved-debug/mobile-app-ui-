@@ -17,7 +17,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://mobile-app-ui.replit.app"
+        "EXPO_PUBLIC_API_URL": "https://mobile-app-ui-rywc.onrender.com"
       }
     },
     "production": {
@@ -26,7 +26,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://mobile-app-ui.replit.app"
+        "EXPO_PUBLIC_API_URL": "https://mobile-app-ui-rywc.onrender.com"
       }
     }
   },

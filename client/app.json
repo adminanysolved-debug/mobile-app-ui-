@@ -45,7 +45,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "EXPO_PUBLIC_API_URL": "https://mobile-app-ui.onrender.com",
+      "EXPO_PUBLIC_API_URL": "https://mobile-app-ui-rywc.onrender.com",
       "eas": {
         "projectId": "88f8ad92-855d-4169-8ebe-8a5c67c0dd8b"
       }
