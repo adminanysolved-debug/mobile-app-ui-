@@ -168,16 +168,56 @@ class DatabaseStorage implements IStorage {
   }
 
   async getDreams(userId: string): Promise<Dream[]> {
-    return db.select().from(dreams).where(eq(dreams.userId, userId)).orderBy(desc(dreams.createdAt));
+    // Get dreams where user is the owner
+    const ownedDreams = await db
+      .select()
+      .from(dreams)
+      .where(eq(dreams.userId, userId));
+
+    // Get dreams where user is an accepted member
+    const memberResults = await db
+      .select({ dream: dreams })
+      .from(dreams)
+      .innerJoin(dreamMembers, eq(dreams.id, dreamMembers.dreamId))
+      .where(
+        and(
+          eq(dreamMembers.userId, userId),
+          eq(dreamMembers.status, "accepted")
+        )
+      );
+
+    const memberDreams = memberResults.map(r => r.dream);
+
+    // Merge and deduplicate
+    const allDreams = [...ownedDreams, ...memberDreams];
+    const uniqueDreams = Array.from(new Map(allDreams.map((d) => [d.id, d])).values());
+
+    return uniqueDreams.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   }
 
   async getDreamCounts(userId: string): Promise<{ personal: number; challenge: number; group: number }> {
-    const userDreams = await db.select().from(dreams).where(eq(dreams.userId, userId));
+    const userDreams = await this.getDreams(userId);
     return {
       personal: userDreams.filter(d => d.type === "personal").length,
       challenge: userDreams.filter(d => d.type === "challenge").length,
       group: userDreams.filter(d => d.type === "group").length,
     };
+  }
+
+  async updateDreamMemberStatus(dreamId: string, userId: string, status: "accepted" | "declined"): Promise<void> {
+    await db
+      .update(dreamMembers)
+      .set({ status })
+      .where(
+        and(
+          eq(dreamMembers.dreamId, dreamId),
+          eq(dreamMembers.userId, userId)
+        )
+      );
   }
 
   async getDream(id: string): Promise<Dream | undefined> {

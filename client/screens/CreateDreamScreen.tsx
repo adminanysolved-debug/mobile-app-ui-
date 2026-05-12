@@ -615,32 +615,7 @@ export default function CreateDreamScreen() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(160).springify()}>
-          <ThemedText type="small" style={styles.label}>DREAM PRIVACY</ThemedText>
-          <View style={styles.privacyRow}>
-            {privacyOptions.map((option) => {
-              const isSelected = privacy === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  style={[
-                    styles.privacyOption,
-                    isSelected && { backgroundColor: "rgba(139, 92, 246, 0.3)", borderColor: "#8B5CF6" }
-                  ]}
-                  onPress={() => {
-                    setPrivacy(option.value);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                >
-                  <Feather name={option.icon} size={16} color={isSelected ? "#FFFFFF" : "#A78BFA"} />
-                  <ThemedText style={[styles.privacyText, isSelected && { fontWeight: "600" }]}>
-                    {option.label}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Animated.View>
+        {/* Removed Dream Privacy Selection as per request */}
 
         {!isEditing && selectedType === "challenge" && (
           <Animated.View entering={FadeInDown.delay(175).springify()}>

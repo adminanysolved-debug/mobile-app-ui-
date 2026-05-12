@@ -195,7 +195,24 @@ export default function SettingsScreen() {
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={true}
-      >
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <View style={styles.headerRow}>
+            <Pressable 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.goBack();
+              }}
+              style={styles.backButton}
+            >
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
+            </Pressable>
+            <ThemedText type="h3" style={styles.headerTitle}>
+              SETTINGS
+            </ThemedText>
+          </View>
+        </View>
+
         <Animated.View entering={FadeInDown.springify()}>
           <Card style={styles.userInfoCard}>
             <View style={styles.userInfoRow}>
@@ -477,5 +494,22 @@ const styles = StyleSheet.create({
   privacyPillActive: {
     backgroundColor: "#8B5CF6",
     borderColor: "#8B5CF6",
+  },
+  headerContainer: {
+    marginBottom: Spacing.md,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerTitle: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    letterSpacing: 1,
+    marginLeft: Spacing.sm,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
   },
 });

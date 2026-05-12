@@ -144,11 +144,44 @@ export default function ProfileScreen() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [otherUser, setOtherUser] = useState<any>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Sync profilePhoto local state whenever the user context changes (e.g., after upload or edit)
+  const targetUserId = route.params?.userId || user?.id;
+  const isOwnProfile = !route.params?.userId || route.params?.userId === user?.id;
+
+  const fetchProfile = async () => {
+    if (!token || !targetUserId) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(new URL(`/api/users/${targetUserId}`, getApiUrl()).toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (isOwnProfile) {
+          updateUser(data);
+        } else {
+          setOtherUser(data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    setProfilePhoto(user?.profilePhoto || user?.profileImage || null);
-  }, [user?.profilePhoto, user?.profileImage]);
+    fetchProfile();
+  }, [targetUserId]);
+
+  // Sync profilePhoto local state whenever the user context changes
+  useEffect(() => {
+    const currentUser = isOwnProfile ? user : otherUser;
+    setProfilePhoto(currentUser?.profilePhoto || currentUser?.profileImage || null);
+  }, [user, otherUser, isOwnProfile]);
 
   useEffect(() => {
     if (route.params?.isEditing) {
@@ -447,12 +480,20 @@ export default function ProfileScreen() {
       >
         {/* Header - Non-sticky to prevent overlap */}
         <View style={styles.headerContainer}>
-          <ThemedText
-            type="xs"
-            style={[styles.sectionLabel, { color: theme.textSecondary }]}
-          >
-            PERSONAL PROFILE
-          </ThemedText>
+          <View style={styles.headerRow}>
+            <Pressable 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.goBack();
+              }}
+              style={styles.backButton}
+            >
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
+            </Pressable>
+            <ThemedText type="h3" style={styles.headerTitle}>
+              {isOwnProfile ? "MY PROFILE" : (otherUser?.username?.toUpperCase() || "PROFILE")}
+            </ThemedText>
+          </View>
         </View>
 
         <Animated.View
@@ -471,7 +512,7 @@ export default function ProfileScreen() {
               {/* Profile Photo with Upload Button - LEFT SIDE */}
               <View style={styles.avatarSection}>
                 <Pressable
-                  onPress={showPhotoOptions}
+                  onPress={isOwnProfile ? showPhotoOptions : undefined}
                   style={styles.avatarContainer}
                 >
                   {profilePhoto ? (
@@ -486,25 +527,29 @@ export default function ProfileScreen() {
                       end={{ x: 1, y: 1 }}
                       style={styles.avatar}
                     >
-                      <Feather name="user" size={40} color="#FFFFFF" />
+                      <ThemedText type="h1" style={{ color: "#FFFFFF" }}>
+                        {(isOwnProfile ? user : otherUser)?.fullName?.charAt(0) || (isOwnProfile ? user : otherUser)?.username?.charAt(0) || "?"}
+                      </ThemedText>
                     </LinearGradient>
                   )}
 
-                  {/* Camera Icon Overlay */}
-                  <View style={styles.cameraIconContainer}>
-                    <LinearGradient
-                      colors={theme.gradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.cameraIcon}
-                    >
-                      {isUploadingPhoto ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Feather name="camera" size={16} color="#FFFFFF" />
-                      )}
-                    </LinearGradient>
-                  </View>
+                  {/* Camera Icon Overlay - Only for own profile */}
+                  {isOwnProfile && (
+                    <View style={styles.cameraIconContainer}>
+                      <LinearGradient
+                        colors={theme.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.cameraIcon}
+                      >
+                        {isUploadingPhoto ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Feather name="camera" size={16} color="#FFFFFF" />
+                        )}
+                      </LinearGradient>
+                    </View>
+                  )}
                 </Pressable>
               </View>
 
@@ -521,7 +566,7 @@ export default function ProfileScreen() {
                     USERNAME
                   </ThemedText>
                   <ThemedText type="h3" style={styles.username}>
-                    @{user?.username || "user"}
+                    @{(isOwnProfile ? user : otherUser)?.username || "user"}
                   </ThemedText>
                 </View>
 
@@ -533,11 +578,11 @@ export default function ProfileScreen() {
                     Full Name
                   </ThemedText>
                   <ThemedText type="body" style={styles.fullName}>
-                    {user?.fullName || "User"}
+                    {(isOwnProfile ? user : otherUser)?.fullName || "User"}
                   </ThemedText>
                 </View>
 
-                {user?.age ? (
+                {(isOwnProfile ? user : otherUser)?.age ? (
                   <View style={styles.infoRow}>
                     <ThemedText
                       type="small"
@@ -545,11 +590,11 @@ export default function ProfileScreen() {
                     >
                       Age
                     </ThemedText>
-                    <ThemedText type="body">{user.age}</ThemedText>
+                    <ThemedText type="body">{(isOwnProfile ? user : otherUser)?.age}</ThemedText>
                   </View>
                 ) : null}
 
-                {user?.gender ? (
+                {(isOwnProfile ? user : otherUser)?.gender ? (
                   <View style={styles.infoRow}>
                     <ThemedText
                       type="small"
@@ -557,18 +602,13 @@ export default function ProfileScreen() {
                     >
                       Gender
                     </ThemedText>
-                    <ThemedText
-                      type="body"
-                      style={{ textTransform: "capitalize" }}
-                    >
-                      {user.gender}
-                    </ThemedText>
+                    <ThemedText type="body">{(isOwnProfile ? user : otherUser)?.gender}</ThemedText>
                   </View>
                 ) : null}
               </View>
             </View>
 
-            {user?.bio ? (
+            {(isOwnProfile ? user : otherUser)?.bio ? (
               <View
                 style={[
                   styles.bioSection,
@@ -579,7 +619,7 @@ export default function ProfileScreen() {
                   type="body"
                   style={{ color: theme.textSecondary, fontStyle: "italic" }}
                 >
-                  {user.bio}
+                  {(isOwnProfile ? user : otherUser)?.bio}
                 </ThemedText>
               </View>
             ) : null}
@@ -593,7 +633,7 @@ export default function ProfileScreen() {
             >
               <View style={styles.statBox}>
                 <ThemedText type="h3" style={{ color: theme.yellow }}>
-                  {user?.coins || 0}
+                  {(isOwnProfile ? user : otherUser)?.coins || 0}
                 </ThemedText>
                 <ThemedText type="xs" style={{ color: theme.textSecondary }}>
                   COINS
@@ -604,7 +644,7 @@ export default function ProfileScreen() {
               />
               <View style={styles.statBox}>
                 <ThemedText type="h3" style={{ color: theme.link }}>
-                  {Array.isArray(user?.awards) ? user.awards.length : 0}
+                  {(isOwnProfile ? user : otherUser)?.trophies || 0}
                 </ThemedText>
                 <ThemedText type="xs" style={{ color: theme.textSecondary }}>
                   TROPHIES
@@ -615,7 +655,7 @@ export default function ProfileScreen() {
               />
               <View style={styles.statBox}>
                 <ThemedText type="h3" style={{ color: theme.accent }}>
-                  {user?.totalPoints || 0}
+                  {(isOwnProfile ? user : otherUser)?.totalPoints || 0}
                 </ThemedText>
                 <ThemedText type="xs" style={{ color: theme.textSecondary }}>
                   XP POINTS
@@ -625,45 +665,63 @@ export default function ProfileScreen() {
           </Card>
         </Animated.View>
 
-        <AdBanner variant="compact" />
-
-        <Animated.View entering={FadeInDown.delay(200).springify()}>
-          <ThemedText
-            type="xs"
-            style={[styles.sectionLabel, { color: theme.textSecondary }]}
-          >
-            MY ORDERS
-          </ThemedText>
-          <Card style={styles.menuCard}>
-            {ordersItems.map((item, index) => (
-              <MenuRow
-                key={item.label}
-                item={item}
-                isLast={index === ordersItems.length - 1}
-                onPress={() => handleNavigate(item.route)}
-              />
-            ))}
+        {/* Privacy Notice */}
+        {(isOwnProfile ? user : otherUser)?.isPrivate && !isOwnProfile && (
+          <Card style={{ padding: Spacing.lg, alignItems: "center", gap: Spacing.sm, marginTop: Spacing.md }}>
+            <Feather name="lock" size={32} color="#A78BFA" />
+            <ThemedText type="body" style={{ textAlign: "center", color: "#C4B5FD" }}>
+              This account is private. Follow to see their achievements and dreams.
+            </ThemedText>
           </Card>
-        </Animated.View>
+        )}
 
-        <Animated.View entering={FadeInDown.delay(250).springify()}>
-          <ThemedText
-            type="xs"
-            style={[styles.sectionLabel, { color: theme.textSecondary }]}
-          >
-            MY ACCOUNT
-          </ThemedText>
-          <Card style={styles.menuCard}>
-            {accountItems.map((item, index) => (
-              <MenuRow
-                key={item.label}
-                item={item}
-                isLast={index === accountItems.length - 1}
-                onPress={() => handleNavigate(item.route)}
-              />
-            ))}
-          </Card>
-        </Animated.View>
+        {(!(isOwnProfile ? user : otherUser)?.isPrivate || isOwnProfile) && (
+          <>
+            <AdBanner variant="compact" />
+
+            {isOwnProfile && (
+              <>
+                <Animated.View entering={FadeInDown.delay(200).springify()}>
+                  <ThemedText
+                    type="xs"
+                    style={[styles.sectionLabel, { color: theme.textSecondary }]}
+                  >
+                    MY ORDERS
+                  </ThemedText>
+                  <Card style={styles.menuCard}>
+                    {ordersItems.map((item, index) => (
+                      <MenuRow
+                        key={item.label}
+                        item={item}
+                        isLast={index === ordersItems.length - 1}
+                        onPress={() => handleNavigate(item.route)}
+                      />
+                    ))}
+                  </Card>
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.delay(250).springify()}>
+                  <ThemedText
+                    type="xs"
+                    style={[styles.sectionLabel, { color: theme.textSecondary }]}
+                  >
+                    MY ACCOUNT
+                  </ThemedText>
+                  <Card style={styles.menuCard}>
+                    {accountItems.map((item, index) => (
+                      <MenuRow
+                        key={item.label}
+                        item={item}
+                        isLast={index === accountItems.length - 1}
+                        onPress={() => handleNavigate(item.route)}
+                      />
+                    ))}
+                  </Card>
+                </Animated.View>
+              </>
+            )}
+          </>
+        )}
       </ScrollView>
 
       <Modal visible={showEditModal} animationType="slide" transparent>
@@ -885,6 +943,20 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     marginBottom: Spacing.sm,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerTitle: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    letterSpacing: 1,
+    marginLeft: Spacing.sm,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
   },
   profileCard: {
     padding: Spacing.xl,

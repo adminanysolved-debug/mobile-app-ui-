@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl, Platform } from "react-native";
+import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, RefreshControl, Platform, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -16,6 +16,36 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+
+function PuzzleCover({ imageUrl, progress }: { imageUrl: string; progress: number }) {
+  const pieces = 16; // 4x4 grid
+  const revealedPieces = Math.floor((progress / 100) * pieces);
+  
+  return (
+    <View style={styles.puzzleContainer}>
+      <Image source={{ uri: imageUrl }} style={styles.puzzleImage} />
+      <View style={styles.gridOverlay}>
+        {Array.from({ length: pieces }).map((_, i) => (
+          <View 
+            key={i} 
+            style={[
+              styles.puzzlePiece,
+              { opacity: i < revealedPieces ? 0 : 0.85 }
+            ]} 
+          >
+            {i >= revealedPieces && (
+              <Feather name="lock" size={16} color="rgba(255,255,255,0.3)" />
+            )}
+          </View>
+        ))}
+      </View>
+      <LinearGradient
+        colors={["transparent", "rgba(10, 15, 30, 0.8)"]}
+        style={styles.puzzleGradient}
+      />
+    </View>
+  );
+}
 
 interface Dream {
   id: string;
@@ -298,7 +328,11 @@ export default function DreamDetailScreen() {
         }
       >
         <Animated.View entering={FadeInDown.springify()}>
-          <View style={[styles.header, { justifyContent: 'flex-end' }]}>
+          {dream.imageUrl && (
+            <PuzzleCover imageUrl={dream.imageUrl} progress={dream.progress || 0} />
+          )}
+
+          <View style={[styles.header, { justifyContent: 'flex-end', marginTop: dream.imageUrl ? -40 : 0 }]}>
             <View style={styles.actionButtons}>
               {isOwner && (
                 <Pressable
@@ -845,5 +879,39 @@ const styles = StyleSheet.create({
     color: "#A78BFA",
     fontSize: 16,
     fontWeight: "600",
+  },
+  puzzleContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    marginBottom: Spacing.lg,
+    position: 'relative',
+  },
+  puzzleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  puzzlePiece: {
+    width: '25%',
+    height: '25%',
+    backgroundColor: '#0F172A',
+    borderWidth: 0.5,
+    borderColor: 'rgba(139, 92, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  puzzleGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
   },
 });

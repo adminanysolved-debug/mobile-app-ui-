@@ -983,6 +983,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/dreams/:id/accept", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const dreamId = req.params.id as string;
+      const userId = req.user!.id;
+      
+      const dream = await storage.getDream(dreamId);
+      if (!dream) return res.status(404).json({ error: "Dream not found" });
+
+      await storage.updateDreamMemberStatus(dreamId, userId, "accepted");
+      
+      const user = await storage.getUser(userId);
+      // Update dream progress or notify challenger
+      const owner = await storage.getUser(dream.userId);
+      await storage.createNotification({
+        userId: dream.userId,
+        title: "Challenge Accepted",
+        description: `${user?.fullName || user?.username || "Someone"} accepted your challenge: ${dream.title}`,
+        type: "social",
+        actionType: "challenge_accepted",
+        actionData: { dreamId }
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to accept challenge" });
+    }
+  });
+
+  app.post("/api/dreams/:id/decline", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const dreamId = req.params.id as string;
+      const userId = req.user!.id;
+      await storage.updateDreamMemberStatus(dreamId, userId, "declined");
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to decline challenge" });
+    }
+  });
+
   app.get("/api/dreams/:id", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const id = req.params.id as string;
@@ -2014,13 +2053,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id", async (req, res) => {
+  app.get("/api/users/:id", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const id = req.params.id as string;
+      const requesterId = req.user!.id;
+      
       const user = await storage.getUser(id);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
+
+      const { followers, following } = await storage.getConnections(id);
+      const isFollowing = followers.some(f => f.id === requesterId);
+      const isOwner = requesterId === id;
+      
+      const privacy = (user.privacySettings as any)?.profileVisibility || "public";
+      const isPrivate = privacy === "private" && !isFollowing && !isOwner;
 
       // Data Transfer Object stripping secure properties
       const {
@@ -2031,7 +2079,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...userDto
       } = user;
 
-      res.json(userDto);
+      if (isPrivate) {
+        return res.json({
+          ...userDto,
+          bio: "This profile is private",
+          isPrivate: true,
+          dreams: [],
+          achievements: [],
+          trophies: 0,
+          awards: 0
+        });
+      }
+
+      res.json({
+        ...userDto,
+        isPrivate: false,
+        followersCount: followers.length,
+        followingCount: following.length,
+        isFollowing
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to get user" });
     }

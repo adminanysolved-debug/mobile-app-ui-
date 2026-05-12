@@ -113,6 +113,12 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const dreamMemberStatusEnum = pgEnum("dream_member_status", [
+  "pending",
+  "accepted",
+  "declined",
+]);
+
 export const dreams = pgTable("dreams", {
   id: varchar("id")
     .primaryKey()
@@ -150,6 +156,7 @@ export const dreamMembers = pgTable("dream_members", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   role: text("role").default("member"),
+  status: dreamMemberStatusEnum("status").default("accepted"),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
