@@ -195,6 +195,7 @@ export default function SettingsScreen() {
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={true}
+      >
         {/* Header */}
         <View style={styles.headerContainer}>
           <View style={styles.headerRow}>
