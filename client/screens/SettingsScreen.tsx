@@ -196,23 +196,6 @@ export default function SettingsScreen() {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={true}
       >
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerRow}>
-            <Pressable 
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.goBack();
-              }}
-              style={styles.backButton}
-            >
-              <Feather name="arrow-left" size={24} color="#FFFFFF" />
-            </Pressable>
-            <ThemedText type="h3" style={styles.headerTitle}>
-              SETTINGS
-            </ThemedText>
-          </View>
-        </View>
 
         <Animated.View entering={FadeInDown.springify()}>
           <Card style={styles.userInfoCard}>

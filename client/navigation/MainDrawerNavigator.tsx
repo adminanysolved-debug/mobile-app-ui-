@@ -215,12 +215,12 @@ export default function MainDrawerNavigator() {
       <Drawer.Screen 
         name="ProfileMain" 
         component={ProfileStackNavigator} 
-        options={{ headerShown: false }}
+        options={{ headerTitle: "MY PROFILE" }}
       />
       <Drawer.Screen 
         name="SettingsMain" 
         component={SettingsStackNavigator} 
-        options={{ headerShown: false }}
+        options={{ headerTitle: "SETTINGS" }}
       />
       <Drawer.Screen 
         name="WalletMain" 

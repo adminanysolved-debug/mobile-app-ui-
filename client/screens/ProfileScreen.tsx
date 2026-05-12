@@ -478,23 +478,6 @@ export default function ProfileScreen() {
         contentContainerStyle={[styles.scrollContent, safePadding]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header - Non-sticky to prevent overlap */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerRow}>
-            <Pressable 
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.goBack();
-              }}
-              style={styles.backButton}
-            >
-              <Feather name="arrow-left" size={24} color="#FFFFFF" />
-            </Pressable>
-            <ThemedText type="h3" style={styles.headerTitle}>
-              {isOwnProfile ? "MY PROFILE" : (otherUser?.username?.toUpperCase() || "PROFILE")}
-            </ThemedText>
-          </View>
-        </View>
 
         <Animated.View
           entering={FadeInDown.springify()}

@@ -29,20 +29,9 @@ export default function SettingsStackNavigator() {
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={({ navigation }) => ({
-          headerTitle: "SETTINGS",
-          headerLeft: () => (
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                (navigation as any).navigate("Home");
-              }}
-              style={{ marginRight: 16 }}
-            >
-              <Feather name="arrow-left" size={24} color={theme.text} />
-            </Pressable>
-          ),
-        })}
+        options={{
+          headerShown: false,
+        }}
       />
       <Stack.Screen
         name="Subscription"

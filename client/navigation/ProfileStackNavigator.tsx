@@ -28,20 +28,9 @@ export default function ProfileStackNavigator() {
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
-        options={({ navigation }) => ({
-          headerTitle: "PERSONAL PROFILE",
-          headerLeft: () => (
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                (navigation as any).navigate("Home");
-              }}
-              style={{ marginRight: 16 }}
-            >
-              <Feather name="arrow-left" size={24} color={theme.text} />
-            </Pressable>
-          ),
-        })}
+        options={{
+          headerShown: false,
+        }}
       />
       <Stack.Screen
         name="Wallet"
