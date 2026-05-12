@@ -107,9 +107,12 @@ export default function NewsFeedScreen() {
     if (!userId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (userId === user?.id) {
-       navigation.navigate("Profile");
+      navigation.navigate("ProfileMain", { screen: "Profile" });
     } else {
-       navigation.navigate("PublicProfile", { userId });
+      navigation.navigate("ProfileMain", { 
+        screen: "Profile", 
+        params: { userId } 
+      });
     }
   };
 

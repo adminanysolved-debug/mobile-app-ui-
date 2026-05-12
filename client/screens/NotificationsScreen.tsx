@@ -139,7 +139,15 @@ export default function NotificationsScreen() {
       }
     }
 
-    // Don't open modal if we're just deleting
+    // Social notifications (like follows) should open the user's profile
+    if (notification.type === "social" && notification.actionData?.userId) {
+      navigation.navigate("ProfileMain" as any, { 
+        screen: "Profile", 
+        params: { userId: notification.actionData.userId } 
+      });
+      return;
+    }
+
     if (notification.type === "reward") {
       navigation.goBack();
       return;

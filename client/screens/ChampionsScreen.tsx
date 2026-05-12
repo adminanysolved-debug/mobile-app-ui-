@@ -362,9 +362,22 @@ export default function ChampionsScreen() {
                   </View>
                 </View>
 
-                <Button onPress={handleCloseModal} style={styles.closeButton}>
-                  Close
-                </Button>
+                <View style={{ gap: Spacing.md, width: '100%' }}>
+                  <Button 
+                    onPress={() => {
+                      handleCloseModal();
+                      navigation.navigate("ProfileMain", { 
+                        screen: "Profile", 
+                        params: { userId: selectedUser.id } 
+                      });
+                    }}
+                  >
+                    View Profile
+                  </Button>
+                  <Button variant="outline" onPress={handleCloseModal} style={styles.closeButton}>
+                    Close
+                  </Button>
+                </View>
               </View>
             </Animated.View>
           ) : null}

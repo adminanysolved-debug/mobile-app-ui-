@@ -213,29 +213,41 @@ export default function ConnectionsScreen() {
     }
   };
 
+  const navigation = useNavigation<any>();
   const connections = activeTab === "followers" ? followers : activeTab === "following" ? following : discoverUsers;
 
   const renderConnection = ({ item, index }: { item: Connection; index: number }) => (
     <ScreenAnim delay={index * 40} distance={500} style={{ paddingHorizontal: Spacing.lg }}>
       <Card style={styles.connectionCard}>
-        {(item.profilePhoto || item.avatar) ? (
-          <Animated.Image
-            source={{ uri: (item.profilePhoto || item.avatar)! }}
-            style={styles.avatar as any}
-          />
-        ) : (
-          <LinearGradient
-            colors={[theme.blue, theme.purple]}
-            style={styles.avatar}
-          >
-            <ThemedText style={styles.avatarText}>{(item.fullName || item.username)?.charAt(0).toUpperCase()}</ThemedText>
-          </LinearGradient>
-        )}
-        
-        <View style={styles.userInfo}>
-          <ThemedText type="bodyMedium" style={{ fontWeight: '600' }}>{item.fullName || item.username}</ThemedText>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>@{item.username}</ThemedText>
-        </View>
+        <Pressable 
+          style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.navigate("ProfileMain", { 
+              screen: "Profile", 
+              params: { userId: item.id } 
+            });
+          }}
+        >
+          {(item.profilePhoto || item.avatar) ? (
+            <Animated.Image
+              source={{ uri: (item.profilePhoto || item.avatar)! }}
+              style={styles.avatar as any}
+            />
+          ) : (
+            <LinearGradient
+              colors={[theme.blue, theme.purple]}
+              style={styles.avatar}
+            >
+              <ThemedText style={styles.avatarText}>{(item.fullName || item.username)?.charAt(0).toUpperCase()}</ThemedText>
+            </LinearGradient>
+          )}
+          
+          <View style={styles.userInfo}>
+            <ThemedText type="bodyMedium" style={{ fontWeight: '600' }}>{item.fullName || item.username}</ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>@{item.username}</ThemedText>
+          </View>
+        </Pressable>
 
         <Pressable
           onPress={() => item.isFollowing ? handleUnfollow(item.id) : handleFollow(item.id)}
