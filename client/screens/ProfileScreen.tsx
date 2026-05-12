@@ -1,10 +1,31 @@
 import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, TextInput, Image, Alert, ActionSheetIOS, Platform, ActivityIndicator } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Modal,
+  TextInput,
+  Image,
+  Alert,
+  ActionSheetIOS,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring, withDelay, withSequence, withTiming, withRepeat } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withDelay,
+  withSequence,
+  withTiming,
+  withRepeat,
+} from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -17,13 +38,13 @@ import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import { auth } from "@/lib/firebase";
-import { useSafeScrollPadding } from '@/hooks/useSafeArea';
+import { useSafeScrollPadding } from "@/hooks/useSafeArea";
 
 type MenuItem = {
   icon: keyof typeof Feather.glyphMap;
   label: string;
   route?: string;
-  iconBg: string;
+  iconBg?: string;
   iconColor: string;
   danger?: boolean;
 };
@@ -42,7 +63,6 @@ const ordersItems: MenuItem[] = [
     iconColor: "#C4B5FD",
   },
 ];
-
 
 const accountItems: MenuItem[] = [
   {
@@ -80,17 +100,24 @@ function MenuRow({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.menuRow, !isLast ? { borderBottomWidth: 1, borderBottomColor: theme.border } : null]}
+      style={[
+        styles.menuRow,
+        !isLast
+          ? { borderBottomWidth: 1, borderBottomColor: theme.border }
+          : null,
+      ]}
     >
-      <View style={[styles.menuIcon, { backgroundColor: item.iconBg }]}>
+      <View
+        style={[
+          styles.menuIcon,
+          { backgroundColor: item.iconBg || "rgba(0,0,0,0.05)" },
+        ]}
+      >
         <Feather name={item.icon} size={20} color={item.iconColor} />
       </View>
       <ThemedText
         type="body"
-        style={[
-          styles.menuLabel,
-          item.danger ? { color: "#DC2626" } : null,
-        ]}
+        style={[styles.menuLabel, item.danger ? { color: "#DC2626" } : null]}
       >
         {item.label}
       </ThemedText>
@@ -112,7 +139,9 @@ export default function ProfileScreen() {
   const [editBio, setEditBio] = useState(user?.bio || "");
   const [editAge, setEditAge] = useState(user?.age?.toString() || "");
   const [editGender, setEditGender] = useState(user?.gender || "");
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profilePhoto || user?.profileImage || null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(
+    user?.profilePhoto || user?.profileImage || null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
@@ -138,25 +167,34 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     // Jump over username to the top of the profile card
-    avatarTranslateY.value = withDelay(300, withSpring(-10, { damping: 6, stiffness: 80 }));
-    avatarTranslateX.value = withDelay(300, withSpring(30, { damping: 6, stiffness: 80 }, () => {
-      // Wave hand after landing
-      avatarRotation.value = withRepeat(withSequence(
-        withTiming(-15, { duration: 150 }),
-        withTiming(15, { duration: 150 }),
-        withTiming(-15, { duration: 150 }),
-        withTiming(0, { duration: 150 })
-      ), 3);
-    }));
+    avatarTranslateY.value = withDelay(
+      300,
+      withSpring(-10, { damping: 6, stiffness: 80 }),
+    );
+    avatarTranslateX.value = withDelay(
+      300,
+      withSpring(30, { damping: 6, stiffness: 80 }, () => {
+        // Wave hand after landing
+        avatarRotation.value = withRepeat(
+          withSequence(
+            withTiming(-15, { duration: 150 }),
+            withTiming(15, { duration: 150 }),
+            withTiming(-15, { duration: 150 }),
+            withTiming(0, { duration: 150 }),
+          ),
+          3,
+        );
+      }),
+    );
   }, []);
 
   const animated3DAvatarStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: avatarTranslateX.value },
       { translateY: avatarTranslateY.value },
-      { rotate: `${avatarRotation.value}deg` }
+      { rotate: `${avatarRotation.value}deg` },
     ],
-    position: 'absolute',
+    position: "absolute",
     top: -55,
     right: 20,
     zIndex: 999,
@@ -187,10 +225,10 @@ export default function ProfileScreen() {
   const showPhotoOptions = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Upload New Photo', 'Remove Profile Photo'],
+          options: ["Cancel", "Upload New Photo", "Remove Profile Photo"],
           cancelButtonIndex: 0,
           destructiveButtonIndex: 2,
         },
@@ -200,7 +238,7 @@ export default function ProfileScreen() {
           } else if (buttonIndex === 2) {
             handleRemovePhoto();
           }
-        }
+        },
       );
     } else {
       setShowPhotoOptionsModal(true);
@@ -210,7 +248,8 @@ export default function ProfileScreen() {
   const handlePickImage = async () => {
     try {
       // Request permission
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permissionResult.granted) {
         alert("Permission to access camera roll is required!");
@@ -219,7 +258,7 @@ export default function ProfileScreen() {
 
       // Pick image
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
+        mediaTypes: "images",
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -229,34 +268,31 @@ export default function ProfileScreen() {
         await uploadProfilePhoto(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      console.error("Error picking image:", error);
     }
     setShowPhotoOptionsModal(false);
   };
 
   const uploadProfilePhoto = async (uri: string) => {
-    if (!auth.currentUser) {
-      alert('Please sign in to upload a photo');
+    if (!token) {
+      alert("Please sign in to upload a photo");
       return;
     }
 
     setIsUploadingPhoto(true);
     try {
-      // Fetch fresh token from Firebase
-      const freshToken = await auth.currentUser.getIdToken(true);
-
       // Create form data
       const formData = new FormData();
-      const filename = uri.split('/').pop() || 'photo.jpg';
+      const filename = uri.split("/").pop() || "photo.jpg";
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const type = match ? `image/${match[1]}` : "image/jpeg";
 
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         const response = await fetch(uri);
         const blob = await response.blob();
-        formData.append('profilePhoto', blob, filename);
+        formData.append("profilePhoto", blob, filename);
       } else {
-        formData.append('profilePhoto', {
+        formData.append("profilePhoto", {
           uri,
           name: filename,
           type,
@@ -264,86 +300,86 @@ export default function ProfileScreen() {
       }
 
       // Upload to server with fresh token
-      const response = await fetch(new URL('/api/profile/photo', getApiUrl()).toString(), {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${freshToken}`,
+      const response = await fetch(
+        new URL("/api/profile/photo", getApiUrl()).toString(),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
         },
-        body: formData,
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
         setProfilePhoto(data.profilePhotoUrl);
-        updateUser({ ...user, profilePhoto: data.profilePhotoUrl, profileImage: data.profilePhotoUrl });
+        updateUser({
+          ...user,
+          profilePhoto: data.profilePhotoUrl,
+          profileImage: data.profilePhotoUrl,
+        });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         const errorData = await response.json();
-        alert(`Failed to upload photo: ${errorData.error || 'Unknown error'}`);
+        alert(`Failed to upload photo: ${errorData.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error('Error uploading photo:', error);
-      alert('Failed to upload photo. Please try again.');
+      console.error("Error uploading photo:", error);
+      alert("Failed to upload photo. Please try again.");
     } finally {
       setIsUploadingPhoto(false);
     }
   };
 
   const handleRemovePhoto = async () => {
-    if (!auth.currentUser) {
-      alert('Please sign in to remove photo');
+    if (!token) {
+      alert("Please sign in to remove photo");
       return;
     }
 
     Alert.alert(
-      'Remove Photo',
-      'Are you sure you want to remove your profile photo?',
+      "Remove Photo",
+      "Are you sure you want to remove your profile photo?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Remove',
-          style: 'destructive',
+          text: "Remove",
+          style: "destructive",
           onPress: async () => {
             setIsUploadingPhoto(true);
             try {
-              const firebaseUser = auth.currentUser;
-
-              if (!firebaseUser) {
-                alert('Session expired. Please login again.');
-                setIsUploadingPhoto(false);
-                return;
-              }
-
-              // 🔥 THIS is the FIX
-              const freshToken = await firebaseUser.getIdToken(true);
-
               const response = await fetch(
-                new URL('/api/profile/photo', getApiUrl()).toString(),
+                new URL("/api/profile/photo", getApiUrl()).toString(),
                 {
-                  method: 'DELETE',
+                  method: "DELETE",
                   headers: {
-                    Authorization: `Bearer ${freshToken}`,
+                    Authorization: `Bearer ${token}`,
                   },
-                }
+                },
               );
 
               if (response.ok) {
                 updateUser({ profilePhoto: undefined });
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Success,
+                );
               } else {
                 const errorData = await response.json();
-                alert(`Failed to remove photo: ${errorData.error || 'Unknown error'}`);
+                alert(
+                  `Failed to remove photo: ${errorData.error || "Unknown error"}`,
+                );
               }
             } catch (error) {
-              console.error('Error removing photo:', error);
-              alert('Failed to remove photo. Please try again.');
+              console.error("Error removing photo:", error);
+              alert("Failed to remove photo. Please try again.");
             } finally {
               setIsUploadingPhoto(false);
               setShowPhotoOptionsModal(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -351,19 +387,22 @@ export default function ProfileScreen() {
     if (!token) return;
     setIsLoading(true);
     try {
-      const response = await fetch(new URL('/api/profile', getApiUrl()).toString(), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        new URL("/api/profile", getApiUrl()).toString(),
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fullName: editFullName,
+            bio: editBio,
+            age: editAge ? parseInt(editAge) : null,
+            gender: editGender || null,
+          }),
         },
-        body: JSON.stringify({
-          fullName: editFullName,
-          bio: editBio,
-          age: editAge ? parseInt(editAge) : null,
-          gender: editGender || null,
-        }),
-      });
+      );
       if (response.ok) {
         // Fetch fresh user data from backend so the profile card updates immediately
         await refreshUser();
@@ -371,7 +410,7 @@ export default function ProfileScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating profile:", error);
     } finally {
       setIsLoading(false);
     }
@@ -381,15 +420,18 @@ export default function ProfileScreen() {
     if (!token) return;
     setIsLoading(true);
     try {
-      const response = await fetch(new URL('/api/profile', getApiUrl()).toString(), {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(
+        new URL("/api/profile", getApiUrl()).toString(),
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (response.ok) {
         await logout();
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
+      console.error("Error deleting account:", error);
     } finally {
       setIsLoading(false);
       setShowDeleteModal(false);
@@ -400,10 +442,7 @@ export default function ProfileScreen() {
     <GalaxyBackground>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          safePadding,
-        ]}
+        contentContainerStyle={[styles.scrollContent, safePadding]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header - Non-sticky to prevent overlap */}
@@ -416,9 +455,14 @@ export default function ProfileScreen() {
           </ThemedText>
         </View>
 
-        <Animated.View entering={FadeInDown.springify()} style={{ position: 'relative' }}>
+        <Animated.View
+          entering={FadeInDown.springify()}
+          style={{ position: "relative" }}
+        >
           <Animated.Image
-            source={{ uri: 'https://static.vecteezy.com/system/resources/thumbnails/023/125/465/small_2x/3d-illustration-of-an-astronaut-waving-isolated-on-a-transparent-background-png.png' }}
+            source={{
+              uri: "https://static.vecteezy.com/system/resources/thumbnails/023/125/465/small_2x/3d-illustration-of-an-astronaut-waving-isolated-on-a-transparent-background-png.png",
+            }}
             style={[{ width: 120, height: 120 }, animated3DAvatarStyle]}
             resizeMode="contain"
           />
@@ -426,9 +470,15 @@ export default function ProfileScreen() {
             <View style={styles.profileContainer}>
               {/* Profile Photo with Upload Button - LEFT SIDE */}
               <View style={styles.avatarSection}>
-                <Pressable onPress={showPhotoOptions} style={styles.avatarContainer}>
+                <Pressable
+                  onPress={showPhotoOptions}
+                  style={styles.avatarContainer}
+                >
                   {profilePhoto ? (
-                    <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
+                    <Image
+                      source={{ uri: profilePhoto }}
+                      style={styles.avatarImage}
+                    />
                   ) : (
                     <LinearGradient
                       colors={theme.gradient}
@@ -463,7 +513,10 @@ export default function ProfileScreen() {
                 <View style={styles.infoRow}>
                   <ThemedText
                     type="xs"
-                    style={[styles.profileLabel, { color: theme.textSecondary }]}
+                    style={[
+                      styles.profileLabel,
+                      { color: theme.textSecondary },
+                    ]}
                   >
                     USERNAME
                   </ThemedText>
@@ -486,21 +539,28 @@ export default function ProfileScreen() {
 
                 {user?.age ? (
                   <View style={styles.infoRow}>
-                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary }}
+                    >
                       Age
                     </ThemedText>
-                    <ThemedText type="body">
-                      {user.age}
-                    </ThemedText>
+                    <ThemedText type="body">{user.age}</ThemedText>
                   </View>
                 ) : null}
 
                 {user?.gender ? (
                   <View style={styles.infoRow}>
-                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary }}
+                    >
                       Gender
                     </ThemedText>
-                    <ThemedText type="body" style={{ textTransform: "capitalize" }}>
+                    <ThemedText
+                      type="body"
+                      style={{ textTransform: "capitalize" }}
+                    >
                       {user.gender}
                     </ThemedText>
                   </View>
@@ -509,36 +569,63 @@ export default function ProfileScreen() {
             </View>
 
             {user?.bio ? (
-              <View style={[styles.bioSection, { borderTopWidth: 1, borderTopColor: theme.border }]}>
-                <ThemedText type="body" style={{ color: theme.textSecondary, fontStyle: "italic" }}>
+              <View
+                style={[
+                  styles.bioSection,
+                  { borderTopWidth: 1, borderTopColor: theme.border },
+                ]}
+              >
+                <ThemedText
+                  type="body"
+                  style={{ color: theme.textSecondary, fontStyle: "italic" }}
+                >
                   {user.bio}
                 </ThemedText>
               </View>
             ) : null}
 
             {/* Wallet Stats Section */}
-            <View style={[styles.statsSection, { borderTopWidth: 1, borderTopColor: theme.border }]}>
+            <View
+              style={[
+                styles.statsSection,
+                { borderTopWidth: 1, borderTopColor: theme.border },
+              ]}
+            >
               <View style={styles.statBox}>
-                <ThemedText type="h3" style={{ color: theme.yellow }}>{user?.coins || 0}</ThemedText>
-                <ThemedText type="xs" style={{ color: theme.textSecondary }}>COINS</ThemedText>
+                <ThemedText type="h3" style={{ color: theme.yellow }}>
+                  {user?.coins || 0}
+                </ThemedText>
+                <ThemedText type="xs" style={{ color: theme.textSecondary }}>
+                  COINS
+                </ThemedText>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: theme.border }]}
+              />
               <View style={styles.statBox}>
-                <ThemedText type="h3" style={{ color: theme.link }}>{Array.isArray(user?.awards) ? user.awards.length : 0}</ThemedText>
-                <ThemedText type="xs" style={{ color: theme.textSecondary }}>TROPHIES</ThemedText>
+                <ThemedText type="h3" style={{ color: theme.link }}>
+                  {Array.isArray(user?.awards) ? user.awards.length : 0}
+                </ThemedText>
+                <ThemedText type="xs" style={{ color: theme.textSecondary }}>
+                  TROPHIES
+                </ThemedText>
               </View>
-              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+              <View
+                style={[styles.statDivider, { backgroundColor: theme.border }]}
+              />
               <View style={styles.statBox}>
-                <ThemedText type="h3" style={{ color: theme.accent }}>{user?.totalPoints || 0}</ThemedText>
-                <ThemedText type="xs" style={{ color: theme.textSecondary }}>XP POINTS</ThemedText>
+                <ThemedText type="h3" style={{ color: theme.accent }}>
+                  {user?.totalPoints || 0}
+                </ThemedText>
+                <ThemedText type="xs" style={{ color: theme.textSecondary }}>
+                  XP POINTS
+                </ThemedText>
               </View>
             </View>
           </Card>
         </Animated.View>
 
         <AdBanner variant="compact" />
-
-
 
         <Animated.View entering={FadeInDown.delay(200).springify()}>
           <ThemedText
@@ -558,7 +645,6 @@ export default function ProfileScreen() {
             ))}
           </Card>
         </Animated.View>
-
 
         <Animated.View entering={FadeInDown.delay(250).springify()}>
           <ThemedText
@@ -582,36 +668,88 @@ export default function ProfileScreen() {
 
       <Modal visible={showEditModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h3" style={styles.modalTitle}>Edit Profile</ThemedText>
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Full Name</ThemedText>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Edit Profile
+            </ThemedText>
+            <ThemedText
+              type="small"
+              style={[styles.inputLabel, { color: theme.textSecondary }]}
+            >
+              Full Name
+            </ThemedText>
             <TextInput
-              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               value={editFullName}
               onChangeText={setEditFullName}
               placeholder="Enter your full name"
               placeholderTextColor={theme.textMuted}
             />
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Age</ThemedText>
+            <ThemedText
+              type="small"
+              style={[styles.inputLabel, { color: theme.textSecondary }]}
+            >
+              Age
+            </ThemedText>
             <TextInput
-              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               value={editAge}
               onChangeText={setEditAge}
               placeholder="Enter your age"
               placeholderTextColor={theme.textMuted}
               keyboardType="numeric"
             />
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Gender</ThemedText>
+            <ThemedText
+              type="small"
+              style={[styles.inputLabel, { color: theme.textSecondary }]}
+            >
+              Gender
+            </ThemedText>
             <TextInput
-              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               value={editGender}
               onChangeText={setEditGender}
               placeholder="Enter your gender"
               placeholderTextColor={theme.textMuted}
             />
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Bio</ThemedText>
+            <ThemedText
+              type="small"
+              style={[styles.inputLabel, { color: theme.textSecondary }]}
+            >
+              Bio
+            </ThemedText>
             <TextInput
-              style={[styles.textInput, styles.bioInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.textInput,
+                styles.bioInput,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               value={editBio}
               onChangeText={setEditBio}
               placeholder="Tell us about yourself"
@@ -619,10 +757,17 @@ export default function ProfileScreen() {
               multiline
             />
             <View style={styles.modalButtons}>
-              <Pressable onPress={() => setShowEditModal(false)} style={[styles.modalButton, { borderColor: theme.border }]}>
+              <Pressable
+                onPress={() => setShowEditModal(false)}
+                style={[styles.modalButton, { borderColor: theme.border }]}
+              >
                 <ThemedText type="body">Cancel</ThemedText>
               </Pressable>
-              <Button onPress={handleSaveProfile} disabled={isLoading} style={styles.saveButton}>
+              <Button
+                onPress={handleSaveProfile}
+                disabled={isLoading}
+                style={styles.saveButton}
+              >
                 {isLoading ? "Saving..." : "Save"}
               </Button>
             </View>
@@ -632,16 +777,37 @@ export default function ProfileScreen() {
 
       <Modal visible={showDeleteModal} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h3" style={styles.modalTitle}>Delete Account</ThemedText>
-            <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.xl }}>
-              Are you sure you want to delete your account? This action cannot be undone.
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Delete Account
+            </ThemedText>
+            <ThemedText
+              type="body"
+              style={{
+                color: theme.textSecondary,
+                textAlign: "center",
+                marginBottom: Spacing.xl,
+              }}
+            >
+              Are you sure you want to delete your account? This action cannot
+              be undone.
             </ThemedText>
             <View style={styles.modalButtons}>
-              <Pressable onPress={() => setShowDeleteModal(false)} style={[styles.modalButton, { borderColor: theme.border }]}>
+              <Pressable
+                onPress={() => setShowDeleteModal(false)}
+                style={[styles.modalButton, { borderColor: theme.border }]}
+              >
                 <ThemedText type="body">Cancel</ThemedText>
               </Pressable>
-              <Pressable onPress={handleDeleteAccount} style={[styles.deleteButton]}>
+              <Pressable
+                onPress={handleDeleteAccount}
+                style={[styles.deleteButton]}
+              >
                 <ThemedText type="body" style={{ color: theme.text }}>
                   {isLoading ? "Deleting..." : "Delete"}
                 </ThemedText>
@@ -653,26 +819,49 @@ export default function ProfileScreen() {
 
       {/* Photo Options Modal for Android */}
       <Modal visible={showPhotoOptionsModal} animationType="fade" transparent>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowPhotoOptionsModal(false)}>
-          <View style={[styles.photoOptionsContent, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h3" style={styles.modalTitle}>Profile Photo</ThemedText>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPhotoOptionsModal(false)}
+        >
+          <View
+            style={[
+              styles.photoOptionsContent,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Profile Photo
+            </ThemedText>
             <Pressable
               onPress={handlePickImage}
-              style={[styles.photoOptionButton, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
+              style={[
+                styles.photoOptionButton,
+                { borderBottomWidth: 1, borderBottomColor: theme.border },
+              ]}
             >
               <Feather name="upload" size={20} color={theme.text} />
-              <ThemedText type="body" style={styles.photoOptionText}>Upload New Photo</ThemedText>
+              <ThemedText type="body" style={styles.photoOptionText}>
+                Upload New Photo
+              </ThemedText>
             </Pressable>
             <Pressable
               onPress={handleRemovePhoto}
               style={styles.photoOptionButton}
             >
               <Feather name="trash-2" size={20} color="#DC2626" />
-              <ThemedText type="body" style={[styles.photoOptionText, { color: "#DC2626" }]}>Remove Profile Photo</ThemedText>
+              <ThemedText
+                type="body"
+                style={[styles.photoOptionText, { color: "#DC2626" }]}
+              >
+                Remove Profile Photo
+              </ThemedText>
             </Pressable>
             <Pressable
               onPress={() => setShowPhotoOptionsModal(false)}
-              style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
+              style={[
+                styles.cancelButton,
+                { backgroundColor: theme.backgroundSecondary },
+              ]}
             >
               <ThemedText type="body">Cancel</ThemedText>
             </Pressable>
@@ -835,14 +1024,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
   },
   statsSection: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: Spacing.lg,
     paddingTop: Spacing.md,
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    justifyContent: "space-around",
+    alignItems: "center",
   },
   statBox: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statDivider: {

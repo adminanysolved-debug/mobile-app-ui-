@@ -439,6 +439,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sendPhoneCode = async (phoneNumber: string, recaptchaContainerId: string): Promise<{ success: boolean; error?: string }> => {
+    // Native: use backend OTP (no Firebase native SDK needed)
+    if (Platform.OS !== 'web') {
+      try {
+        const response = await fetch(new URL('/api/auth/phone/send-otp', apiUrl).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber }),
+        });
+        const data = await response.json();
+        if (response.ok) return { success: true };
+        return { success: false, error: data.error || 'Failed to send code' };
+      } catch (error) {
+        return { success: false, error: 'Network error. Please try again.' };
+      }
+    }
+
+    // Web: use Firebase reCAPTCHA
     try {
       const appVerifier = setupRecaptcha(recaptchaContainerId);
       await sendPhoneOTP(phoneNumber, appVerifier);
@@ -447,41 +464,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Send phone code error:', error);
       clearRecaptcha();
       let errorMessage = 'Failed to send verification code';
-
-      if (error.code === 'auth/invalid-phone-number') {
-        errorMessage = 'Invalid phone number format. Use +1234567890';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many requests. Please try again later.';
-      } else if (error.code === 'auth/quota-exceeded') {
-        errorMessage = 'SMS quota exceeded. Please try again later.';
-      }
-
+      if (error.code === 'auth/invalid-phone-number') errorMessage = 'Invalid phone number format. Use +1234567890';
+      else if (error.code === 'auth/too-many-requests') errorMessage = 'Too many requests. Please try again later.';
       return { success: false, error: errorMessage };
     }
   };
 
   const verifyPhoneCode = async (code: string, email?: string, username?: string): Promise<{ success: boolean; error?: string }> => {
+    // Native: verify against backend OTP
+    if (Platform.OS !== 'web') {
+      try {
+        // We need the phone number — it's stored in the screen's state
+        // PhoneSignInScreen passes it via a module-level ref that we retrieve here
+        const phoneNumber = (globalThis as any).__pendingPhoneNumber;
+        if (!phoneNumber) return { success: false, error: 'Phone number not found. Please restart.' };
+
+        const response = await fetch(new URL('/api/auth/phone/verify-otp', apiUrl).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber, code, username, fullName: username }),
+        });
+        const data = await response.json();
+        if (!response.ok) return { success: false, error: data.error || 'Verification failed' };
+
+        // Store session from backend JWT
+        setUser(data.user);
+        setToken(data.token);
+        await AsyncStorage.setItem('auth_token', data.token);
+        await AsyncStorage.setItem('auth_user', JSON.stringify(data.user));
+        delete (globalThis as any).__pendingPhoneNumber;
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: 'Network error. Please try again.' };
+      }
+    }
+
+    // Web: verify via Firebase
     try {
       const userCredential = await verifyPhoneOTP(code);
-      if (!userCredential) {
-        return { success: false, error: 'Verification failed' };
-      }
+      if (!userCredential) return { success: false, error: 'Verification failed' };
 
       const firebaseToken = await userCredential.user.getIdToken();
       const phoneNumber = userCredential.user.phoneNumber;
 
       const response = await fetch(new URL('/api/auth/firebase', apiUrl).toString(), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${firebaseToken}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${firebaseToken}` },
         body: JSON.stringify({
           email: email || `${phoneNumber?.replace(/\+/g, '')}@phone.realdream.app`,
           fullName: username || 'Phone User',
           firebaseUid: userCredential.user.uid,
           authProvider: 'phone',
-          phoneNumber: phoneNumber,
+          phoneNumber,
         }),
       });
 
@@ -500,13 +534,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Verify phone code error:', error);
       clearRecaptcha();
       let errorMessage = 'Verification failed';
-
-      if (error.code === 'auth/invalid-verification-code') {
-        errorMessage = 'Invalid verification code';
-      } else if (error.code === 'auth/code-expired') {
-        errorMessage = 'Verification code has expired. Please request a new one.';
-      }
-
+      if (error.code === 'auth/invalid-verification-code') errorMessage = 'Invalid verification code';
+      else if (error.code === 'auth/code-expired') errorMessage = 'Code expired. Please request a new one.';
       return { success: false, error: errorMessage };
     }
   };

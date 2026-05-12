@@ -455,6 +455,7 @@ class DatabaseStorage implements IStorage {
       id: row.id,
       userId: row.user_id,
       content: row.content,
+      imageUrl: row.image_url,
       likes: row.likes,
       comments: row.comments,
       createdAt: row.created_at,

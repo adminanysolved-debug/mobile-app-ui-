@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { View, StyleSheet, FlatList, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -28,7 +28,7 @@ type Message = {
 };
 
 export default function ChatScreen({ route }: any) {
-  const { otherUserId, otherUserName } = route.params;
+  const { otherUserId, otherUserName, conversationId } = route.params;
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
@@ -37,84 +37,121 @@ export default function ChatScreen({ route }: any) {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const lastMessageIdRef = useRef<string | null>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pollDelayRef = useRef(8000);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchMessages = async () => {
+  // Build deterministic room ID from both user IDs
+  const roomId = conversationId || [user?.id, otherUserId].sort().join("_");
+
+  const fetchMessages = useCallback(async () => {
     try {
       const response = await fetch(
         new URL(`/api/messages/${otherUserId}`, getApiUrl()).toString(),
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
-
-        const latestId = data[data.length - 1]?.id ?? null;
-        if (latestId !== lastMessageIdRef.current) {
-          lastMessageIdRef.current = latestId;
-          pollDelayRef.current = 8000;
-        } else {
-          pollDelayRef.current = Math.min(pollDelayRef.current + 4000, 30000);
-        }
       }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [otherUserId, token]);
 
-  const scheduleNextPoll = () => {
-    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
-    pollTimerRef.current = setTimeout(async () => {
-      await fetchMessages();
-      scheduleNextPoll();
-    }, pollDelayRef.current);
-  };
+  const connectWS = useCallback(() => {
+    if (!token || !user?.id) return;
+    const apiUrl = getApiUrl();
+    const wsUrl = apiUrl.replace(/^http/, "ws");
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        // Authenticate
+        ws.send(JSON.stringify({ type: "auth", token }));
+        // Join room
+        ws.send(JSON.stringify({ type: "join", conversationId: roomId }));
+        setIsConnected(true);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "message") {
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === msg.id)) return prev;
+              return [...prev, {
+                id: msg.id,
+                senderId: msg.senderId,
+                receiverId: msg.senderId === user.id ? otherUserId : user.id,
+                content: msg.content,
+                isRead: false,
+                createdAt: msg.createdAt,
+              }];
+            });
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+          }
+        } catch {}
+      };
+
+      ws.onclose = () => {
+        setIsConnected(false);
+        // Auto-reconnect after 3s
+        reconnectTimer.current = setTimeout(connectWS, 3000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    } catch (e) {
+      console.error("[WS] Connection failed:", e);
+    }
+  }, [token, user?.id, roomId, otherUserId]);
 
   useEffect(() => {
-    pollDelayRef.current = 8000;
-    fetchMessages().then(() => scheduleNextPoll());
+    fetchMessages();
+    connectWS();
     return () => {
-      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
     };
   }, [otherUserId]);
+
+
 
   const handleSend = async () => {
     if (!newMessage.trim() || isSending) return;
 
     setIsSending(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const content = newMessage.trim();
+    setNewMessage("");
+
+    // Send via WebSocket for immediate delivery to all participants
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "message", content }));
+    }
 
     try {
-      const response = await fetch(new URL('/api/messages', getApiUrl()).toString(), {
+      // Also persist to DB via REST API
+      await fetch(new URL('/api/messages', getApiUrl()).toString(), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          receiverId: otherUserId,
-          content: newMessage.trim(),
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ receiverId: otherUserId, content }),
       });
-
-      if (response.ok) {
-        const message = await response.json();
-        setMessages(prev => [...prev, message]);
-        setNewMessage("");
-      }
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("Failed to persist message:", error);
     } finally {
       setIsSending(false);
     }
   };
+
+
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isMe = item.senderId === user?.id;
@@ -214,6 +251,12 @@ export default function ChatScreen({ route }: any) {
             },
           ]}
         >
+          {isConnected && (
+            <View style={styles.connectedBadge}>
+              <View style={styles.connectedDot} />
+              <ThemedText type="xs" style={{ color: "#22C55E", fontSize: 10 }}>Live</ThemedText>
+            </View>
+          )}
           <TextInput
             style={[
               styles.textInput,
@@ -328,5 +371,25 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     alignItems: "center",
     justifyContent: "center",
+  },
+  connectedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    position: "absolute",
+    top: -22,
+    right: Spacing.lg,
+    backgroundColor: "rgba(34, 197, 94, 0.15)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(34, 197, 94, 0.3)",
+  },
+  connectedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#22C55E",
   },
 });

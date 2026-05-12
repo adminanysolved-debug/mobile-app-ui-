@@ -18,6 +18,7 @@ interface User {
     coins: number;
     age?: number;
     gender?: string;
+    phone_number?: string;
     created_at: string;
 }
 
@@ -435,6 +436,7 @@ export default function Users() {
                                          <div className="space-y-2">
                                             {[
                                                 { label: 'Uplink ID', value: selectedUser.email },
+                                                { label: 'Phone', value: selectedUser.phone_number || 'N/A' },
                                                 { label: 'Neural Age', value: selectedUser.age || 'Unknown' },
                                                 { label: 'Signature', value: selectedUser.gender || 'Undefined' },
                                                 { label: 'Init Date', value: new Date(selectedUser.created_at).toLocaleDateString() }

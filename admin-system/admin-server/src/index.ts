@@ -227,7 +227,7 @@ app.post('/api/admin/change-password', authenticateAdmin, async (req: any, res: 
 app.get('/api/users', authenticateAdmin, async (req, res) => {
     try {
         const usersRes = await pool.query(`
-            SELECT id, email, username, full_name, auth_provider, is_vendor, vendor_business_name, vendor_tier, subscription_tier, profile_photo, profile_image, coins, age, gender, created_at 
+            SELECT id, email, username, full_name, phone_number, auth_provider, is_vendor, vendor_business_name, vendor_tier, subscription_tier, profile_photo, profile_image, coins, age, gender, created_at 
             FROM users 
             ORDER BY created_at DESC
         `);
@@ -241,7 +241,7 @@ app.get('/api/users', authenticateAdmin, async (req, res) => {
 app.get('/api/dreams', authenticateAdmin, async (req, res) => {
     try {
         const dreamsRes = await pool.query(`
-            SELECT d.id, d.title, d.type, d.privacy, d.progress, d.is_completed, d.created_at, u.username, u.full_name
+            SELECT d.id, d.title, d.type, d.privacy, d.progress, d.is_completed, d.created_at, d.image_url, u.username, u.full_name
             FROM dreams d
             LEFT JOIN users u ON d.user_id = u.id
             ORDER BY d.created_at DESC

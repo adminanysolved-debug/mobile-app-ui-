@@ -74,6 +74,9 @@ export default function PhoneSignInScreen({ navigation }: PhoneSignInScreenProps
     setError("");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    // Store phone for native OTP verification path in AuthContext
+    (globalThis as any).__pendingPhoneNumber = formatPhoneNumber(phoneNumber);
+
     const result = await sendPhoneCode(formatPhoneNumber(phoneNumber), recaptchaContainerId);
     setIsLoading(false);
 
@@ -82,6 +85,7 @@ export default function PhoneSignInScreen({ navigation }: PhoneSignInScreenProps
       setStep("code");
       setCountdown(60);
     } else {
+      delete (globalThis as any).__pendingPhoneNumber;
       setError(result.error || "Failed to send verification code");
     }
   };

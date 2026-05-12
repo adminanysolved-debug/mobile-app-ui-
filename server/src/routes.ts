@@ -431,6 +431,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Backend-based Phone OTP (works on native Android/iOS without Firebase native SDK) ──
+  const otpStore = new Map<string, { code: string; expiresAt: number; attempts: number }>();
+
+  app.post("/api/auth/phone/send-otp", async (req, res) => {
+    try {
+      const { phoneNumber } = req.body;
+      if (!phoneNumber || !/^\+\d{7,15}$/.test(phoneNumber)) {
+        return res.status(400).json({ error: "Invalid phone number. Use format +1234567890" });
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+      otpStore.set(phoneNumber, { code, expiresAt, attempts: 0 });
+
+      // 🔑 In production: replace this with Twilio / AWS SNS
+      // await twilioClient.messages.create({ to: phoneNumber, from: process.env.TWILIO_FROM, body: `Your Real Dream code: ${code}` });
+      console.log(`[OTP] Code for ${phoneNumber}: ${code}`);
+
+      res.json({ success: true, message: "OTP sent" });
+    } catch (error) {
+      console.error("Send OTP error:", error);
+      res.status(500).json({ error: "Failed to send OTP" });
+    }
+  });
+
+  app.post("/api/auth/phone/verify-otp", async (req, res) => {
+    try {
+      const { phoneNumber, code, username, fullName } = req.body;
+      if (!phoneNumber || !code) {
+        return res.status(400).json({ error: "Phone number and code are required" });
+      }
+
+      const record = otpStore.get(phoneNumber);
+      if (!record) return res.status(400).json({ error: "No OTP sent to this number. Request a new code." });
+      if (Date.now() > record.expiresAt) {
+        otpStore.delete(phoneNumber);
+        return res.status(400).json({ error: "OTP expired. Please request a new code." });
+      }
+
+      record.attempts += 1;
+      if (record.attempts > 5) {
+        otpStore.delete(phoneNumber);
+        return res.status(429).json({ error: "Too many attempts. Request a new code." });
+      }
+
+      if (record.code !== code.trim()) {
+        return res.status(400).json({ error: "Invalid code. Please try again." });
+      }
+
+      otpStore.delete(phoneNumber);
+
+      // Find or create user by phone number
+      const fakeEmail = `${phoneNumber.replace(/\+/g, '')}@phone.realdream.app`;
+      let user = await storage.getUserByEmail(fakeEmail);
+
+      if (!user) {
+        const generatedUsername = username || `user_${phoneNumber.slice(-6)}`;
+        user = await storage.createUser({
+          email: fakeEmail,
+          username: generatedUsername,
+          fullName: fullName || generatedUsername,
+          authProvider: 'phone',
+          coins: 100,
+        });
+      }
+
+      if (!user) return res.status(500).json({ error: "Failed to create user" });
+
+      const JWT_SECRET = process.env.JWT_SECRET || "secret";
+      const jwtToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
+
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ token: jwtToken, user: userWithoutPassword });
+    } catch (error) {
+      console.error("Verify OTP error:", error);
+      res.status(500).json({ error: "OTP verification failed" });
+    }
+  });
+
   app.post("/api/auth/firebase", async (req, res) => {
     try {
       const authHeader = req.headers.authorization;
@@ -576,9 +655,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (profileImage !== undefined) allowedUpdates.profileImage = profileImage;
       if (username !== undefined) allowedUpdates.username = username;
       if (bio !== undefined) allowedUpdates.bio = bio;
-      if (settings !== undefined) allowedUpdates.settings = settings;
       if (age !== undefined) allowedUpdates.age = age !== null ? parseInt(String(age)) : null;
       if (gender !== undefined) allowedUpdates.gender = gender || null;
+      // Save privacy settings to the dedicated JSONB column
+      if (settings !== undefined) allowedUpdates.privacySettings = settings;
 
       const user = await storage.updateUser(req.user!.id, allowedUpdates);
       if (!user) {
@@ -590,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
-  // Profile photo upload
+
   app.post(
     "/api/profile/photo",
     authMiddleware,
@@ -602,25 +682,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const userId = req.user!.id;
-
-        // Get current user to check for existing photo
-        const currentUser = await storage.getUser(userId);
+        const profilePhotoUrl = await uploadToCloudinary(req.file.buffer, req.file.originalname);
 
         // Delete old photo from Cloudinary if exists
+        const currentUser = await storage.getUser(userId);
         if (currentUser?.profilePhoto) {
-          await deleteFromCloudinary(currentUser.profilePhoto);
+          try {
+            await deleteFromCloudinary(currentUser.profilePhoto);
+          } catch (err) {
+            console.error("Error deleting old photo from Cloudinary:", err);
+          }
         }
-
-        // Upload new photo to Cloudinary
-        const photoUrl = await uploadToCloudinary(
-          req.file.buffer,
-          req.file.originalname
-        );
 
         // Update user in database
         const updatedUser = await storage.updateUser(userId, {
-          profilePhoto: photoUrl,
-          profileImage: photoUrl,
+          profilePhoto: profilePhotoUrl,
+          profileImage: profilePhotoUrl, // Keep both in sync
         });
 
         if (!updatedUser) {
@@ -628,7 +705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         res.json({
-          profilePhotoUrl: photoUrl,
+          profilePhotoUrl: profilePhotoUrl,
           message: "Profile photo uploaded successfully",
         });
       } catch (error: any) {
@@ -792,7 +869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/dreams", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const { title, description, type, privacy, startDate, duration, durationUnit, recurrence, tasks: taskTexts } = req.body;
+      const { title, description, type, privacy, startDate, duration, durationUnit, recurrence, tasks: taskTexts, imageUrl, coverImage } = req.body;
 
       const validation = validateDreamFields({
         title,
@@ -848,6 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: description?.trim() || null,
         type: type || "personal",
         privacy: privacy || "public",
+        imageUrl: imageUrl || coverImage || null,
         startDate: startDate ? new Date(startDate) : new Date(),
         targetDate: targetDate ? new Date(targetDate) : null,
         duration: duration || null,
@@ -947,43 +1025,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
 
-      // 1. Update the base dream fields
-      const dream = await storage.updateDream(id, dreamData);
+      // 1. Update the base dream fields only (title, description, privacy etc.)
+      const updateData = { ...dreamData };
+      if (req.body.coverImage) updateData.imageUrl = req.body.coverImage;
+      const dream = await storage.updateDream(id, updateData);
 
-      // 2. Clear old tasks and insert new tasks if provided in the Edit payload
-      if (Array.isArray(tasks)) {
-        await storage.deleteDreamTasks(id);
-
-        let taskDates: { date: Date, order: number }[] = [];
-        if (dreamData.duration && dreamData.durationUnit && dreamData.recurrence && dreamData.startDate) {
-          taskDates = generateTaskDates(
-            new Date(dreamData.startDate),
-            dreamData.duration,
-            dreamData.durationUnit as "days" | "weeks" | "months" | "years",
-            dreamData.recurrence as "daily" | "weekly" | "semi-weekly" | "monthly" | "semi-monthly"
-          );
-        } else {
-           // fallback just in case
-           for (let i=0; i<tasks.length; i++) {
-             const d = new Date();
-             d.setDate(d.getDate() + i);
-             taskDates.push({ date: d, order: i });
-           }
-        }
-
+      // 2. If tasks array is provided, ONLY update titles of existing tasks
+      //    NEVER delete or recreate tasks — this preserves completion progress
+      if (Array.isArray(tasks) && tasks.length > 0) {
+        const existingTasks = await storage.getDreamTasks(id);
         for (let i = 0; i < tasks.length; i++) {
-          const taskText = tasks[i];
-          const taskDateInfo = taskDates[i] || { date: new Date(), order: i };
-
-          await storage.createDreamTask({
-            dreamId: id,
-            title: taskText || `Task ${i + 1}`,
-            dueDate: taskDateInfo.date,
-            order: taskDateInfo.order,
-          });
+          const newTitle = tasks[i];
+          const existingTask = existingTasks[i];
+          if (existingTask && newTitle && newTitle.trim()) {
+            // Only update the title; preserve isCompleted, completedAt, dueDate
+            await db
+              .update(dreamTasks)
+              .set({ title: newTitle.trim(), updatedAt: new Date() })
+              .where(eq(dreamTasks.id, existingTask.id));
+          }
         }
-
-        // Ensure progress recalculates immediately
         await storage.updateDreamProgress(id);
       }
 
@@ -1256,6 +1317,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const dreamId = req.params.dreamId as string;
       const taskId = req.params.taskId as string;
+
+      // Fetch the current task state before toggling
+      const currentTask = await storage.getDreamTask(taskId);
+      if (!currentTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // BLOCK un-ticking: Once a task is completed, progress cannot be undone
+      if (currentTask.isCompleted) {
+        return res.status(409).json({
+          error: "Task already completed. Progress cannot be undone.",
+          task: currentTask,
+        });
+      }
+
       const task = await storage.toggleDreamTaskComplete(taskId);
 
       if (!task) {
@@ -1272,7 +1348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           await storage.createNotification({
             userId: req.user!.id,
-            title: "Task Completed!",
+            title: "Task Completed! 🎉",
             description: `You earned 10 points for completing "${task.title}"`,
             type: "achievement",
           });
@@ -1899,42 +1975,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const query = (req.query.q as string)?.toLowerCase().trim();
 
-      if (!query || query.length < 2) {
-        return res.json([]);
+      // No query: return default suggestions (recently joined users)
+      if (!query || query.length === 0) {
+        const suggested = await db
+          .select({ id: users.id, username: users.username, fullName: users.fullName, profilePhoto: users.profilePhoto })
+          .from(users)
+          .where(sql`${users.id} != ${req.user!.id}`)
+          .orderBy(desc(users.createdAt))
+          .limit(20);
+        const suggestedWithStatus = await Promise.all(
+          suggested.map(async (u) => ({ ...u, isFollowing: await storage.isFollowing(req.user!.id, u.id) }))
+        );
+        return res.json(suggestedWithStatus);
       }
 
+      // Search from 1 character: prefix match first, then contains
       const searchResults = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          profilePhoto: users.profilePhoto,
-        })
+        .select({ id: users.id, username: users.username, fullName: users.fullName, profilePhoto: users.profilePhoto })
         .from(users)
         .where(
-          or(
-            sql`LOWER(${users.username}) LIKE ${`%${query}%`}`,
-            sql`LOWER(${users.fullName}) LIKE ${`%${query}%`}`
+          and(
+            sql`${users.id} != ${req.user!.id}`,
+            or(
+              sql`LOWER(${users.username}) LIKE ${'%' + query + '%'}`,
+              sql`LOWER(${users.fullName}) LIKE ${'%' + query + '%'}`
+            )
           )
         )
-        .limit(20);
-
-      // Filter out current user and add isFollowing status
-      const filteredResults = searchResults.filter(u => u.id !== req.user!.id);
+        .limit(30);
 
       const resultsWithStatus = await Promise.all(
-        filteredResults.map(async (user) => ({
-          ...user,
-          isFollowing: await storage.isFollowing(req.user!.id, user.id),
-        }))
+        searchResults.map(async (u) => ({ ...u, isFollowing: await storage.isFollowing(req.user!.id, u.id) }))
       );
-
       res.json(resultsWithStatus);
     } catch (error) {
       console.error("Search users error:", error);
       res.status(500).json({ error: "Failed to search users" });
     }
   });
+
   app.get("/api/users/:id", async (req, res) => {
     try {
       const id = req.params.id as string;

@@ -1,16 +1,19 @@
-import { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, RefreshControl } from "react-native";
+﻿import { useState, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { ThemedText } from "@/components/ThemedText";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { AdBanner } from "@/components/AdBanner";
+import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
@@ -49,9 +52,15 @@ export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
+  const { token, user } = useAuth();
   const [galleryPosts, setGalleryPosts] = useState<GalleryPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [caption, setCaption] = useState("");
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [isPosting, setIsPosting] = useState(false);
 
   const fetchGalleryPosts = async () => {
     try {
@@ -71,6 +80,66 @@ export default function GalleryScreen() {
   useEffect(() => {
     fetchGalleryPosts();
   }, []);
+
+  const handlePickImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission required", "Please allow access to your photo library.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImageUri(result.assets[0].uri);
+    }
+  };
+
+  const handleCreatePost = async () => {
+    if (!selectedImageUri || !token) return;
+    setIsPosting(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      // Upload image first via profile photo endpoint (reuse cloudinary pipeline)
+      const formData = new FormData();
+      const filename = selectedImageUri.split("/").pop() || "gallery.jpg";
+      const ext = /\.(\w+)$/.exec(filename);
+      const type = ext ? `image/${ext[1]}` : "image/jpeg";
+      formData.append("profilePhoto", { uri: selectedImageUri, name: filename, type } as any);
+      const uploadRes = await fetch(new URL("/api/profile/photo", getApiUrl()).toString(), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error("Image upload failed");
+      const { profilePhotoUrl } = await uploadRes.json();
+
+      // Create gallery post
+      const res = await fetch(new URL('/api/gallery', getApiUrl()).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageUrl: profilePhotoUrl, caption: caption.trim() || null }),
+      });
+      if (res.ok) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setShowCreateModal(false);
+        setCaption("");
+        setSelectedImageUri(null);
+        fetchGalleryPosts();
+      } else {
+        const err = await res.json();
+        Alert.alert("Failed", err.error || "Could not create post");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+      console.error(error);
+    } finally {
+      setIsPosting(false);
+    }
+  };
 
   const handleItemPress = (item: GalleryPost) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -130,12 +199,17 @@ export default function GalleryScreen() {
                   onPress={() => handleItemPress(post)}
                   style={styles.galleryItem}
                 >
-                  <LinearGradient
-                    colors={getGradient(post.dream?.type)}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.itemContent}
-                  >
+                  {post.imageUrl ? (
+                    <Image source={{ uri: post.imageUrl }} style={styles.itemImage} />
+                  ) : (
+                    <LinearGradient
+                      colors={getGradient(post.dream?.type)}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.itemContent}
+                    />
+                  )}
+                  <View style={styles.itemOverlay}>
                     <View style={styles.categoryBadge}>
                       <ThemedText style={styles.categoryText}>
                         {post.dream?.type?.toUpperCase() || "DREAM"}
@@ -158,7 +232,7 @@ export default function GalleryScreen() {
                         <ThemedText style={styles.likesText}>{post.views}</ThemedText>
                       </View>
                     </View>
-                  </LinearGradient>
+                  </View>
                 </Pressable>
               </Animated.View>
             ))}
@@ -175,6 +249,92 @@ export default function GalleryScreen() {
           </Animated.View>
         )}
       </ScrollView>
+
+      {/* FAB */}
+      {token && (
+        <Pressable
+          style={styles.fab}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setShowCreateModal(true);
+          }}
+          testID="button-create-gallery-post"
+        >
+          <LinearGradient
+            colors={["#8B5CF6", "#A855F7"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <Feather name="camera" size={26} color="#FFFFFF" />
+          </LinearGradient>
+        </Pressable>
+      )}
+
+      {/* Create Post Modal */}
+      <Modal
+        visible={showCreateModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCreateModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalContainer}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setShowCreateModal(false)} />
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="h4">New Gallery Post</ThemedText>
+              <Pressable onPress={() => setShowCreateModal(false)} hitSlop={12}>
+                <Feather name="x" size={24} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Image Picker */}
+            <Pressable onPress={handlePickImage} style={[styles.imagePicker, { borderColor: theme.border, backgroundColor: theme.backgroundRoot }]}>
+              {selectedImageUri ? (
+                <Image source={{ uri: selectedImageUri }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.imagePickerPlaceholder}>
+                  <LinearGradient colors={["#8B5CF6", "#A855F7"]} style={styles.imagePickerIcon}>
+                    <Feather name="image" size={28} color="#FFFFFF" />
+                  </LinearGradient>
+                  <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>Tap to pick image</ThemedText>
+                </View>
+              )}
+            </Pressable>
+
+            <TextInput
+              style={[styles.captionInput, { backgroundColor: theme.backgroundRoot, color: theme.text, borderColor: theme.border }]}
+              placeholder="Add a caption... (optional)"
+              placeholderTextColor={theme.textMuted}
+              value={caption}
+              onChangeText={setCaption}
+              maxLength={120}
+              multiline
+            />
+
+            <View style={styles.modalActions}>
+              <Button
+                onPress={() => { setShowCreateModal(false); setSelectedImageUri(null); setCaption(""); }}
+                variant="secondary"
+                style={styles.cancelButton}
+              >
+                Cancel
+              </Button>
+              <Button
+                onPress={handleCreatePost}
+                disabled={!selectedImageUri || isPosting}
+                style={styles.postButton}
+                testID="button-submit-gallery-post"
+              >
+                {isPosting ? "Posting..." : "Share"}
+              </Button>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </GalaxyBackground>
   );
 }
@@ -225,9 +385,19 @@ const styles = StyleSheet.create({
   galleryItem: {
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
+    height: 180,
+  },
+  itemImage: {
+    width: "100%",
+    height: "100%",
   },
   itemContent: {
-    height: 180,
+    width: "100%",
+    height: "100%",
+  },
+  itemOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.3)",
     padding: Spacing.md,
     justifyContent: "space-between",
   },
@@ -269,5 +439,85 @@ const styles = StyleSheet.create({
   likesText: {
     color: "#FFFFFF",
     fontSize: 12,
+  },
+  fab: {
+    position: "absolute",
+    right: Spacing.xl,
+    bottom: 100,
+    borderRadius: BorderRadius.full,
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  fabGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: Spacing.xl,
+    paddingBottom: 40,
+    gap: Spacing.md,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  imagePicker: {
+    height: 180,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePickerPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+  },
+  imagePickerIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  captionInput: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: 15,
+    minHeight: 72,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  cancelButton: {
+    flex: 1,
+  },
+  postButton: {
+    flex: 2,
   },
 });

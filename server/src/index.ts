@@ -260,4 +260,74 @@ function setupErrorHandler(app: express.Application) {
     }, KEEP_ALIVE_INTERVAL_MS);
   });
 
+  // WebSocket server for real-time chat
+  try {
+    const { WebSocketServer } = await import("ws");
+    const jwt = await import("jsonwebtoken");
+    const wss = new WebSocketServer({ server });
+
+    // Map conversationId -> Set of WebSocket clients
+    const rooms = new Map<string, Set<any>>();
+
+    wss.on("connection", (ws: any, req: any) => {
+      let userId: string | null = null;
+      let conversationId: string | null = null;
+
+      ws.on("message", (data: any) => {
+        try {
+          const msg = JSON.parse(data.toString());
+
+          if (msg.type === "auth") {
+            try {
+              const decoded: any = jwt.default.verify(msg.token, process.env.JWT_SECRET || "secret");
+              userId = decoded.userId;
+              log(`[WS] User ${userId} authenticated`);
+            } catch {
+              ws.send(JSON.stringify({ type: "error", message: "Invalid token" }));
+            }
+            return;
+          }
+
+          if (msg.type === "join") {
+            if (!userId) { ws.send(JSON.stringify({ type: "error", message: "Not authenticated" })); return; }
+            conversationId = msg.conversationId;
+            if (!rooms.has(conversationId!)) rooms.set(conversationId!, new Set());
+            rooms.get(conversationId!)!.add(ws);
+            log(`[WS] User ${userId} joined room ${conversationId}`);
+            return;
+          }
+
+          if (msg.type === "message") {
+            if (!userId || !conversationId) return;
+            const payload = JSON.stringify({
+              type: "message",
+              id: Date.now().toString(),
+              senderId: userId,
+              content: msg.content,
+              createdAt: new Date().toISOString(),
+            });
+            // Broadcast to all clients in the same room
+            rooms.get(conversationId)?.forEach((client: any) => {
+              if (client.readyState === 1) client.send(payload);
+            });
+          }
+        } catch (e) {
+          log("[WS] Failed to parse message:", e);
+        }
+      });
+
+      ws.on("close", () => {
+        if (conversationId && rooms.has(conversationId)) {
+          rooms.get(conversationId)!.delete(ws);
+          if (rooms.get(conversationId)!.size === 0) rooms.delete(conversationId);
+        }
+        log(`[WS] User ${userId} disconnected`);
+      });
+    });
+
+    log(`[WS] WebSocket server attached on port ${port}`);
+  } catch (e) {
+    log("[WS] Failed to start WebSocket server:", e);
+  }
 })();
+

@@ -10,6 +10,7 @@ interface Dream {
     privacy: string;
     progress: number;
     is_completed: boolean;
+    image_url: string | null;
     created_at: string;
     username: string;
     full_name: string;
@@ -256,6 +257,19 @@ export default function Dreams() {
                                         <div className="text-brand-400 font-black uppercase text-[10px] tracking-widest mt-1">Uplink: @{selectedDream.username}</div>
                                     </div>
                                 </div>
+
+                                {selectedDream.image_url && (
+                                    <div className="px-8 pb-4">
+                                        <div className="relative group/cover">
+                                            <div className="absolute -inset-1 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl blur opacity-20" />
+                                            <img 
+                                                src={selectedDream.image_url} 
+                                                alt="Dream Cover" 
+                                                className="relative w-full aspect-video rounded-2xl object-cover border border-white/10 shadow-2xl"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-2 gap-4">
                                     {[

@@ -41,6 +41,15 @@ export default function SettingsScreen() {
   const [vendorDescription, setVendorDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Privacy settings
+  const [profileVisibility, setProfileVisibility] = useState<"public" | "connections" | "private">(
+    ((user as any)?.privacySettings as any)?.profileVisibility || "public"
+  );
+  const [allowMessagesFrom, setAllowMessagesFrom] = useState<"everyone" | "connections" | "nobody">(
+    ((user as any)?.privacySettings as any)?.allowMessagesFrom || "everyone"
+  );
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+
   const handleVendorHubPress = () => {
     if (user?.isVendor) {
       navigation.navigate("VendorHub");
@@ -97,6 +106,30 @@ export default function SettingsScreen() {
       navigation.navigate("Themes");
     } else if (route === "Notifications") {
       navigation.navigate("Notifications");
+    }
+  };
+
+  const handleSavePrivacy = async (newVisibility?: string, newMessages?: string) => {
+    if (!token) return;
+    setIsSavingPrivacy(true);
+    try {
+      const privacySettings = {
+        profileVisibility: newVisibility || profileVisibility,
+        allowMessagesFrom: newMessages || allowMessagesFrom,
+      };
+      const response = await fetch(new URL('/api/profile', getApiUrl()).toString(), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ settings: privacySettings }),
+      });
+      if (response.ok) {
+        updateUser({ privacySettings } as any);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error('Failed to save privacy settings:', error);
+    } finally {
+      setIsSavingPrivacy(false);
     }
   };
 
@@ -220,6 +253,42 @@ export default function SettingsScreen() {
                 <Feather name="chevron-right" size={20} color="#A78BFA" />
               </Pressable>
             ))}
+          </Card>
+        </Animated.View>
+
+        {/* Privacy Controls */}
+        <Animated.View entering={FadeInDown.delay(150).springify()}>
+          <Card style={styles.menuCard}>
+            <View style={[styles.menuRow, styles.menuRowBorder]}>
+              <View style={styles.menuIcon}><Feather name="eye" size={20} color={theme.textSecondary} /></View>
+              <View style={{ flex: 1 }}>
+                <ThemedText type="body" style={{ color: theme.text, fontWeight: '500' }}>Profile Visibility</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textMuted }}>Who can see your profile</ThemedText>
+              </View>
+            </View>
+            <View style={styles.privacyPillsRow}>
+              {(["public", "connections", "private"] as const).map(v => (
+                <Pressable key={v} style={[styles.privacyPill, profileVisibility === v && styles.privacyPillActive]}
+                  onPress={() => { setProfileVisibility(v); handleSavePrivacy(v, undefined); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}>
+                  <ThemedText type="xs" style={{ color: profileVisibility === v ? '#FFF' : theme.textSecondary, fontWeight: '600', textTransform: 'capitalize' }}>{v}</ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            <View style={[styles.menuRow, { paddingTop: Spacing.sm }]}>
+              <View style={styles.menuIcon}><Feather name="message-circle" size={20} color={theme.textSecondary} /></View>
+              <View style={{ flex: 1 }}>
+                <ThemedText type="body" style={{ color: theme.text, fontWeight: '500' }}>Messages From</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textMuted }}>Who can message you</ThemedText>
+              </View>
+            </View>
+            <View style={styles.privacyPillsRow}>
+              {(["everyone", "connections", "nobody"] as const).map(v => (
+                <Pressable key={v} style={[styles.privacyPill, allowMessagesFrom === v && styles.privacyPillActive]}
+                  onPress={() => { setAllowMessagesFrom(v); handleSavePrivacy(undefined, v); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}>
+                  <ThemedText type="xs" style={{ color: allowMessagesFrom === v ? '#FFF' : theme.textSecondary, fontWeight: '600', textTransform: 'capitalize' }}>{v}</ThemedText>
+                </Pressable>
+              ))}
+            </View>
           </Card>
         </Animated.View>
 
@@ -389,5 +458,24 @@ const styles = StyleSheet.create({
   menuLabel: {
     flex: 1,
     fontWeight: "500",
+  },
+  privacyPillsRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    flexWrap: "wrap",
+  },
+  privacyPill: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(139, 127, 199, 0.4)",
+    backgroundColor: "transparent",
+  },
+  privacyPillActive: {
+    backgroundColor: "#8B5CF6",
+    borderColor: "#8B5CF6",
   },
 });

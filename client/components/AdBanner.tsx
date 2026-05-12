@@ -18,11 +18,13 @@ interface AdBannerProps {
 
 export function AdBanner({ variant = "default" }: AdBannerProps) {
   const isCompact = variant === "compact";
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const { theme } = useTheme();
 
-  const isPremium = user?.subscriptionTier && user.subscriptionTier !== "silver";
+  const isPremium =
+    user?.subscriptionTier && user.subscriptionTier !== "silver";
 
   if (isPremium) return null;
 
@@ -32,8 +34,8 @@ export function AdBanner({ variant = "default" }: AdBannerProps) {
   };
 
   return (
-    <Animated.View 
-      entering={FadeInDown.delay(100).springify()} 
+    <Animated.View
+      entering={FadeInDown.delay(100).springify()}
       style={[styles.container, isCompact && styles.containerCompact]}
     >
       <LinearGradient
@@ -43,20 +45,36 @@ export function AdBanner({ variant = "default" }: AdBannerProps) {
         style={styles.gradient}
       >
         <View style={styles.content}>
-          <View style={[styles.adLabel, { backgroundColor: theme.purple + "40" }]}>
-            <ThemedText type="xs" style={[styles.adLabelText, { color: theme.purple }]}>AD</ThemedText>
+          <View
+            style={[styles.adLabel, { backgroundColor: theme.purple + "40" }]}
+          >
+            <ThemedText
+              type="xs"
+              style={[styles.adLabelText, { color: theme.purple }]}
+            >
+              AD
+            </ThemedText>
           </View>
           <View style={styles.textContainer}>
-            <ThemedText type={isCompact ? "small" : "body"} style={[styles.title, { color: theme.text }]}>
+            <ThemedText
+              type={isCompact ? "small" : "body"}
+              style={[styles.title, { color: theme.text }]}
+            >
               {isCompact ? "Upgrade to Premium" : "Unlock Premium Features"}
             </ThemedText>
             {!isCompact && (
-              <ThemedText type="xs" style={[styles.description, { color: theme.textSecondary }]}>
+              <ThemedText
+                type="xs"
+                style={[styles.description, { color: theme.textSecondary }]}
+              >
                 Get unlimited dreams, exclusive badges & more
               </ThemedText>
             )}
           </View>
-          <Pressable style={[styles.ctaButton, { backgroundColor: theme.purple }]} onPress={handlePress}>
+          <Pressable
+            style={[styles.ctaButton, { backgroundColor: theme.purple }]}
+            onPress={handlePress}
+          >
             <Feather name="arrow-right" size={16} color={theme.buttonText} />
           </Pressable>
         </View>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Platform, Modal, Image } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -230,6 +231,48 @@ export default function CreateDreamScreen() {
   const isEditing = !!route.params?.editDreamId;
   const editDreamId = route.params?.editDreamId;
 
+  // Cover image
+  const [coverImageUri, setCoverImageUri] = useState<string | null>(route.params?.coverImage || null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  const handlePickCoverImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      setCoverImageUri(uri);
+      // Upload immediately
+      if (!token) return;
+      setIsUploadingCover(true);
+      try {
+        const formData = new FormData();
+        const filename = uri.split("/").pop() || "cover.jpg";
+        const ext = /\.(\w+)$/.exec(filename);
+        const type = ext ? `image/${ext[1]}` : "image/jpeg";
+        formData.append("profilePhoto", { uri, name: filename, type } as any);
+        const res = await fetch(new URL("/api/profile/photo", getApiUrl()).toString(), {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (res.ok) {
+          const { profilePhotoUrl } = await res.json();
+          setCoverImageUri(profilePhotoUrl);
+        }
+      } catch (e) {
+        console.error("Cover upload error:", e);
+      } finally {
+        setIsUploadingCover(false);
+      }
+    }
+  };
+
   useEffect(() => {
     if (isEditing) {
       setTitle(route.params?.dreamTitle || "");
@@ -237,6 +280,10 @@ export default function CreateDreamScreen() {
       if (route.params?.type) setSelectedType(route.params.type);
       if (route.params?.privacy) setPrivacy(route.params.privacy);
       if (route.params?.dreamStartDate) setStartDate(new Date(route.params.dreamStartDate));
+      if (route.params?.duration) setDuration(route.params.duration);
+      if (route.params?.durationUnit) setDurationUnit(route.params.durationUnit);
+      if (route.params?.recurrence) setRecurrence(route.params.recurrence);
+      if (route.params?.coverImage) setCoverImageUri(route.params.coverImage);
 
       // If we have existing tasks passed from DreamDetail, load them directly.
       // We skip setting duration string specifically so the useEffect below doesn't clobber them.
@@ -418,6 +465,7 @@ export default function CreateDreamScreen() {
           privacy: privacy,
           duration: parseInt(duration, 10),
           durationUnit: durationUnit,
+          coverImage: coverImageUri,
           recurrence: recurrence,
           tasks: generatedTasks.map(t => t.text)
         } : {
@@ -425,6 +473,7 @@ export default function CreateDreamScreen() {
           description: description.trim() || null,
           type: selectedType,
           privacy: privacy,
+          coverImage: coverImageUri,
           startDate: startDate.toISOString(),
           duration: parseInt(duration, 10),
           durationUnit: durationUnit,
@@ -503,6 +552,33 @@ export default function CreateDreamScreen() {
           <ThemedText type="body" style={styles.subtitle}>
             {isEditing ? "Update your dream details" : "Set a goal and start your journey"}
           </ThemedText>
+        </Animated.View>
+
+        {/* Cover Image Picker */}
+        <Animated.View entering={FadeInDown.delay(80).springify()}>
+          <ThemedText type="small" style={styles.label}>COVER IMAGE (OPTIONAL)</ThemedText>
+          <Pressable onPress={handlePickCoverImage} style={styles.coverImagePicker}>
+            {isUploadingCover ? (
+              <ActivityIndicator size="large" color="#A78BFA" />
+            ) : coverImageUri ? (
+              <Image source={{ uri: coverImageUri }} style={styles.coverImagePreview} />
+            ) : (
+              <View style={styles.coverImagePlaceholder}>
+                <View style={styles.coverPickerIcon}>
+                  <Feather name="image" size={26} color="#FFFFFF" />
+                </View>
+                <ThemedText type="small" style={{ color: "#8B7FC7", marginTop: 8 }}>Add a cover image (16:9)</ThemedText>
+              </View>
+            )}
+            {coverImageUri && !isUploadingCover && (
+              <Pressable
+                style={styles.removeCoverBtn}
+                onPress={() => setCoverImageUri(null)}
+              >
+                <Feather name="x-circle" size={22} color="#EF4444" />
+              </Pressable>
+            )}
+          </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(100).springify()}>
@@ -922,6 +998,40 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.xl,
     gap: Spacing.lg,
+  },
+  coverImagePicker: {
+    height: 160,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: "rgba(139, 127, 199, 0.4)",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(45, 39, 82, 0.4)",
+  },
+  coverImagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  coverImagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverPickerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(124, 58, 237, 0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeCoverBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 12,
   },
   title: {
     textAlign: "center",

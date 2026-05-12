@@ -27,6 +27,11 @@ interface Dream {
   isCompleted: boolean;
   startDate: string | null;
   targetDate: string | null;
+  duration?: number | null;
+  durationUnit?: string | null;
+  recurrence?: string | null;
+  privacy?: string | null;
+  imageUrl?: string | null;
   createdAt: string;
 }
 
@@ -129,7 +134,12 @@ export default function DreamDetailScreen() {
       dreamTitle: dream.title,
       dreamDescription: dream.description,
       dreamStartDate: dream.startDate,
-      dreamTasks: tasks.map(t => ({ text: t.title, order: t.order }))
+      dreamTasks: tasks.map(t => ({ text: t.title, order: t.order })),
+      duration: dream.duration?.toString(),
+      durationUnit: dream.durationUnit,
+      recurrence: dream.recurrence,
+      privacy: dream.privacy,
+      coverImage: dream.imageUrl
     });
   };
 
@@ -184,30 +194,37 @@ export default function DreamDetailScreen() {
   const toggleTask = async (taskId: string) => {
     if (!token || !dreamId) return;
 
+    // Find the task to check if it's already completed
+    const task = tasks.find(t => t.id === taskId);
+    if (task?.isCompleted) {
+      // Progress is permanent — show a friendly message instead of allowing un-tick
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return; // silently block, backend will also reject
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: true } : t));
 
     try {
       const response = await fetch(
         new URL(`/api/dreams/${dreamId}/tasks/${taskId}/toggle`, getApiUrl()).toString(),
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.ok) {
-        const { task, dream: updatedDream } = await response.json();
-
-        setTasks(prev => prev.map(t => t.id === taskId ? task : t));
-        if (updatedDream) {
-          setDream(updatedDream);
-        }
-
-        if (task.isCompleted) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        const { task: updatedTask, dream: updatedDream } = await response.json();
+        setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
+        if (updatedDream) setDream(updatedDream);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        // Revert optimistic update on server rejection
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: false } : t));
       }
     } catch (error) {
+      // Revert on network error
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: false } : t));
       console.error("Failed to toggle task:", error);
     }
   };
@@ -448,7 +465,7 @@ export default function DreamDetailScreen() {
                       styles.taskItem,
                       task.isCompleted && styles.taskItemCompleted
                     ]}
-                    onPress={() => toggleTask(task.id)}
+                    onPress={() => !task.isCompleted && toggleTask(task.id)}
                     testID={`task-item-${task.id}`}
                   >
                     <View style={[
@@ -474,12 +491,18 @@ export default function DreamDetailScreen() {
                       ) : null}
                     </View>
 
-                    <Pressable
-                      style={styles.deleteTaskButton}
-                      onPress={() => deleteTask(task.id)}
-                    >
-                      <Feather name="trash-2" size={16} color="#EF4444" />
-                    </Pressable>
+                    {task.isCompleted ? (
+                      <View style={styles.lockIcon}>
+                        <Feather name="lock" size={13} color="#22C55E" />
+                      </View>
+                    ) : (
+                      <Pressable
+                        style={styles.deleteTaskButton}
+                        onPress={() => deleteTask(task.id)}
+                      >
+                        <Feather name="trash-2" size={16} color="#EF4444" />
+                      </Pressable>
+                    )}
                   </Pressable>
                 </Animated.View>
               ))}
@@ -784,6 +807,10 @@ const styles = StyleSheet.create({
     color: "#8B7FC7",
     marginTop: 2,
     fontSize: 11,
+  },
+  lockIcon: {
+    padding: Spacing.xs,
+    opacity: 0.8,
   },
   deleteTaskButton: {
     padding: Spacing.xs,

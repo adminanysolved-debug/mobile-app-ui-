@@ -23,6 +23,7 @@ type Connection = {
   id: string;
   username: string;
   fullName: string;
+  profilePhoto?: string;
   avatar?: string;
   isFollowing?: boolean;
 };
@@ -100,17 +101,15 @@ export default function ConnectionsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [following]);
 
-  const fetchDiscoverUsers = useCallback(async () => {
-    if (!token || !searchQuery.trim()) {
-      setDiscoverUsers([]);
-      return;
-    }
+  const fetchDiscoverUsers = useCallback(async (q?: string) => {
+    if (!token) return;
     setIsSearching(true);
     try {
-      const response = await fetch(
-        new URL(`/api/users/search?q=${encodeURIComponent(searchQuery)}`, getApiUrl()).toString(),
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const queryParam = q !== undefined ? q : searchQuery;
+      const url = queryParam.trim()
+        ? new URL(`/api/users/search?q=${encodeURIComponent(queryParam.trim())}`, getApiUrl()).toString()
+        : new URL('/api/users/search', getApiUrl()).toString();
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (response.ok) {
         const data = await response.json();
         setDiscoverUsers(data);
@@ -122,11 +121,19 @@ export default function ConnectionsScreen() {
     }
   }, [token, searchQuery]);
 
+  // Load suggestions immediately when switching to discover tab
   useEffect(() => {
-    if (activeTab === "discover" && searchQuery.trim()) {
-      const debounce = setTimeout(() => { fetchDiscoverUsers(); }, 500);
-      return () => clearTimeout(debounce);
+    if (activeTab === "discover") {
+      fetchDiscoverUsers(searchQuery);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Debounced live search as user types
+  useEffect(() => {
+    if (activeTab !== "discover") return;
+    const debounce = setTimeout(() => { fetchDiscoverUsers(searchQuery); }, 300);
+    return () => clearTimeout(debounce);
   }, [searchQuery, activeTab, fetchDiscoverUsers]);
 
   const onRefresh = () => {
@@ -211,15 +218,22 @@ export default function ConnectionsScreen() {
   const renderConnection = ({ item, index }: { item: Connection; index: number }) => (
     <ScreenAnim delay={index * 40} distance={500} style={{ paddingHorizontal: Spacing.lg }}>
       <Card style={styles.connectionCard}>
-        <LinearGradient
-          colors={[theme.blue, theme.purple]}
-          style={styles.avatar}
-        >
-          <ThemedText style={styles.avatarText}>{item.fullName?.charAt(0).toUpperCase()}</ThemedText>
-        </LinearGradient>
+        {(item.profilePhoto || item.avatar) ? (
+          <Animated.Image
+            source={{ uri: (item.profilePhoto || item.avatar)! }}
+            style={styles.avatar as any}
+          />
+        ) : (
+          <LinearGradient
+            colors={[theme.blue, theme.purple]}
+            style={styles.avatar}
+          >
+            <ThemedText style={styles.avatarText}>{(item.fullName || item.username)?.charAt(0).toUpperCase()}</ThemedText>
+          </LinearGradient>
+        )}
         
         <View style={styles.userInfo}>
-          <ThemedText type="bodyMedium" style={{ fontWeight: '600' }}>{item.fullName}</ThemedText>
+          <ThemedText type="bodyMedium" style={{ fontWeight: '600' }}>{item.fullName || item.username}</ThemedText>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>@{item.username}</ThemedText>
         </View>
 
@@ -272,6 +286,7 @@ export default function ConnectionsScreen() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
+                autoCorrect={false}
               />
               {searchQuery.length > 0 ? (
                 <Pressable onPress={() => setSearchQuery("")}>
@@ -279,6 +294,11 @@ export default function ConnectionsScreen() {
                 </Pressable>
               ) : null}
             </View>
+            {!searchQuery.trim() && discoverUsers.length > 0 && (
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm, paddingHorizontal: Spacing.xs }}>
+                Suggested people to follow
+              </ThemedText>
+            )}
           </View>
         )}
         <FlatList
@@ -361,12 +381,13 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
     marginRight: Spacing.md,
+    overflow: "hidden" as const,
   },
   avatarText: {
     color: "#FFFFFF",
