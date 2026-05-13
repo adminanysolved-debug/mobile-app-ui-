@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, Loader2, ShieldCheck, ArrowLeft, Send } from 'lucide-react';
+import { Lock, Mail, Loader2, ShieldCheck, ArrowLeft, Send, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../lib/config';
 
@@ -11,6 +11,7 @@ export default function Login() {
     const [error, setError] = useState('');
     const [forgotMode, setForgotMode] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -153,13 +154,20 @@ export default function Login() {
                                     <div className="relative group">
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-brand-400 transition-colors" size={16} />
                                         <input
-                                            type="password"
+                                            type={showPassword ? "text" : "password"}
                                             required
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             placeholder="••••••••"
-                                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500/30 focus:border-brand-500/30 focus:bg-slate-900 transition-all font-medium text-sm"
+                                            className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 pl-10 pr-12 text-white placeholder-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500/30 focus:border-brand-500/30 focus:bg-slate-900 transition-all font-medium text-sm"
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-brand-400 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
                                     </div>
                                 </div>
 
