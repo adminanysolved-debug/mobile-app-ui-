@@ -109,6 +109,7 @@ export const users = pgTable("users", {
   maxVendorDreams: integer("max_vendor_dreams").default(0),
   commissionRate: integer("commission_rate").default(20),
   isAdmin: boolean("is_admin").default(false),
+  coverImage: text("cover_image"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

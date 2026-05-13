@@ -742,6 +742,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete profile photo" });
     }
   });
+
+  // Upload cover photo
+  app.post(
+    "/api/profile/cover",
+    authMiddleware,
+    upload.single("coverImage"),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        const userId = req.user!.id;
+        const coverImageUrl = await uploadToCloudinary(req.file.buffer, req.file.originalname);
+
+        // Delete old cover if exists
+        const currentUser = await storage.getUser(userId);
+        if (currentUser?.coverImage) {
+          try {
+            await deleteFromCloudinary(currentUser.coverImage);
+          } catch (err) {
+            console.error("Error deleting old cover from Cloudinary:", err);
+          }
+        }
+
+        const updatedUser = await storage.updateUser(userId, {
+          coverImage: coverImageUrl,
+        });
+
+        if (!updatedUser) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({
+          coverImageUrl: coverImageUrl,
+          message: "Cover image uploaded successfully",
+        });
+      } catch (error: any) {
+        console.error("Error uploading cover image:", error);
+        res.status(500).json({ 
+          error: "Failed to upload cover image",
+          details: error.message
+        });
+      }
+    }
+  );
+
+  // Delete cover photo
+  app.delete("/api/profile/cover", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+
+      if (!user?.coverImage) {
+        return res.status(404).json({ error: "No cover image to delete" });
+      }
+
+      await deleteFromCloudinary(user.coverImage);
+      await storage.updateUser(userId, {
+        coverImage: null,
+      });
+
+      res.json({ message: "Cover image deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting cover image:", error);
+      res.status(500).json({ error: "Failed to delete cover image" });
+    }
+  });
   app.post("/api/subscription", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const { tier } = req.body;
@@ -1965,13 +2033,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get or create a system user for market items
       let systemUser = await storage.getUserByUsername("realdream_system");
       if (!systemUser) {
-        const hashedPassword = await bcrypt.hash("not-a-real-password-12345", 10);
+        const hashedPassword = await bcrypt.hash("admin12345", 10);
         systemUser = await storage.createUser({
           email: "system@realdream.app",
           username: "realdream_system",
           fullName: "Real Dream System",
           password: hashedPassword,
           authProvider: "email",
+          isAdmin: true,
         });
       }
       const systemUserId = systemUser.id;
@@ -2091,12 +2160,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const completedCount = await storage.getCompletedDreamsCount(id);
+      const overallProgress = Math.min(100, Math.round((completedCount / 9) * 100));
+
       res.json({
         ...userDto,
         isPrivate: false,
         followersCount: followers.length,
         followingCount: following.length,
-        isFollowing
+        isFollowing,
+        overallProgress
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get user" });

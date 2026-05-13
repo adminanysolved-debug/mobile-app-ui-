@@ -71,6 +71,14 @@ export default function SubscriptionScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#0f172a', '#1e293b']} style={styles.background} />
       
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Plans & Pricing</Text>
+        <View style={{ width: 40 }} />
+      </View>
+      
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: 20 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.introContainer}>
           <Text style={styles.introTitle}>Elevate Your Dreams</Text>

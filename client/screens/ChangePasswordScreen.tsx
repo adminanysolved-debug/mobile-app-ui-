@@ -75,6 +75,13 @@ export default function ChangePasswordScreen({ navigation }: any) {
 
   return (
     <GalaxyBackground>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.headerBackButton}>
+          <Feather name="arrow-left" size={24} color="#8B7FC7" />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>Change Password</ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
       <View
         style={[
           styles.content,
@@ -184,6 +191,26 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginBottom: Spacing.xl,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  headerBackButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
   formContainer: {
     flex: 1,

@@ -266,7 +266,16 @@ export default function ConnectionsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={{ flex: 1, paddingTop: Spacing.lg }}>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.link} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>
+          Connections
+        </ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
+      <View style={{ flex: 1 }}>
         {/* Fixed tabs - always visible (avoids FlatList flexGrow hiding header when empty) */}
         <View style={[styles.tabContainer, { backgroundColor: theme.backgroundRoot, borderBottomColor: theme.backgroundSecondary }]}>
           {(["followers", "following", "discover"] as TabType[]).map((tab) => (
@@ -425,5 +434,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 80,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 50,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

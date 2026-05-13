@@ -215,42 +215,42 @@ export default function MainDrawerNavigator() {
       <Drawer.Screen 
         name="ProfileMain" 
         component={ProfileStackNavigator} 
-        options={{ headerTitle: "MY PROFILE" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="SettingsMain" 
         component={SettingsStackNavigator} 
-        options={{ headerTitle: "SETTINGS" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="WalletMain" 
         component={WalletScreen} 
-        options={{ headerTitle: "MY WALLET" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="ConnectionsMain" 
         component={ConnectionsScreen} 
-        options={{ headerTitle: "CONNECTIONS" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="ChampionsMain" 
         component={ChampionsScreen} 
-        options={{ headerTitle: "CHAMPIONS" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="VendorHubMain" 
         component={VendorHubScreen} 
-        options={{ headerTitle: "VENDOR HUB" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="SubscriptionMain" 
         component={SubscriptionScreen} 
-        options={{ headerTitle: "SUBSCRIPTIONS" }}
+        options={{ headerShown: false }}
       />
       <Drawer.Screen 
         name="ChangePassword" 
         component={ChangePasswordScreen} 
-        options={{ headerTitle: "CHANGE PASSWORD" }}
+        options={{ headerShown: false }}
       />
     </Drawer.Navigator>
   );

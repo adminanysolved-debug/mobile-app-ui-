@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, Alert, TextInput } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -51,9 +51,8 @@ const categories = ["All", "Dream", "Badges", "Customization", "Boosters", "Them
 
 export default function MarketScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isLoading, setIsLoading] = useState(true);
@@ -168,7 +167,7 @@ export default function MarketScreen() {
     setIsPurchasing(true);
     try {
       const response = await fetch(
-        new URL(`/api/market/purchase/${selectedItem.id}`, getApiUrl()).toString(),
+        new URL(`/api/market/${selectedItem.id}/purchase`, getApiUrl()).toString(),
         {
           method: "POST",
           headers: {
@@ -190,6 +189,7 @@ export default function MarketScreen() {
           ? `Purchased! This dream has been added to your MyRealDreams list with full achievement steps.`
           : `You purchased ${selectedItem.title}!`;
         Alert.alert("Success", successMsg);
+        refreshUser();
         resetForm();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -239,8 +239,19 @@ export default function MarketScreen() {
     return categoryIcons[category || "Badges"] || "package";
   };
 
+  const navigation = useNavigation<any>();
+
   return (
     <GalaxyBackground>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.link} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>
+          Market
+        </ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -816,5 +827,25 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.sm,
     fontSize: 14,
-  }
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 50,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

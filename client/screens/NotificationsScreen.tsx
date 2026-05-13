@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
@@ -73,7 +72,6 @@ function formatTimeAgo(dateString: string): string {
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const { token } = useAuth();
@@ -249,7 +247,10 @@ export default function NotificationsScreen() {
       {/* Fixed header - always visible so Mark all read is accessible without scrolling up */}
       <View style={[styles.fixedHeader, { paddingTop: insets.top + Spacing.lg, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg }]}>
         <View style={styles.headerRow}>
-          <View>
+          <Pressable onPress={() => navigation.goBack()} style={{ marginRight: Spacing.md }}>
+            <Feather name="arrow-left" size={24} color={theme.link} />
+          </Pressable>
+          <View style={{ flex: 1 }}>
             <ThemedText type="h3">Notifications</ThemedText>
             <ThemedText type="small" style={{ color: theme.textSecondary }}>
               {unreadCount > 0 ? `${unreadCount} new notifications` : "All caught up!"}

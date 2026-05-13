@@ -1,7 +1,7 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Dimensions, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Image } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -50,7 +50,6 @@ const itemWidth = (width - Spacing.lg * 3) / 2;
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
   const { token, user } = useAuth();
   const [galleryPosts, setGalleryPosts] = useState<GalleryPost[]>([]);
@@ -156,10 +155,21 @@ export default function GalleryScreen() {
 
   const displayItems = galleryPosts.length > 0 ? galleryPosts : [];
 
+  const navigation = useNavigation<any>();
+
   return (
     <GalaxyBackground>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.link} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>
+          Gallery
+        </ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
       <ScrollView
-        style={styles.scrollView}
+        style={{ flex: 1 }}
         contentContainerStyle={[
           styles.scrollContent,
           {
@@ -519,5 +529,25 @@ const styles = StyleSheet.create({
   },
   postButton: {
     flex: 2,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 50,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

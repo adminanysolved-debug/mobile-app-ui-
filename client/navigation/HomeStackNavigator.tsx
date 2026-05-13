@@ -56,7 +56,7 @@ export default function HomeStackNavigator() {
         name="Champions"
         component={ChampionsScreen}
         options={{
-          headerTitle: "CHAMPIONS",
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -70,14 +70,14 @@ export default function HomeStackNavigator() {
         name="Market"
         component={MarketScreen}
         options={{
-          headerTitle: "MARKET",
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="Gallery"
         component={GalleryScreen}
         options={{
-          headerTitle: "GALLERY",
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -98,7 +98,7 @@ export default function HomeStackNavigator() {
         name="Notifications"
         component={NotificationsScreen}
         options={{
-          headerTitle: "NOTIFICATIONS",
+          headerShown: false,
         }}
       />
       <Stack.Screen

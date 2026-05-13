@@ -98,6 +98,7 @@ export interface IStorage {
   getVendorMarketItemsCount(vendorId: string): Promise<number>;
   hasPurchasedMarketItem(userId: string, marketItemId: string): Promise<boolean>;
   getDreamCounts(userId: string): Promise<{ personal: number; challenge: number; group: number }>;
+  getCompletedDreamsCount(userId: string): Promise<number>;
   getActiveAd(): Promise<ActiveAd | undefined>;
   updateActiveAd(data: Partial<ActiveAd>): Promise<ActiveAd>;
   
@@ -206,6 +207,11 @@ class DatabaseStorage implements IStorage {
       challenge: userDreams.filter(d => d.type === "challenge").length,
       group: userDreams.filter(d => d.type === "group").length,
     };
+  }
+
+  async getCompletedDreamsCount(userId: string): Promise<number> {
+    const userDreams = await this.getDreams(userId);
+    return userDreams.filter(d => d.isCompleted).length;
   }
 
   async updateDreamMemberStatus(dreamId: string, userId: string, status: "accepted" | "declined"): Promise<void> {

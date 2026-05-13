@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Alert, Modal, TextInput } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Alert, Modal, TextInput, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -27,18 +26,15 @@ const menuItems: MenuItem[] = [
   { icon: "layout", label: "THEMES", route: "Themes" },
   { icon: "credit-card", label: "SUBSCRIPTION", route: "Subscription" },
   { icon: "bell", label: "NOTIFICATIONS", route: "Notifications" },
+  { icon: "shopping-bag", label: "VENDOR HUB", route: "VendorHubMain" },
 ];
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { user, logout, forgotPassword, token, updateUser } = useAuth();
 
-  const [showVendorModal, setShowVendorModal] = useState(false);
-  const [vendorBusinessName, setVendorBusinessName] = useState("");
-  const [vendorDescription, setVendorDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Privacy settings
@@ -50,62 +46,18 @@ export default function SettingsScreen() {
   );
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
-  const handleVendorHubPress = () => {
-    if (user?.isVendor) {
-      navigation.navigate("VendorHub");
-    } else {
-      setShowVendorModal(true);
-    }
-  };
-
-  const handleApplyVendor = async () => {
-    if (!token) return;
-    if (!vendorBusinessName.trim()) {
-      alert("Business Name is required");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(new URL('/api/vendor/apply', getApiUrl()).toString(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          businessName: vendorBusinessName,
-          description: vendorDescription
-        })
-      });
-
-      if (response.ok) {
-        updateUser({ isVendor: true });
-        setShowVendorModal(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Success", "You are now a vendor!");
-      } else {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.error || "Failed to apply as vendor");
-      }
-    } catch (error) {
-      console.error("Apply vendor error:", error);
-      Alert.alert("Error", "An unexpected error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleNavigate = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (route === "Profile") {
       navigation.navigate("ProfileMain");
     } else if (route === "Subscription") {
-      navigation.navigate("Subscription");
+      navigation.navigate("SubscriptionMain");
     } else if (route === "Themes") {
       navigation.navigate("Themes");
     } else if (route === "Notifications") {
       navigation.navigate("Notifications");
+    } else if (route === "VendorHubMain") {
+      navigation.navigate("VendorHubMain");
     }
   };
 
@@ -184,6 +136,15 @@ export default function SettingsScreen() {
 
   return (
     <GalaxyBackground>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.link} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>
+          Settings
+        </ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -322,44 +283,6 @@ export default function SettingsScreen() {
           </Card>
         </Animated.View>
       </ScrollView>
-      <Modal visible={showVendorModal} animationType="fade" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h3" style={styles.modalTitle}>Become a Vendor</ThemedText>
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-              Start selling premium dream themes and content on the marketplace.
-            </ThemedText>
-
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Business/Creator Name *</ThemedText>
-            <TextInput
-              style={[styles.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
-              value={vendorBusinessName}
-              onChangeText={setVendorBusinessName}
-              placeholder="Enter your creator name"
-              placeholderTextColor={theme.textMuted}
-            />
-
-            <ThemedText type="small" style={[styles.inputLabel, { color: theme.textSecondary }]}>Description</ThemedText>
-            <TextInput
-              style={[styles.textInput, styles.bioInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
-              value={vendorDescription}
-              onChangeText={setVendorDescription}
-              placeholder="What will you sell?"
-              placeholderTextColor={theme.textMuted}
-              multiline
-            />
-
-            <View style={styles.modalButtons}>
-              <Pressable onPress={() => setShowVendorModal(false)} style={[styles.modalButton, { borderColor: theme.border }]}>
-                <ThemedText type="body">Cancel</ThemedText>
-              </Pressable>
-              <Button onPress={handleApplyVendor} disabled={isLoading} style={styles.saveButton}>
-                {isLoading ? "Applying..." : "Apply Now"}
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </GalaxyBackground>
   );
 }
@@ -479,21 +402,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#8B5CF6",
     borderColor: "#8B5CF6",
   },
-  headerContainer: {
-    marginBottom: Spacing.md,
-  },
-  headerRow: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingBottom: Spacing.md,
   },
   headerTitle: {
+    flex: 1,
+    textAlign: "center",
     color: "#FFFFFF",
-    fontWeight: "900",
-    letterSpacing: 1,
-    marginLeft: Spacing.sm,
+    fontWeight: "700",
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

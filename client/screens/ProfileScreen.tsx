@@ -126,6 +126,65 @@ function MenuRow({
   );
 }
 
+function PuzzleCover({ imageUrl, progress, onUpload, isOwnProfile }: { imageUrl: string | null; progress: number; onUpload?: () => void; isOwnProfile: boolean }) {
+  const { theme } = useTheme();
+  const pieces = 9; // 3x3 grid
+  const revealedPieces = Math.floor((progress / 100) * pieces);
+  
+  return (
+    <Pressable 
+      onPress={isOwnProfile ? onUpload : undefined}
+      style={styles.puzzleContainer}
+    >
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.puzzleImage} />
+      ) : (
+        <LinearGradient
+          colors={["#1A1040", "#2D1B4E"]}
+          style={styles.puzzleImage}
+        >
+          <View style={styles.puzzlePlaceholder}>
+            <Feather name="image" size={32} color="rgba(255,255,255,0.2)" />
+            <ThemedText type="small" style={{ color: "rgba(255,255,255,0.4)", marginTop: 8 }}>
+              {isOwnProfile ? "Tap to add cover" : "No cover image"}
+            </ThemedText>
+          </View>
+        </LinearGradient>
+      )}
+      
+      <View style={styles.gridOverlay}>
+        {Array.from({ length: pieces }).map((_, i) => (
+          <View 
+            key={i} 
+            style={[
+              styles.puzzlePiece,
+              { 
+                opacity: i < revealedPieces ? 0 : 0.95,
+                backgroundColor: theme.backgroundRoot 
+              }
+            ]} 
+          >
+            {i >= revealedPieces && (
+              <Feather name="lock" size={14} color="rgba(255,255,255,0.15)" />
+            )}
+          </View>
+        ))}
+      </View>
+      
+      <LinearGradient
+        colors={["transparent", "rgba(13, 11, 30, 0.8)"]}
+        style={styles.puzzleGradient}
+      />
+
+      {isOwnProfile && (
+        <View style={styles.coverEditBadge}>
+          <Feather name="camera" size={12} color="#FFF" />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 export default function ProfileScreen() {
   const safePadding = useSafeScrollPadding();
   const navigation = useNavigation<any>();
@@ -144,7 +203,9 @@ export default function ProfileScreen() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [otherUser, setOtherUser] = useState<any>(null);
+  const [overallProgress, setOverallProgress] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const targetUserId = route.params?.userId || user?.id;
@@ -160,9 +221,13 @@ export default function ProfileScreen() {
       if (response.ok) {
         const data = await response.json();
         if (isOwnProfile) {
-          updateUser(data);
+          updateUser(data.user || data);
+          setOverallProgress(data.overallProgress || 0);
+          setOtherUser(null); // Clear stale data
         } else {
-          setOtherUser(data);
+          setOtherUser(data.user || data);
+          setOverallProgress(data.overallProgress || 0);
+          setIsFollowing(data.isFollowing || false);
         }
       }
     } catch (error) {
@@ -176,6 +241,32 @@ export default function ProfileScreen() {
   useEffect(() => {
     fetchProfile();
   }, [targetUserId]);
+
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
+
+  const handleFollowToggle = async () => {
+    if (!token || !targetUserId || isOwnProfile) return;
+    setIsUpdatingFollow(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      const method = isFollowing ? "DELETE" : "POST";
+      const response = await fetch(new URL(`/api/users/${targetUserId}/follow`, getApiUrl()).toString(), {
+        method,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setIsFollowing(!isFollowing);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error("Failed to follow/unfollow:", error);
+    } finally {
+      setIsUpdatingFollow(false);
+    }
+  };
 
   // Sync profilePhoto local state whenever the user context changes
   useEffect(() => {
@@ -304,6 +395,67 @@ export default function ProfileScreen() {
       console.error("Error picking image:", error);
     }
     setShowPhotoOptionsModal(false);
+  };
+
+  const handlePickCoverImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        alert("Permission to access camera roll is required!");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadCoverImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking cover image:", error);
+    }
+  };
+
+  const uploadCoverImage = async (uri: string) => {
+    if (!token) return;
+    setIsUploadingCover(true);
+    try {
+      const formData = new FormData();
+      const filename = uri.split("/").pop() || "cover.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : "image/jpeg";
+
+      if (Platform.OS === "web") {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append("coverImage", blob, filename);
+      } else {
+        formData.append("coverImage", { uri, name: filename, type } as any);
+      }
+
+      const response = await fetch(
+        new URL("/api/profile/cover", getApiUrl()).toString(),
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        updateUser({ ...user, coverImage: data.coverImageUrl });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error("Error uploading cover:", error);
+    } finally {
+      setIsUploadingCover(false);
+    }
   };
 
   const uploadProfilePhoto = async (uri: string) => {
@@ -473,11 +625,26 @@ export default function ProfileScreen() {
 
   return (
     <GalaxyBackground>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.link} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>
+          {isOwnProfile ? "My Profile" : `@${otherUser?.username || "Profile"}`}
+        </ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, safePadding]}
         showsVerticalScrollIndicator={false}
       >
+        <PuzzleCover 
+          imageUrl={isOwnProfile ? user?.coverImage : otherUser?.coverImage} 
+          progress={overallProgress}
+          isOwnProfile={isOwnProfile}
+          onUpload={handlePickCoverImage}
+        />
 
         <Animated.View
           entering={FadeInDown.springify()}
@@ -647,6 +814,49 @@ export default function ProfileScreen() {
             </View>
           </Card>
         </Animated.View>
+
+        {/* Social Actions - ONLY for other users */}
+        {!isOwnProfile && otherUser && (
+          <Animated.View 
+            entering={FadeInDown.delay(100).springify()}
+            style={styles.socialActions}
+          >
+            <Button
+              onPress={handleFollowToggle}
+              disabled={isUpdatingFollow}
+              style={[
+                styles.socialButton,
+                { backgroundColor: isFollowing ? theme.backgroundSecondary : theme.link }
+              ]}
+            >
+              <View style={styles.buttonContent}>
+                <Feather name={isFollowing ? "user-check" : "user-plus"} size={18} color={isFollowing ? theme.textSecondary : "#FFFFFF"} />
+                <ThemedText style={{ color: isFollowing ? theme.textSecondary : "#FFFFFF", fontWeight: '700', marginLeft: 8 }}>
+                  {isFollowing ? "Following" : "Follow"}
+                </ThemedText>
+              </View>
+            </Button>
+            
+            <Button
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                navigation.navigate("Home", { 
+                  screen: "CreateDream", 
+                  params: { type: 'challenge', opponentId: otherUser.id } 
+                });
+              }}
+              variant="outline"
+              style={[styles.socialButton, { borderColor: theme.accent }]}
+            >
+              <View style={styles.buttonContent}>
+                <Feather name="zap" size={18} color={theme.accent} />
+                <ThemedText style={{ color: theme.accent, fontWeight: '700', marginLeft: 8 }}>
+                  Challenge
+                </ThemedText>
+              </View>
+            </Button>
+          </Animated.View>
+        )}
 
         {/* Privacy Notice */}
         {(isOwnProfile ? user : otherUser)?.isPrivate && !isOwnProfile && (
@@ -924,22 +1134,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: Spacing.lg,
   },
-  headerContainer: {
-    marginBottom: Spacing.sm,
-  },
-  headerRow: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingBottom: Spacing.md,
   },
   headerTitle: {
+    flex: 1,
+    textAlign: "center",
     color: "#FFFFFF",
-    fontWeight: "900",
-    letterSpacing: 1,
-    marginLeft: Spacing.sm,
+    fontWeight: "700",
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
   profileCard: {
     padding: Spacing.xl,
@@ -1138,5 +1351,64 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xs,
     alignItems: "center",
     marginTop: Spacing.md,
+  },
+  socialActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+    paddingHorizontal: 2,
+  },
+  socialButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.md,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  puzzleContainer: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: "rgba(0,0,0,0.3)",
+    marginBottom: Spacing.md,
+  },
+  puzzleImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  puzzlePlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  puzzlePiece: {
+    width: "33.33%",
+    height: "33.33%",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  puzzleGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  coverEditBadge: {
+    position: "absolute",
+    bottom: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 6,
+    borderRadius: BorderRadius.full,
   },
 });

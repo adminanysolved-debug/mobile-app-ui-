@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, TextInput, Alert, ActivityIndicator, Pressable } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { ScreenAnim } from "@/components/ScreenAnim";
@@ -10,7 +11,6 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigation } from "@react-navigation/native";
 import { getApiUrl } from "@/lib/query-client";
 import { Spacing, BorderRadius, SCROLL_BOTTOM_EXTRA } from "@/constants/theme";
 import * as Haptics from "expo-haptics";
@@ -24,17 +24,23 @@ interface MarketItem {
     howToAchieve: string | null;
     isPremium: boolean;
     isActive: boolean;
+    userId: string;
 };
 
 export default function VendorHubScreen() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
-    const { token } = useAuth();
+    const { user, token, updateUser } = useAuth();
 
     const [items, setItems] = useState<MarketItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
+    const [isApplying, setIsApplying] = useState(false);
+
+    // Onboarding State
+    const [businessName, setBusinessName] = useState("");
+    const [businessBio, setBusinessBio] = useState("");
 
     // New Item State
     const [title, setTitle] = useState("");
@@ -45,24 +51,66 @@ export default function VendorHubScreen() {
     const [isPremium, setIsPremium] = useState(false);
 
     useEffect(() => {
-        fetchVendorItems();
-    }, []);
+        if (user?.isVendor) {
+            fetchVendorItems();
+        } else {
+            setIsLoading(false);
+        }
+    }, [user?.isVendor]);
 
     const fetchVendorItems = async () => {
         try {
-            const response = await fetch(new URL('/api/market', getApiUrl()).toString(), {
+            const response = await fetch(new URL('/api/market/items', getApiUrl()).toString(), {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (response.ok) {
                 const data = await response.json();
-                // Assume API returns only user's items, or we filter on client. 
-                // Or we should hit a vendor-specific endpoint if available.
-                setItems(data);
+                // Filter to only show my items
+                const myItems = data.filter((item: any) => item.userId === user?.id);
+                setItems(myItems);
             }
         } catch (error) {
             console.error("Error fetching items", error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleApplyVendor = async () => {
+        if (!businessName.trim() || !businessBio.trim()) {
+            Alert.alert("Error", "Please fill in all fields.");
+            return;
+        }
+
+        setIsApplying(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        try {
+            const response = await fetch(new URL('/api/vendor/apply', getApiUrl()).toString(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    businessName: businessName,
+                    description: businessBio,
+                })
+            });
+
+            if (response.ok) {
+                const updatedUser = await response.json();
+                updateUser(updatedUser);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("Welcome!", "You are now a registered vendor.");
+            } else {
+                Alert.alert("Error", "Failed to apply. Please try again.");
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Error", "Network error.");
+        } finally {
+            setIsApplying(false);
         }
     };
 
@@ -84,9 +132,10 @@ export default function VendorHubScreen() {
                             });
 
                             if (response.ok) {
+                                const data = await response.json();
+                                updateUser(data.user);
                                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                 Alert.alert("Success", "Your vendor profile has been removed.");
-                                // Navigation goBack simulates exiting the hub now that access is revoked
                                 navigation.goBack();
                             } else {
                                 const data = await response.json();
@@ -104,19 +153,19 @@ export default function VendorHubScreen() {
     };
 
     const removeTask = (index: number) => {
-    if (tasks.length > 1) {
-      setTasks(tasks.filter((_, i) => i !== index));
-    }
-  };
+        if (tasks.length > 1) {
+            setTasks(tasks.filter((_, i) => i !== index));
+        }
+    };
 
-  const handleUploadItem = async () => {
-    const validTasks = tasks.filter(t => t.title.trim().length > 0);
-    if (!title.trim() || !price || validTasks.length === 0) {
-      Alert.alert("Required Fields", "Please provide a title, price, and at least one valid strategy task.");
-      return;
-    }
-    
-    setIsUploading(true);
+    const handleUploadItem = async () => {
+        const validTasks = tasks.filter(t => t.title.trim().length > 0);
+        if (!title.trim() || !price || validTasks.length === 0) {
+            Alert.alert("Required Fields", "Please provide a title, price, and at least one valid strategy task.");
+            return;
+        }
+
+        setIsUploading(true);
         try {
             const response = await fetch(new URL('/api/market/items', getApiUrl()).toString(), {
                 method: "POST",
@@ -131,7 +180,7 @@ export default function VendorHubScreen() {
                     category,
                     isPremium,
                     howToAchieve: JSON.stringify(validTasks),
-                    imageUrl: "" 
+                    imageUrl: ""
                 })
             });
 
@@ -156,10 +205,76 @@ export default function VendorHubScreen() {
         }
     };
 
+    if (!user?.isVendor) {
+        return (
+            <GalaxyBackground>
+                <View style={styles.header}>
+                    <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Feather name="arrow-left" size={24} color={theme.link} />
+                    </Pressable>
+                    <ThemedText type="h3" style={styles.headerTitle}>Vendor Hub</ThemedText>
+                    <View style={{ width: 48 }} />
+                </View>
+                <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xl }}
+                >
+                    <ScreenAnim distance={400} style={styles.section}>
+                        <View style={{ alignItems: 'center', marginBottom: Spacing.xl, marginTop: Spacing.xl }}>
+                            <View style={[styles.iconContainer, { backgroundColor: theme.link + '20' }]}>
+                                <Feather name="shopping-bag" size={48} color={theme.link} />
+                            </View>
+                            <ThemedText type="h2" style={{ textAlign: 'center', marginTop: Spacing.md }}>Become a Vendor</ThemedText>
+                            <ThemedText type="body" style={{ textAlign: 'center', color: theme.textSecondary, marginTop: Spacing.xs }}>
+                                Sell your dream templates and strategies to the community.
+                            </ThemedText>
+                        </View>
+
+                        <Card style={styles.uploadCard}>
+                            <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 8 }}>BUSINESS NAME</ThemedText>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                                value={businessName}
+                                onChangeText={setBusinessName}
+                                placeholder="e.g. Dream Mastery Inc."
+                                placeholderTextColor={theme.textMuted}
+                            />
+
+                            <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: 8, marginTop: Spacing.lg }}>BUSINESS BIO</ThemedText>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
+                                value={businessBio}
+                                onChangeText={setBusinessBio}
+                                placeholder="Tell users what you specialize in..."
+                                placeholderTextColor={theme.textMuted}
+                                multiline
+                            />
+
+                            <Button
+                                onPress={handleApplyVendor}
+                                disabled={isApplying}
+                                style={{ marginTop: Spacing.xl }}
+                            >
+                                {isApplying ? <ActivityIndicator color="#FFF" /> : "Register as Vendor"}
+                            </Button>
+                        </Card>
+                    </ScreenAnim>
+                </ScrollView>
+            </GalaxyBackground>
+        );
+    }
+
     return (
         <GalaxyBackground>
+            <View style={styles.header}>
+                <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Feather name="arrow-left" size={24} color={theme.link} />
+                </Pressable>
+                <ThemedText type="h3" style={styles.headerTitle}>Vendor Dashboard</ThemedText>
+                <View style={{ width: 48 }} />
+            </View>
             <ScrollView
-                style={styles.container}
+                style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: insets.bottom + SCROLL_BOTTOM_EXTRA }}
             >
                 <ScreenAnim distance={500} style={styles.section}>
@@ -221,7 +336,7 @@ export default function VendorHubScreen() {
                         <View style={{ marginTop: Spacing.md }}>
                             <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>Dream Tasks Strategy *</ThemedText>
                             <ThemedText type="xs" style={{ color: theme.textMuted, marginBottom: Spacing.md }}>Define the actionable tasks required to achieve this Dream. Users will receive these tasks upon purchase.</ThemedText>
-                            
+
                             {tasks.map((task, index) => (
                                 <View key={index} style={{ marginBottom: Spacing.md, padding: Spacing.sm, backgroundColor: theme.backgroundSecondary, borderRadius: 12, borderWidth: 1, borderColor: theme.border }}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs }}>
@@ -232,7 +347,7 @@ export default function VendorHubScreen() {
                                             </Pressable>
                                         )}
                                     </View>
-                                    
+
                                     <TextInput
                                         style={[styles.input, { backgroundColor: "transparent", color: theme.text, paddingHorizontal: 0, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border, borderRadius: 0, marginBottom: 8 }]}
                                         value={task.title}
@@ -244,7 +359,7 @@ export default function VendorHubScreen() {
                                         placeholder="e.g. Meditate for 10 minutes"
                                         placeholderTextColor={theme.textMuted}
                                     />
-                                    
+
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
                                         <Feather name="clock" size={12} color={theme.textMuted} />
                                         <TextInput
@@ -262,7 +377,7 @@ export default function VendorHubScreen() {
                                 </View>
                             ))}
 
-                            <Pressable 
+                            <Pressable
                                 onPress={() => setTasks([...tasks, { title: "", timeframe: "1 month" }])}
                                 style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, alignSelf: 'flex-start', paddingVertical: Spacing.xs, paddingHorizontal: Spacing.sm, borderRadius: 16, backgroundColor: theme.accent + '20' }}
                             >
@@ -405,5 +520,32 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 4,
-    }
+    },
+    iconContainer: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: Spacing.lg,
+        paddingTop: 50,
+        paddingBottom: Spacing.md,
+    },
+    headerTitle: {
+        flex: 1,
+        textAlign: "center",
+        color: "#FFFFFF",
+        fontWeight: "700",
+    },
+    backButton: {
+        width: 48,
+        height: 48,
+        alignItems: "center",
+        justifyContent: "center",
+    },
 });

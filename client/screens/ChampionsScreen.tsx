@@ -104,6 +104,15 @@ export default function ChampionsScreen() {
 
   return (
     <GalaxyBackground>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.link} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>
+          Champions
+        </ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -546,5 +555,25 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     width: "100%",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 50,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

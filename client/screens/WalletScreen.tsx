@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -56,7 +56,6 @@ function formatDate(dateString: string): string {
 export default function WalletScreen() {
   const bottomPadding = useSafeBottomPadding();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
   const { user, token } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("points");
@@ -94,8 +93,19 @@ export default function WalletScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
+  const navigation = useNavigation<any>();
+
   return (
     <GalaxyBackground>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.link} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>
+          My Wallet
+        </ThemedText>
+        <View style={{ width: 48 }} />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -447,5 +457,25 @@ const styles = StyleSheet.create({
   emptyCard: {
     padding: Spacing["3xl"],
     alignItems: "center",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 50,
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
